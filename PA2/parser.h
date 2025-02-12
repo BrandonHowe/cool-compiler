@@ -5,6 +5,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 #include "types.h"
+#include "allocator.h"
 
 typedef enum CoolNodeType
 {
@@ -133,11 +134,11 @@ typedef struct CoolClass
     CoolFeature* features;
 } CoolClass;
 
-CoolAST parse_ast(bh_str* str);
-CoolClass parse_class(bh_str* str);
+CoolAST parse_ast(bh_str* str, bh_allocator allocator);
+CoolClass parse_class(bh_str* str, bh_allocator allocator);
 CoolIdentifier parse_identifier(bh_str* str);
-CoolFeature parse_feature(bh_str* str);
-CoolExpression parse_expression(bh_str* str);
 CoolFormal parse_formal(bh_str* str);
+CoolFeature parse_feature(bh_str* str, bh_allocator allocator);
+CoolExpression parse_expression(bh_str* str, bh_allocator allocator);
 
 #endif //PARSER_H

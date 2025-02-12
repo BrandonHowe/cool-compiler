@@ -9,4 +9,6 @@ add_executable(semantic_analyzer main.c
         parser.c
         parser.h
         allocator.c
-        allocator.h)
+        allocator.h
+        class_map.c
+        class_map.h)

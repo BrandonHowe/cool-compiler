@@ -48,7 +48,10 @@ int main(int argc, char* argv[])
     //     return 0;
     // }
     bh_str file = read_file_text(COOL_FILE);
-    CoolAST ast = parse_ast(&file);
+
+    bh_allocator arena = arena_init(65536);
+
+    CoolAST ast = parse_ast(&file, arena);
     printf("Hello, World!\n");
     return 0;
 }

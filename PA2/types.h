@@ -22,4 +22,11 @@ int32_t uint_from_str(const bh_str str);
 #define bh_str_eat_chars(str, amount) do { (str).buf += (amount); (str).len -= (amount); } while (0)
 #define bh_str_equal_lit(str, lit) bh_str_equal((str), bh_str_from_cstr(lit))
 
+typedef struct bh_str_buf
+{
+    char* buf;
+    uint32_t len;
+    uint32_t cap;
+} bh_str_buf;
+
 #endif //TYPES_H
