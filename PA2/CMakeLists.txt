@@ -3,12 +3,14 @@ project(semantic_analyzer C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(semantic_analyzer main.c
-        types.c
-        types.h
-        parser.c
-        parser.h
-        allocator.c
-        allocator.h
-        class_map.c
-        class_map.h)
+file(COPY ${CMAKE_SOURCE_DIR}/cool_programs DESTINATION ${CMAKE_BINARY_DIR})
+
+add_executable(semantic_analyzer src/main.c
+        src/types.c
+        src/types.h
+        src/parser.c
+        src/parser.h
+        src/allocator.c
+        src/allocator.h
+        src/class_map.c
+        src/class_map.h)

@@ -5,8 +5,10 @@
 #include "allocator.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 
+// Procedure for general purpose allocator (GPA)
 void* gpa_proc(struct bh_allocator* this_allocator, bh_allocator_mode mode, bh_allocator_args args)
 {
     switch (mode)
@@ -24,13 +26,15 @@ void* gpa_proc(struct bh_allocator* this_allocator, bh_allocator_mode mode, bh_a
     }
 }
 
+// General-purpose heap allocator (wrapper around malloc)
 bh_allocator GPA = (bh_allocator)
 {
     .data = NULL,
     .proc = &gpa_proc
 };
 
-void* arena_proc(struct bh_allocator* this_allocator, bh_allocator_mode mode, bh_allocator_args args)
+// Procedure for an arena allocator
+void* arena_proc(bh_allocator* this_allocator, bh_allocator_mode mode, bh_allocator_args args)
 {
     switch (mode)
     {
@@ -40,6 +44,7 @@ void* arena_proc(struct bh_allocator* this_allocator, bh_allocator_mode mode, bh
             bh_arena_data* data = this_allocator->data;
             void* ptr = &data->buffer[data->used];
             data->used += args.size;
+            // printf("Allocating %i bytes, used: %i, cap: %i\n", args.size, data->used, data->capacity);
             assert(data->used < data->capacity);
             return ptr;
         }

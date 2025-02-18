@@ -6,6 +6,7 @@
 #include "parser.h"
 
 #include <assert.h>
+#include <stdio.h>
 
 CoolAST parse_ast(bh_str* str, bh_allocator allocator)
 {
@@ -83,6 +84,7 @@ CoolFeature parse_feature(bh_str* str, bh_allocator allocator)
         {
             feature.formals[i] = parse_formal(str);
         }
+        feature.is_method = true;
     }
 
     feature.type_name = parse_identifier(str);

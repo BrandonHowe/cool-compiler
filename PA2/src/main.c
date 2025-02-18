@@ -1,10 +1,13 @@
+//
+// Created by Brandon Howe on 2/10/25.
+//
+
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "class_map.h"
 #include "parser.h"
 #include "types.h"
-
-#define COOL_FILE "../primes.cl-ast"
 
 bh_str read_file_text(const char* file_name)
 {
@@ -42,16 +45,24 @@ bh_str read_file_text(const char* file_name)
 
 int main(int argc, char* argv[])
 {
-    // if (argc == 0)
-    // {
-    //     printf("COOL semantic analyzer requires at least 1 target file.\n");
-    //     return 0;
-    // }
-    bh_str file = read_file_text(COOL_FILE);
+    if (argc < 2) {
+        printf("Usage: %s, <input_file>\n", argv[0]);
+        return 1;
+    }
+    bh_str file = read_file_text(argv[1]);
+    bh_str file_name = bh_str_from_cstr(argv[1]);
 
-    bh_allocator arena = arena_init(65536);
+    bh_allocator ast_arena = arena_init(1000000);
+    CoolAST ast = parse_ast(&file, ast_arena);
 
-    CoolAST ast = parse_ast(&file, arena);
-    printf("Hello, World!\n");
+    bh_allocator class_map_arena = arena_init(1000000);
+    CoolError error = generate_class_map(ast, file_name, class_map_arena);
+
+    if (error.valid)
+    {
+        printf("Error: %i: Type-Check: %s\n", error.line, error.message);
+        return 0;
+    }
+
     return 0;
 }

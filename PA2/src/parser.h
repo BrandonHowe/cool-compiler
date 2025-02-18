@@ -4,6 +4,8 @@
 
 #ifndef PARSER_H
 #define PARSER_H
+#include <stdbool.h>
+
 #include "types.h"
 #include "allocator.h"
 
@@ -117,6 +119,7 @@ typedef struct CoolFeature
     CoolNodeType type;
     CoolIdentifier name;
     CoolIdentifier type_name;
+    bool is_method;
 
     uint16_t formal_count;
     CoolFormal* formals;

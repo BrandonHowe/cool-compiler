@@ -33,6 +33,7 @@ typedef struct bh_allocator_args
 
 struct bh_allocator;
 
+// Allocator procedure function
 typedef void* (bh_allocator_proc)(struct bh_allocator* this_allocator, bh_allocator_mode mode, bh_allocator_args args);
 
 typedef struct bh_allocator
@@ -42,6 +43,8 @@ typedef struct bh_allocator
 } bh_allocator;
 
 #define bh_alloc(allocator, alloc_size) (allocator).proc(&(allocator), bh_allocator_mode_alloc, (bh_allocator_args){ .size = (alloc_size) })
+#define bh_realloc(allocator, pointer, alloc_size) (allocator).proc(&(allocator), bh_allocator_mode_realloc, (bh_allocator_args){ .size = (alloc_size), .ptr = (pointer) })
+#define bh_free(allocator, pointer) (allocator).proc(&(allocator), bh_allocator_mode_free, (bh_allocator_args){ .ptr = (pointer) })
 
 bh_allocator_proc gpa_proc;
 bh_allocator_proc arena_proc;
