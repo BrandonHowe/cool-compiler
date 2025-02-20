@@ -52,10 +52,10 @@ int main(int argc, char* argv[])
     bh_str file = read_file_text(argv[1]);
     bh_str file_name = bh_str_from_cstr(argv[1]);
 
-    bh_allocator ast_arena = arena_init(1000000);
+    bh_allocator ast_arena = arena_init(50000);
     CoolAST ast = parse_ast(&file, ast_arena);
 
-    bh_allocator class_map_arena = arena_init(1000000);
+    bh_allocator class_map_arena = arena_init(50000);
     CoolError error = generate_class_map(ast, file_name, class_map_arena);
 
     if (error.valid)

@@ -61,7 +61,7 @@ bh_allocator arena_init(uint32_t buffer_size)
     bh_arena_data* data = malloc(sizeof(bh_arena_data) + buffer_size);
     data->used = 0;
     data->capacity = buffer_size;
-    data->buffer = &data[__offsetof(bh_arena_data, used)];
+    data->buffer = &data[1];
 
     bh_allocator allocator = (bh_allocator){
         .data = data,

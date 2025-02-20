@@ -15,6 +15,22 @@ typedef struct ClassAttribute
     CoolExpression expr;
 } ClassAttribute;
 
+typedef struct ClassMethodParameter
+{
+    bh_str name;
+    bh_str type;
+} ClassMethodParameter;
+
+typedef struct ClassMethod
+{
+    bh_str name;
+    bh_str inherited_from;
+    bh_str return_type;
+    int16_t parameter_count;
+    ClassMethodParameter* parameters;
+    CoolExpression body;
+} ClassMethod;
+
 typedef struct ClassNode
 {
     bh_str name;
@@ -22,12 +38,17 @@ typedef struct ClassNode
 
     int16_t attribute_count;
     ClassAttribute* attributes;
+
+    int16_t method_count;
+    ClassMethod* methods;
+
     bool attributes_filled;
+    bool methods_filled;
 } ClassNode;
 
 #define RETURN_ERROR(line_num, message_cstr) return (CoolError){ .valid = true, .line = (line_num), .message = (message_cstr) }
 
-// Fills in a ClassNode based on data from the AST
+// Fills in a ClassNode's parent and attributes based on data from the AST
 CoolError fill_class_attributes(CoolAST AST, ClassNode* classes, int16_t class_idx, bh_allocator allocator)
 {
     ClassNode* class = &classes[class_idx];
@@ -73,8 +94,8 @@ CoolError fill_class_attributes(CoolAST AST, ClassNode* classes, int16_t class_i
         CoolFeature feature = ast_class.features[i];
         if (feature.is_method) continue;
 
-        // Check the new attribute doesn't override an inherited attribute
-        for (int j = 0; j < inherited_attribute_counts; j++)
+        // Check the new attribute doesn't override an inherited or existing attribute
+        for (int j = 0; j < inherited_attribute_counts + attribute_idx; j++)
         {
             if (bh_str_equal(class->attributes[j].name, feature.name.name))
             {
@@ -86,6 +107,179 @@ CoolError fill_class_attributes(CoolAST AST, ClassNode* classes, int16_t class_i
         class->attributes[inherited_attribute_counts + attribute_idx].type = feature.type_name.name;
         class->attributes[inherited_attribute_counts + attribute_idx].expr = feature.body;
         attribute_idx += 1;
+    }
+
+    class->attributes_filled = true;
+
+    return (CoolError){ 0 };
+}
+
+// Fills in a ClassNode's methods based on data from the AST
+CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx, bh_allocator allocator)
+{
+    ClassNode* class = &classes[class_idx];
+    if (class->methods_filled) return (CoolError){ 0 };
+
+    // No attributes for most built-in classes
+    if (class_idx == 0) // Object
+    {
+        class->method_count = 3;
+        class->methods = bh_alloc(allocator, sizeof(ClassMethod) * class->method_count);
+        char* abort_buf = bh_alloc(allocator, 5);
+        strncpy(abort_buf, "abort", 5);
+        bh_str abort_str = (bh_str){ .buf = abort_buf, .len = 5 };
+        class->methods[0].name = abort_str;
+        class->methods[0].return_type = class->name;
+        class->methods[0].inherited_from = class->name;
+        char* type_name_buf = bh_alloc(allocator, 9);
+        strncpy(type_name_buf, "type_name", 9);
+        bh_str type_name_str = (bh_str){ .buf = type_name_buf, .len = 9 };
+        class->methods[1].name = type_name_str;
+        class->methods[1].return_type = classes[3].name;
+        class->methods[1].inherited_from = class->name;
+        char* copy_buf = bh_alloc(allocator, 4);
+        strncpy(copy_buf, "copy", 4);
+        bh_str copy_str = (bh_str){ .buf = copy_buf, .len = 4 };
+        char* self_type_buf = bh_alloc(allocator, 9);
+        strncpy(self_type_buf, "type_name", 9);
+        bh_str self_type_str = (bh_str){ .buf = self_type_buf, .len = 9 };
+        class->methods[2].name = copy_str;
+        class->methods[2].return_type = self_type_str;
+        class->methods[2].inherited_from = class->name;
+    }
+    else if (class_idx == 3) // String
+    {
+        class->method_count = 3;
+        class->methods = bh_alloc(allocator, sizeof(ClassMethod) * class->method_count);
+    }
+    else if (class_idx == 4) // IO
+    {
+        class->method_count = 4;
+        class->methods = bh_alloc(allocator, sizeof(ClassMethod) * class->method_count);
+
+        char* self_type_buf = bh_alloc(allocator, 9);
+        strncpy(self_type_buf, "type_name", 9);
+        bh_str self_type_str = (bh_str){ .buf = self_type_buf, .len = 9 };
+
+        bh_str x_str = (bh_str){ .buf = bh_alloc(allocator, 1), .len = 1 };
+        strncpy(x_str.buf, "x", 1);
+
+        bh_str out_string_str = (bh_str){ .buf = bh_alloc(allocator, 10), .len = 10 };
+        strncpy(out_string_str.buf, "out_string", 10);
+        class->methods[0].name = out_string_str;
+        class->methods[0].return_type = self_type_str;
+        class->methods[0].inherited_from = class->name;
+        class->methods[0].parameter_count = 1;
+        class->methods[0].parameters = bh_alloc(allocator, sizeof(ClassMethodParameter) * 1);
+        class->methods[0].parameters[0].name = x_str;
+        class->methods[0].parameters[0].type = classes[3].name;
+
+        bh_str out_int_str = (bh_str){ .buf = bh_alloc(allocator, 7), .len = 7 };
+        strncpy(out_int_str.buf, "out_int", 7);
+        class->methods[1].name = out_int_str;
+        class->methods[1].return_type = self_type_str;
+        class->methods[1].inherited_from = class->name;
+        class->methods[1].parameter_count = 1;
+        class->methods[1].parameters = bh_alloc(allocator, sizeof(ClassMethodParameter) * 1);
+        class->methods[1].parameters[0].name = x_str;
+        class->methods[1].parameters[0].type = classes[2].name;
+
+        bh_str in_string_str = (bh_str){ .buf = bh_alloc(allocator, 9), .len = 9 };
+        strncpy(in_string_str.buf, "in_string", 9);
+        class->methods[2].name = in_string_str;
+        class->methods[2].return_type = classes[3].name;
+        class->methods[2].inherited_from = class->name;
+
+        bh_str in_int_str = (bh_str){ .buf = bh_alloc(allocator, 6), .len = 6 };
+        strncpy(in_int_str.buf, "in_int", 6);
+        class->methods[3].name = in_int_str;
+        class->methods[3].return_type = classes[2].name;
+        class->methods[3].inherited_from = class->name;
+    }
+    if (class_idx < 5)
+    {
+        class->methods_filled = true;
+        return (CoolError){ 0 };
+    }
+
+    // Make sure the parent's methods are filled in before we copy them
+    int16_t inherited_method_count = 0;
+    if (class->parent)
+    {
+        int16_t parent_idx = class->parent - classes;
+        fill_class_methods(AST, classes, parent_idx, allocator);
+        inherited_method_count = class->parent->method_count;
+    }
+
+    // Count how many methods there are so we can allocate memory
+    class->method_count = inherited_method_count;
+    CoolClass ast_class = AST.classes[class_idx - 5];
+    for (int i = 0; i < ast_class.feature_count; i++)
+    {
+        CoolFeature feature = ast_class.features[i];
+        if (!feature.is_method) continue;
+        class->method_count += 1;
+    }
+
+    // Allocate memory and copy parent methods if necessary
+    class->methods = bh_alloc(allocator, sizeof(ClassMethod) * class->method_count);
+    if (class->parent)
+    {
+        memcpy(class->methods, class->parent->methods, class->parent->method_count * sizeof(ClassMethod));
+    }
+
+    // Fill in all the methods
+    int method_idx = 0;
+    for (int i = 0; i < ast_class.feature_count; i++)
+    {
+        CoolFeature feature = ast_class.features[i];
+        if (!feature.is_method) continue;
+
+        // Check the new attribute doesn't override an inherited or existing method incorrectly
+        for (int j = 0; j < inherited_method_count + method_idx; j++)
+        {
+            if (!bh_str_equal(class->methods[j].name, feature.name.name)) continue;
+
+            if (j >= inherited_method_count && bh_str_equal(class->methods[j].name, feature.name.name))
+            {
+                RETURN_ERROR(feature.name.line_num, "Duplicate method definition in class");
+            }
+
+            if (!bh_str_equal(class->methods[j].return_type, feature.type_name.name))
+            {
+                RETURN_ERROR(feature.type_name.line_num, "Return type differs between method implementations");
+            }
+            if (class->methods[j].parameter_count != feature.formal_count)
+            {
+                RETURN_ERROR(feature.type_name.line_num, "Parameter count differs between method implementations");
+            }
+            for (int k = 0; k < feature.formal_count; k++)
+            {
+                if (!bh_str_equal(class->methods[j].parameters[k].type, feature.formals[k].type_name.name))
+                {
+                    RETURN_ERROR(feature.formals[k].type_name.line_num, "Parameter type differs between method implementations");
+                }
+            }
+        }
+
+        class->methods[inherited_method_count + method_idx].name = feature.name.name;
+        class->methods[inherited_method_count + method_idx].inherited_from = class->name;
+        class->methods[inherited_method_count + method_idx].return_type = feature.type_name.name;
+        class->methods[inherited_method_count + method_idx].body = feature.body;
+        class->methods[inherited_method_count + method_idx].parameter_count = feature.formal_count;
+        if (feature.formal_count > 0)
+        {
+            class->methods[inherited_method_count + method_idx].parameters = bh_alloc(allocator, sizeof(ClassMethodParameter) * feature.formal_count);
+        }
+
+        // Fill in parameter info
+        for (int j = 0; j < feature.formal_count; j++)
+        {
+            class->methods[inherited_method_count + method_idx].parameters[j].name = feature.formals[j].name.name;
+            class->methods[inherited_method_count + method_idx].parameters[j].type = feature.formals[j].type_name.name;
+        }
+
+        method_idx += 1;
     }
 
     class->attributes_filled = true;
@@ -273,11 +467,11 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
     ClassNode* class_nodes = bh_alloc(allocator, sizeof(ClassNode) * (5 + AST.class_count));
     {
         // Define built-in classes
-        class_nodes[0] = (ClassNode){ .name = bh_str_from_cstr("Bool"), .parent = 0 };
-        class_nodes[1] = (ClassNode){ .name = bh_str_from_cstr("Int"), .parent = 0 };
-        class_nodes[2] = (ClassNode){ .name = bh_str_from_cstr("Object"), .parent = 0 };
-        class_nodes[3] = (ClassNode){ .name = bh_str_from_cstr("String"), .parent = 0 };
-        class_nodes[4] = (ClassNode){ .name = bh_str_from_cstr("IO"), .parent = 0 };
+        class_nodes[0] = (ClassNode){ .name = bh_str_from_cstr("Object"), .parent = 0 };
+        class_nodes[1] = (ClassNode){ .name = bh_str_from_cstr("Bool"), .parent = class_nodes };
+        class_nodes[2] = (ClassNode){ .name = bh_str_from_cstr("Int"), .parent = class_nodes };
+        class_nodes[3] = (ClassNode){ .name = bh_str_from_cstr("String"), .parent = class_nodes };
+        class_nodes[4] = (ClassNode){ .name = bh_str_from_cstr("IO"), .parent = class_nodes };
 
         // Fill in all the names first, so we can check for missing classes after
         for (int i = 0; i < AST.class_count; i++)
@@ -285,31 +479,38 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
             class_nodes[5 + i].name = AST.classes[i].name.name;
         }
 
-        // Check that for all subclasses, the parent class actually exists and is not protected
+        // Check that for all subclasses, the parent class actually exists and is not protected,
+        // otherwise set it to inherit from Object
         for (int i = 0; i < AST.class_count; i++)
         {
             bh_str parent_str = AST.classes[i].inherits.name;
-            if (parent_str.len == 0) continue;
-            int parent_class_idx = -1;
-            for (int j = 0; j < 5 + AST.class_count; j++)
+            if (parent_str.len == 0)
             {
-                if (bh_str_equal(class_nodes[j].name, parent_str))
-                {
-                    parent_class_idx = j;
-                    break;
-                }
-            }
-            if (parent_class_idx == -1)
-            {
-                RETURN_ERROR(AST.classes[i].inherits.line_num, "Class inherits from nonexistent class");
-            }
-            else if (parent_class_idx < 4)
-            {
-                RETURN_ERROR(AST.classes[i].inherits.line_num, "Cannot inherit from protected class");
+                class_nodes[5 + i].parent = &class_nodes[0];
             }
             else
             {
-                class_nodes[5 + i].parent = &class_nodes[parent_class_idx];
+                int parent_class_idx = -1;
+                for (int j = 0; j < 5 + AST.class_count; j++)
+                {
+                    if (bh_str_equal(class_nodes[j].name, parent_str))
+                    {
+                        parent_class_idx = j;
+                        break;
+                    }
+                }
+                if (parent_class_idx == -1)
+                {
+                    RETURN_ERROR(AST.classes[i].inherits.line_num, "Class inherits from nonexistent class");
+                }
+                else if (parent_class_idx < 4)
+                {
+                    RETURN_ERROR(AST.classes[i].inherits.line_num, "Cannot inherit from protected class");
+                }
+                else
+                {
+                    class_nodes[5 + i].parent = &class_nodes[parent_class_idx];
+                }
             }
         }
 
@@ -365,7 +566,7 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
         }
     }
 
-    // Filling in class map with attributes
+    // Filling in class map with attributes and methods
     {
         for (int i = 5; i < AST.class_count + 5; i++)
         {
@@ -375,11 +576,21 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
                 return error;
             }
         }
+
+        for (int i = 5; i < AST.class_count + 5; i++)
+        {
+            CoolError error = fill_class_methods(AST, class_nodes, i, allocator);
+            if (error.valid)
+            {
+                return error;
+            }
+        }
     }
+
+    bh_str_buf str_buf = bh_str_buf_init(GPA, 1000);
 
     // Write class map to file in order
     {
-        bh_str_buf str_buf = bh_str_buf_init(GPA, 1000);
 
         bh_str_buf_append_format(&str_buf, "class_map\n%i\n", AST.class_count + 5);
         for (int i = 0; i < 5 + AST.class_count; i++)
@@ -401,20 +612,49 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
                 }
             }
         }
+    }
+
+    // Write implementation map to file in order
+    if (true)
+    {
+        bh_str_buf_append_format(&str_buf, "implementation_map\n%i\n", AST.class_count + 5);
+        for (int i = 0; i < 5 + AST.class_count; i++)
+        {
+            ClassNode class = class_nodes[sorted_indices[i]];
+            bh_str_buf_append(&str_buf, class.name);
+            bh_str_buf_append_format(&str_buf, "\n%i\n", class.method_count);
+            for (int j = 0; j < class.method_count; j++)
+            {
+                ClassMethod method = class.methods[j];
+                bh_str_buf_append(&str_buf, method.name);
+                bh_str_buf_append_format(&str_buf, "\n%i\n", method.parameter_count);
+                for (int k = 0; k < method.parameter_count; k++)
+                {
+                    bh_str_buf_append(&str_buf, method.parameters[k].name);
+                    bh_str_buf_append_lit(&str_buf, "\n");
+                }
+                bh_str_buf_append(&str_buf, method.inherited_from);
+                bh_str_buf_append_lit(&str_buf, "\n");
+                expression_to_str(&str_buf, method.body);
+            }
+        }
 
         char* output_name = bh_alloc(allocator, file_name.len + 10);
         strncpy(output_name, file_name.buf, file_name.len - 3);
         strncpy(output_name + file_name.len - 3, "type", 4);
-
-        FILE* fptr;
-        fptr = fopen(output_name, "w");
-        assert(fptr != NULL);
-
-        fwrite(str_buf.buf, 1, str_buf.len, fptr);
-
-        fclose(fptr);
     }
 
+    char* output_name = bh_alloc(allocator, file_name.len + 10);
+    strncpy(output_name, file_name.buf, file_name.len - 3);
+    strncpy(output_name + file_name.len - 3, "type", 4);
+
+    FILE* fptr;
+    fptr = fopen(output_name, "w");
+    assert(fptr != NULL);
+    fwrite(str_buf.buf, 1, str_buf.len, fptr);
+    fclose(fptr);
+
+    bh_str_buf_deinit(&str_buf);
     arena_free_all(allocator);
 
     return (CoolError){ 0 };

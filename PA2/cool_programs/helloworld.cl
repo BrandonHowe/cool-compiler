@@ -1,14 +1,16 @@
-class B inherits A {
-    attr2 : Int <- 19;
+class A {
+
 };
 
-class A inherits C {
+(*class A {
     attr : Int <- 8;
+    no_args() : Int { 5 };
+    one_arg(arg: Int) : String { "test" };
 };
 
-class C inherits B {
-    attr3 : Int <- 45;
-};
+class B inherits A {
+    no_args() : Int { 5 };
+};*)
 
 class Main inherits IO {
     a : Int <- 5;

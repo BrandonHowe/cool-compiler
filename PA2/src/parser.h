@@ -121,7 +121,7 @@ typedef struct CoolFeature
     CoolIdentifier type_name;
     bool is_method;
 
-    uint16_t formal_count;
+    int16_t formal_count;
     CoolFormal* formals;
 
     CoolExpression body;
