@@ -146,6 +146,9 @@ void bh_str_buf_append_format(bh_str_buf* buf, const char* format, ...)
     uint16_t append_size = vsnprintf(NULL, 0, format, va);
     bh_str_buf_reserve(buf, append_size);
 
+    va_end(va);
+    va_start(va, format);
+
     vsnprintf(&buf->buf[buf->len], buf->cap - buf->len + 1, format, va);
 
     buf->len += append_size;

@@ -14,7 +14,7 @@ void* gpa_proc(struct bh_allocator* this_allocator, bh_allocator_mode mode, bh_a
     switch (mode)
     {
     case bh_allocator_mode_alloc:
-        return malloc(args.size);
+        return calloc(args.size, 1);
     case bh_allocator_mode_realloc:
         return realloc(args.ptr, args.size);
     case bh_allocator_mode_free:
@@ -58,7 +58,7 @@ void* arena_proc(bh_allocator* this_allocator, bh_allocator_mode mode, bh_alloca
 
 bh_allocator arena_init(uint32_t buffer_size)
 {
-    bh_arena_data* data = malloc(sizeof(bh_arena_data) + buffer_size);
+    bh_arena_data* data = calloc(sizeof(bh_arena_data) + buffer_size, 1);
     data->used = 0;
     data->capacity = buffer_size;
     data->buffer = &data[1];
