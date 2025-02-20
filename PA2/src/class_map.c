@@ -229,6 +229,8 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
     }
 
     // Fill in all the methods
+    bool is_main = bh_str_equal_lit(class->name, "Main");
+    bool main_found = false;
     int method_idx = 0;
     for (int i = 0; i < ast_class.feature_count; i++)
     {
@@ -262,6 +264,8 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
             }
         }
 
+        if (bh_str_equal_lit(feature.name.name, "main")) main_found = true;
+
         class->methods[inherited_method_count + method_idx].name = feature.name.name;
         class->methods[inherited_method_count + method_idx].inherited_from = class->name;
         class->methods[inherited_method_count + method_idx].return_type = feature.type_name.name;
@@ -277,12 +281,30 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
         {
             class->methods[inherited_method_count + method_idx].parameters[j].name = feature.formals[j].name.name;
             class->methods[inherited_method_count + method_idx].parameters[j].type = feature.formals[j].type_name.name;
+
+            // Check the type is valid
+            bool class_valid = false;
+            for (int k = 0; k < AST.class_count + 5; k++)
+            {
+                if (bh_str_equal(classes[k].name, feature.formals[j].type_name.name))
+                {
+                    class_valid = true;
+                    break;
+                }
+            }
+
+            if (!class_valid)
+            {
+                RETURN_ERROR(feature.formals[j].type_name.line_num, "Class has a parameter with unknown type");
+            }
         }
 
         method_idx += 1;
     }
 
     class->attributes_filled = true;
+
+    if (is_main && !main_found) RETURN_ERROR(0, "Main method not found");
 
     return (CoolError){ 0 };
 }
@@ -473,10 +495,25 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
         class_nodes[3] = (ClassNode){ .name = bh_str_from_cstr("String"), .parent = class_nodes };
         class_nodes[4] = (ClassNode){ .name = bh_str_from_cstr("IO"), .parent = class_nodes };
 
+        int named_classes = 5;
         // Fill in all the names first, so we can check for missing classes after
         for (int i = 0; i < AST.class_count; i++)
         {
+            if (bh_str_equal_lit(AST.classes[i].name.name, "SELF_TYPE"))
+            {
+                RETURN_ERROR(AST.classes[i].name.line_num, "Cannot have a class named SELF_TYPE");
+            }
+
+            for (int j = 0; j < named_classes; j++)
+            {
+                if (bh_str_equal(AST.classes[i].name.name, class_nodes[j].name))
+                {
+                    RETURN_ERROR(AST.classes[i].name.line_num, "Redefinition of class");
+                }
+            }
+
             class_nodes[5 + i].name = AST.classes[i].name.name;
+            named_classes += 1;
         }
 
         // Check that for all subclasses, the parent class actually exists and is not protected,

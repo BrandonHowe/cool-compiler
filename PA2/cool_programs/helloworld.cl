@@ -1,4 +1,12 @@
 class A {
+    attr: Int;
+};
+
+class Int {
+
+};
+
+class SELF_TYPE {
 
 };
 
