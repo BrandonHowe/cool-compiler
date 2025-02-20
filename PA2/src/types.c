@@ -142,15 +142,15 @@ void bh_str_buf_append_format(bh_str_buf* buf, const char* format, ...)
 {
     va_list va = { 0 };
     va_start(va, format);
-    bh_str_buf_append_vprintf(buf, format, va);
-    va_end(va);
-}
 
-void bh_str_buf_append_vprintf(bh_str_buf* buf, const char* format, va_list va)
-{
     uint16_t append_size = vsnprintf(NULL, 0, format, va);
     bh_str_buf_reserve(buf, append_size);
-    buf->len += vsnprintf(&buf->buf[buf->len], buf->cap - buf->len + 1, format, va);
+
+    vsnprintf(&buf->buf[buf->len], buf->cap - buf->len + 1, format, va);
+
+    buf->len += append_size;
+
+    va_end(va);
 }
 
 void bh_str_buf_reserve(bh_str_buf* str_buf, uint32_t capacity)

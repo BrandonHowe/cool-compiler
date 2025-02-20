@@ -40,7 +40,6 @@ bh_str_buf bh_str_buf_init(bh_allocator allocator, uint32_t capacity);
 void bh_str_buf_append(bh_str_buf* str_buf, bh_str str);
 void bh_str_buf_append_str_buf(bh_str_buf* str_buf, bh_str_buf str_buf_2);
 void bh_str_buf_append_format(bh_str_buf* buf, const char* format, ...);
-void bh_str_buf_append_vprintf(bh_str_buf* buf, const char* format, va_list va);
 void bh_str_buf_reserve(bh_str_buf* str_buf, uint32_t capacity);
 void bh_str_buf_clear(bh_str_buf* str_buf);
 void bh_str_buf_deinit(bh_str_buf* str_buf);
