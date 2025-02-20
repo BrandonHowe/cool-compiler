@@ -615,7 +615,7 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
     }
 
     // Write implementation map to file in order
-    if (true)
+    if (false)
     {
         bh_str_buf_append_format(&str_buf, "implementation_map\n%i\n", AST.class_count + 5);
         for (int i = 0; i < 5 + AST.class_count; i++)

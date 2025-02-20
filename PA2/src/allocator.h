@@ -49,7 +49,7 @@ typedef struct bh_allocator
 bh_allocator_proc gpa_proc;
 bh_allocator_proc arena_proc;
 
-bh_allocator GPA;
+extern bh_allocator GPA;
 
 typedef struct bh_arena_data
 {
