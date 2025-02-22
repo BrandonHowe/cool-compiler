@@ -10,12 +10,6 @@ class B inherits A {
     } ;
 } ;
 
-class C inherits A {
-    method(str : String) : Int {
-        5
-    } ;
-} ;
-
 class Main inherits IO {
   main() : Object { 
     out_string("Hello, world.\n") 

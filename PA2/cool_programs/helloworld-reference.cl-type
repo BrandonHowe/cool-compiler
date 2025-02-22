@@ -1,10 +1,5 @@
 class_map
-7
-A
-1
-no_initializer
-attr
-Int
+6
 Bool
 0
 IO
@@ -16,7 +11,7 @@ Main
 initializer
 a
 Int
-16
+12
 integer
 5
 Object

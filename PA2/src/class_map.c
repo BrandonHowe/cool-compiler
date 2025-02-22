@@ -103,6 +103,21 @@ CoolError fill_class_attributes(CoolAST AST, ClassNode* classes, int16_t class_i
             }
         }
 
+        // Check the new attribute references a type that actually exists
+        bool type_valid = false;
+        for (int j = 0; j < AST.class_count + 5; j++)
+        {
+            if (bh_str_equal(classes[j].name, feature.type_name.name))
+            {
+                type_valid = true;
+                break;
+            }
+        }
+        if (!type_valid)
+        {
+            RETURN_ERROR(feature.type_name.line_num, "Class has attribute with unknown type");
+        }
+
         class->attributes[inherited_attribute_counts + attribute_idx].name = feature.name.name;
         class->attributes[inherited_attribute_counts + attribute_idx].type = feature.type_name.name;
         class->attributes[inherited_attribute_counts + attribute_idx].expr = feature.body;
@@ -141,16 +156,22 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
         strncpy(copy_buf, "copy", 4);
         bh_str copy_str = (bh_str){ .buf = copy_buf, .len = 4 };
         char* self_type_buf = bh_alloc(allocator, 9);
-        strncpy(self_type_buf, "type_name", 9);
+        strncpy(self_type_buf, "SELF_TYPE", 9);
         bh_str self_type_str = (bh_str){ .buf = self_type_buf, .len = 9 };
         class->methods[2].name = copy_str;
         class->methods[2].return_type = self_type_str;
         class->methods[2].inherited_from = class->name;
+
+        class->methods_filled = true;
+        return (CoolError){ 0 };
     }
     else if (class_idx == 3) // String
     {
         class->method_count = 3;
         class->methods = bh_alloc(allocator, sizeof(ClassMethod) * class->method_count);
+
+        class->methods_filled = true;
+        return (CoolError){ 0 };
     }
     else if (class_idx == 4) // IO
     {
@@ -195,6 +216,9 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
         class->methods[3].name = in_int_str;
         class->methods[3].return_type = classes[2].name;
         class->methods[3].inherited_from = class->name;
+
+        class->methods_filled = true;
+        return (CoolError){ 0 };
     }
     if (class_idx < 5)
     {
@@ -237,7 +261,7 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
         CoolFeature feature = ast_class.features[i];
         if (!feature.is_method) continue;
 
-        // Check the new attribute doesn't override an inherited or existing method incorrectly
+        // Check the new method doesn't override an inherited or existing method incorrectly
         for (int j = 0; j < inherited_method_count + method_idx; j++)
         {
             if (!bh_str_equal(class->methods[j].name, feature.name.name)) continue;
@@ -264,7 +288,10 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
             }
         }
 
-        if (bh_str_equal_lit(feature.name.name, "main")) main_found = true;
+        if (bh_str_equal_lit(feature.name.name, "main") && feature.formal_count == 0)
+        {
+            main_found = true;
+        }
 
         class->methods[inherited_method_count + method_idx].name = feature.name.name;
         class->methods[inherited_method_count + method_idx].inherited_from = class->name;
@@ -279,8 +306,19 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
         // Fill in parameter info
         for (int j = 0; j < feature.formal_count; j++)
         {
-            class->methods[inherited_method_count + method_idx].parameters[j].name = feature.formals[j].name.name;
-            class->methods[inherited_method_count + method_idx].parameters[j].type = feature.formals[j].type_name.name;
+            ClassMethodParameter* parameters = class->methods[inherited_method_count + method_idx].parameters;
+
+            // Check that it wasn't used for a previous parameter
+            for (int k = 0; k < j; k++)
+            {
+                if (bh_str_equal(parameters[k].name, feature.formals[j].name.name))
+                {
+                    RETURN_ERROR(feature.formals[j].name.line_num, "Class has method with duplicate formal parameter");
+                }
+            }
+
+            parameters[j].name = feature.formals[j].name.name;
+            parameters[j].type = feature.formals[j].type_name.name;
 
             // Check the type is valid
             bool class_valid = false;
@@ -302,9 +340,9 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
         method_idx += 1;
     }
 
-    class->attributes_filled = true;
+    class->methods_filled = true;
 
-    if (is_main && !main_found) RETURN_ERROR(0, "Main method not found");
+    if (is_main && !main_found) RETURN_ERROR(0, "class Main method main not found");
 
     return (CoolError){ 0 };
 }
@@ -330,9 +368,10 @@ void expression_to_str(bh_str_buf* str_buf, CoolExpression expr)
         expression_to_str(str_buf, *expr.data.assign.rhs);
         break;
     case COOL_EXPR_TYPE_DYNAMIC_DISPATCH:
-        bh_str_buf_append_lit(str_buf, "dynamic_dispatch");
+        bh_str_buf_append_lit(str_buf, "dynamic_dispatch\n");
         expression_to_str(str_buf, *expr.data.dynamic_dispatch.e);
         identifier_to_str(str_buf, expr.data.dynamic_dispatch.method);
+        bh_str_buf_append_format(str_buf, "%i\n", expr.data.dynamic_dispatch.args_length);
         for (int i = 0; i < expr.data.dynamic_dispatch.args_length; i++)
         {
             expression_to_str(str_buf, expr.data.dynamic_dispatch.args[i]);
@@ -343,6 +382,7 @@ void expression_to_str(bh_str_buf* str_buf, CoolExpression expr)
         expression_to_str(str_buf, *expr.data.static_dispatch.e);
         identifier_to_str(str_buf, expr.data.static_dispatch.type_name);
         identifier_to_str(str_buf, expr.data.static_dispatch.method);
+        bh_str_buf_append_format(str_buf, "%i\n", expr.data.static_dispatch.args_length);
         for (int i = 0; i < expr.data.static_dispatch.args_length; i++)
         {
             expression_to_str(str_buf, expr.data.static_dispatch.args[i]);
@@ -351,6 +391,7 @@ void expression_to_str(bh_str_buf* str_buf, CoolExpression expr)
     case COOL_EXPR_TYPE_SELF_DISPATCH:
         bh_str_buf_append_lit(str_buf, "self_dispatch\n");
         identifier_to_str(str_buf, expr.data.self_dispatch.method);
+        bh_str_buf_append_format(str_buf, "%i\n", expr.data.self_dispatch.args_length);
         for (int i = 0; i < expr.data.self_dispatch.args_length; i++)
         {
             expression_to_str(str_buf, expr.data.self_dispatch.args[i]);
@@ -369,6 +410,7 @@ void expression_to_str(bh_str_buf* str_buf, CoolExpression expr)
         break;
     case COOL_EXPR_TYPE_BLOCK:
         bh_str_buf_append_lit(str_buf, "block\n");
+        bh_str_buf_append_format(str_buf, "%i\n", expr.data.block.body_length);
         for (int i = 0; i < expr.data.block.body_length; i++)
         {
             expression_to_str(str_buf, expr.data.block.body[i]);
@@ -421,6 +463,7 @@ void expression_to_str(bh_str_buf* str_buf, CoolExpression expr)
     case COOL_EXPR_TYPE_FALSE: bh_str_buf_append_lit(str_buf, "false\n"); break;
     case COOL_EXPR_TYPE_LET:
         bh_str_buf_append_lit(str_buf, "let\n");
+        bh_str_buf_append_format(str_buf, "%i\n", expr.data.let.binding_count);
         for (int i = 0; i < expr.data.let.binding_count; i++)
         {
             CoolLetBinding binding = expr.data.let.bindings[i];
@@ -439,10 +482,12 @@ void expression_to_str(bh_str_buf* str_buf, CoolExpression expr)
                 expression_to_str(str_buf, *binding.exp);
             }
         }
+        expression_to_str(str_buf, *expr.data.let.expr);
         break;
     case COOL_EXPR_TYPE_CASE:
         bh_str_buf_append_lit(str_buf, "case\n");
         expression_to_str(str_buf, *expr.data.case_expr.expr);
+        bh_str_buf_append_format(str_buf, "%i\n", expr.data.case_expr.element_count);
         for (int i = 0; i < expr.data.case_expr.element_count; i++)
         {
             CoolCaseElement element = expr.data.case_expr.elements[i];
@@ -540,7 +585,7 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
                 {
                     RETURN_ERROR(AST.classes[i].inherits.line_num, "Class inherits from nonexistent class");
                 }
-                else if (parent_class_idx < 4)
+                else if (parent_class_idx > 0 && parent_class_idx < 4)
                 {
                     RETURN_ERROR(AST.classes[i].inherits.line_num, "Cannot inherit from protected class");
                 }
@@ -624,7 +669,7 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
         }
     }
 
-    bh_str_buf str_buf = bh_str_buf_init(GPA, 1000);
+    bh_str_buf str_buf = bh_str_buf_init(GPA, 10000);
 
     // Write class map to file in order
     {
@@ -685,13 +730,12 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
     strncpy(output_name + file_name.len - 3, "type", 4);
 
     FILE* fptr;
-    fptr = fopen(output_name, "w");
+    fptr = fopen(output_name, "wb");
     assert(fptr != NULL);
     fwrite(str_buf.buf, 1, str_buf.len, fptr);
     fclose(fptr);
 
     bh_str_buf_deinit(&str_buf);
-    arena_free_all(allocator);
 
     return (CoolError){ 0 };
 }

@@ -1,15 +1,3 @@
-class A {
-    attr: Int;
-};
-
-class Int {
-
-};
-
-class SELF_TYPE {
-
-};
-
 (*class A {
     attr : Int <- 8;
     no_args() : Int { 5 };

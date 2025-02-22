@@ -159,7 +159,7 @@ void bh_str_buf_append_format(bh_str_buf* buf, const char* format, ...)
 void bh_str_buf_reserve(bh_str_buf* str_buf, uint32_t capacity)
 {
     if (capacity < str_buf->cap) return;
-    bh_realloc(str_buf->allocator, str_buf->buf, capacity);
+    str_buf->buf = bh_realloc(str_buf->allocator, str_buf->buf, capacity);
     str_buf->cap = capacity;
 }
 

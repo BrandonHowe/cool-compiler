@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
 
     if (error.valid)
     {
-        printf("ERROR: %i: Type-Check: %s\n", error.line, error.message);
+        printf("ERROR: %i: Type-Check: %s", error.line, error.message);
         return 0;
     }
 

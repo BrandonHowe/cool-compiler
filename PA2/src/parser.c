@@ -138,14 +138,29 @@ CoolExpression parse_expression(bh_str* str, bh_allocator allocator)
         *expression.data.assign.rhs = parse_expression(str, allocator);
         break;
     case COOL_EXPR_TYPE_DYNAMIC_DISPATCH:
-    case COOL_EXPR_TYPE_STATIC_DISPATCH:
         expression.data.dynamic_dispatch.e = bh_alloc(allocator, sizeof(CoolExpression));
         *expression.data.dynamic_dispatch.e = parse_expression(str, allocator);
-    case COOL_EXPR_TYPE_SELF_DISPATCH:
-        if (expression.expression_type == COOL_EXPR_TYPE_STATIC_DISPATCH)
+        expression.data.dynamic_dispatch.method = parse_identifier(str);
+        expression.data.dynamic_dispatch.args_length = eat_uint_until_newline(str);
+        expression.data.dynamic_dispatch.args = bh_alloc(allocator, expression.data.dynamic_dispatch.args_length * sizeof(CoolExpression));
+        for (int i = 0; i < expression.data.dynamic_dispatch.args_length; i++)
         {
-            expression.data.static_dispatch.type_name = parse_identifier(str);
+            expression.data.dynamic_dispatch.args[i] = parse_expression(str, allocator);
         }
+        break;
+    case COOL_EXPR_TYPE_STATIC_DISPATCH:
+        expression.data.static_dispatch.e = bh_alloc(allocator, sizeof(CoolExpression));
+        *expression.data.static_dispatch.e = parse_expression(str, allocator);
+        expression.data.static_dispatch.type_name = parse_identifier(str);
+        expression.data.static_dispatch.method = parse_identifier(str);
+        expression.data.static_dispatch.args_length = eat_uint_until_newline(str);
+        expression.data.static_dispatch.args = bh_alloc(allocator, expression.data.static_dispatch.args_length * sizeof(CoolExpression));
+        for (int i = 0; i < expression.data.static_dispatch.args_length; i++)
+        {
+            expression.data.static_dispatch.args[i] = parse_expression(str, allocator);
+        }
+        break;
+    case COOL_EXPR_TYPE_SELF_DISPATCH:
         expression.data.self_dispatch.method = parse_identifier(str);
         expression.data.self_dispatch.args_length = eat_uint_until_newline(str);
         expression.data.self_dispatch.args = bh_alloc(allocator, expression.data.self_dispatch.args_length * sizeof(CoolExpression));
