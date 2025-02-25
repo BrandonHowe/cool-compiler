@@ -9,6 +9,44 @@
 
 #include "parser.h"
 
+typedef struct ClassAttribute
+{
+    bh_str name;
+    bh_str type;
+    CoolExpression expr;
+} ClassAttribute;
+
+typedef struct ClassMethodParameter
+{
+    bh_str name;
+    bh_str type;
+} ClassMethodParameter;
+
+typedef struct ClassMethod
+{
+    bh_str name;
+    bh_str inherited_from;
+    bh_str return_type;
+    int16_t parameter_count;
+    ClassMethodParameter* parameters;
+    CoolExpression body;
+} ClassMethod;
+
+typedef struct ClassNode
+{
+    bh_str name;
+    struct ClassNode* parent;
+
+    int16_t attribute_count;
+    ClassAttribute* attributes;
+
+    int16_t method_count;
+    ClassMethod* methods;
+
+    bool attributes_filled;
+    bool methods_filled;
+} ClassNode;
+
 typedef struct CoolError
 {
     bool valid;
@@ -16,6 +54,24 @@ typedef struct CoolError
     const char* message;
 } CoolError;
 
+typedef struct CoolTypeOrError
+{
+    bool is_error;
+    union
+    {
+        bh_str type;
+        CoolError error;
+    };
+} CoolTypeOrError;
+
+typedef struct ClassContext
+{
+    ClassNode* classes;
+    int16_t class_count;
+    int16_t class_idx;
+} ClassContext;
+
+CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr);
 CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocator);
 
 #endif //CLASS_MAP_H

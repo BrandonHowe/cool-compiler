@@ -1,17 +1,20 @@
-(*class A {
-    attr : Int <- 8;
-    no_args() : Int { 5 };
-    one_arg(arg: Int) : String { "test" };
+class A inherits IO {
+    --addOne(val : Int) : Int { 6 };
+
+    bleh() : Object { out_string("bloop") };
 };
 
-class B inherits A {
-    no_args() : Int { 5 };
-};*)
-
 class Main inherits IO {
-    a : Int <- 5;
+    addOne(val : Int) : Int { 6 };
+
+    --a : Int <- 1234;
+    --b : Int <- 1234 + 5678;
   main() : Object {
-    let str : String <- "Hello, world.\n" in
-    out_string(str)
+    --let str : String <- "Hello, world.\n" in
+    --out_string(str)
+    {
+        addOne(5);
+        out_string("blah");
+    }
   } ;
 } ; 

@@ -9,4 +9,6 @@ The general pipeline is as follows:
 
 I chose to represent the class hierarchy as a linear array of classes, with each class having a pointer to its parent. I made each class contain a copy of all its methods inherited or not, which makes things like static dispatch easier but turned out to use a lot more memory -- for instance, each class contains the 3 methods that it inherits from Object!
 
+The first 5 built in classes are Object, Bool, Int, String, IO.
+
 For memory management I felt the simplest approach was to just create a big arena allocator and dump all my allocations in there, most of the allocations have a similar lifetime anyways and I felt this was the best solution. I also created two string types (one owning and one non-owning), with the owning one only being used for writing to files. Most of the strings we need are in the AST anyways so string views work fine in almost all cases.
