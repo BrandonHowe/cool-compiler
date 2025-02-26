@@ -49,6 +49,7 @@ int main(int argc, char* argv[])
         printf("Usage: %s, <input_file>\n", argv[0]);
         return 1;
     }
+
     bh_str file = read_file_text(argv[1]);
     bh_str file_name = bh_str_from_cstr(argv[1]);
 

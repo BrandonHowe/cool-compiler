@@ -48,6 +48,7 @@ typedef struct bh_allocator
 
 bh_allocator_proc gpa_proc;
 bh_allocator_proc arena_proc;
+bh_allocator_proc pool_proc;
 
 extern bh_allocator GPA;
 
@@ -61,5 +62,21 @@ typedef struct bh_arena_data
 bh_allocator arena_init(uint32_t buffer_size);
 void arena_free_all(bh_allocator allocator);
 void arena_deinit(bh_allocator allocator);
+
+typedef struct bh_pool_free_node {
+    struct bh_pool_free_node *next;
+} bh_pool_free_node;
+
+typedef struct bh_pool_data {
+    uint32_t buf_len;
+    uint32_t chunk_size;
+    bh_pool_free_node *head; // Free List Head
+
+    void* buf;
+} bh_pool_data;
+
+bh_allocator pool_init(uint32_t buffer_size, uint32_t chunk_size);
+void pool_free_all(bh_allocator allocator);
+void pool_deinit(bh_allocator allocator);
 
 #endif //ALLOCATOR_H

@@ -421,6 +421,21 @@ CoolTypeOrError lub_type(ClassNode a, ClassNode b)
 
 }
 
+CoolTypeOrError get_identifier_type_from_context(ClassContext ctx, CoolIdentifier identifier)
+{
+    ContextObject* current_node = ctx.object_environment_head;
+    while (current_node != NULL)
+    {
+        if (bh_str_equal(current_node->name, identifier.name))
+        {
+            RETURN_TYPE(current_node->type);
+        }
+
+        current_node = current_node->next;
+    }
+    RETURN_TYPE_ERROR(identifier.line_num, "The identifier could not be found");
+}
+
 // Gets the type of an expression or returns an error
 CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
 {
@@ -430,6 +445,40 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
     ClassNode class = ctx.classes[ctx.class_idx];
     switch (expr.expression_type)
     {
+    case COOL_EXPR_TYPE_IDENTIFIER:
+        return get_identifier_type_from_context(ctx, expr.data.identifier.variable);
+    case COOL_EXPR_TYPE_LET:
+        {
+            for (int i = 0; i < expr.data.let.binding_count; i++)
+            {
+                CoolLetBinding binding = expr.data.let.bindings[i];
+                CoolTypeOrError t0 = (CoolTypeOrError){ .type = binding.type_name.name };
+                CoolTypeOrError t1 = TRY_GET_EXPRESSION_TYPE(t1, *binding.exp);
+                if (!is_type_subtype_of(classes, class_count, t1, t0))
+                {
+                    RETURN_TYPE_ERROR(binding.exp->line_num, "Let binding's initialized value is not subtype of parent type");
+                }
+
+                // Allocate the new object into the object environment
+                ContextObject* new_object = bh_alloc(ctx.object_environment_allocator, 1);
+                new_object->name = binding.variable.name;
+                new_object->type = binding.type_name.name;
+                new_object->next = ctx.object_environment_head;
+                ctx.object_environment_head = new_object;
+            }
+
+            CoolTypeOrError t2 = TRY_GET_EXPRESSION_TYPE(t2, *expr.data.let.expr);
+
+            // Free all the allocated objects
+            for (int i = 0; i < expr.data.let.binding_count; i++)
+            {
+                ContextObject* old_head = ctx.object_environment_head;
+                ctx.object_environment_head = old_head->next;
+                bh_free(ctx.object_environment_allocator, old_head);
+            }
+
+            return t2;
+        }
     case COOL_EXPR_TYPE_DYNAMIC_DISPATCH:
     case COOL_EXPR_TYPE_STATIC_DISPATCH:
     case COOL_EXPR_TYPE_SELF_DISPATCH:
@@ -555,13 +604,19 @@ void identifier_to_str(bh_str_buf* str_buf, CoolIdentifier identifier)
     bh_str_buf_append_lit(str_buf, "\n");
 }
 
+// These name concat macros aren't important, it's just to get C to concatenate __LINE__ as
+// a line number and not a literal. TRY_EXPRESSION_TO_STR is the important one
+#define NAME_CONCAT2(a, b) a##b
+#define NAME_CONCAT(a, b) NAME_CONCAT2(a, b)
+#define TRY_EXPRESSION_TO_STR(expression, provided_type) CoolTypeOrError NAME_CONCAT(result, __LINE__) = expression_to_str(ctx, str_buf, (provided_type), (expression)); if (NAME_CONCAT(result, __LINE__).is_error) return NAME_CONCAT(result, __LINE__)
+
 // Appends an expression as an AST string to a buffer
-CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, CoolExpression expr)
+CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, bh_str provided_type, CoolExpression expr)
 {
     bh_str_buf_append_format(str_buf, "%i\n", expr.line_num);
     CoolTypeOrError expr_type_or_error = get_expression_type(ctx, expr);
-    if (expr_type_or_error.is_error) return expr_type_or_error;
-    bh_str expr_type = expr_type_or_error.type;
+    if (provided_type.len == 0 && expr_type_or_error.is_error) return expr_type_or_error;
+    bh_str expr_type = provided_type.len == 0 ? expr_type_or_error.type : provided_type;
     bh_str_buf_append(str_buf, expr_type);
     bh_str_buf_append_lit(str_buf, "\n");
     switch (expr.expression_type)
@@ -570,27 +625,27 @@ CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, CoolExp
     case COOL_EXPR_TYPE_ASSIGN:
         bh_str_buf_append_lit(str_buf, "assign\n");
         identifier_to_str(str_buf, expr.data.assign.var);
-        expression_to_str(ctx, str_buf, *expr.data.assign.rhs);
+        expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.assign.rhs);
         break;
     case COOL_EXPR_TYPE_DYNAMIC_DISPATCH:
         bh_str_buf_append_lit(str_buf, "dynamic_dispatch\n");
-        expression_to_str(ctx, str_buf, *expr.data.dynamic_dispatch.e);
+        expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.dynamic_dispatch.e);
         identifier_to_str(str_buf, expr.data.dynamic_dispatch.method);
         bh_str_buf_append_format(str_buf, "%i\n", expr.data.dynamic_dispatch.args_length);
         for (int i = 0; i < expr.data.dynamic_dispatch.args_length; i++)
         {
-            expression_to_str(ctx, str_buf, expr.data.dynamic_dispatch.args[i]);
+            expression_to_str(ctx, str_buf, (bh_str){ 0 }, expr.data.dynamic_dispatch.args[i]);
         }
         break;
     case COOL_EXPR_TYPE_STATIC_DISPATCH:
         bh_str_buf_append_lit(str_buf, "static_dispatch\n");
-        expression_to_str(ctx, str_buf, *expr.data.static_dispatch.e);
+        expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.static_dispatch.e);
         identifier_to_str(str_buf, expr.data.static_dispatch.type_name);
         identifier_to_str(str_buf, expr.data.static_dispatch.method);
         bh_str_buf_append_format(str_buf, "%i\n", expr.data.static_dispatch.args_length);
         for (int i = 0; i < expr.data.static_dispatch.args_length; i++)
         {
-            expression_to_str(ctx, str_buf, expr.data.static_dispatch.args[i]);
+            expression_to_str(ctx, str_buf, (bh_str){ 0 }, expr.data.static_dispatch.args[i]);
         }
         break;
     case COOL_EXPR_TYPE_SELF_DISPATCH:
@@ -599,19 +654,19 @@ CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, CoolExp
         bh_str_buf_append_format(str_buf, "%i\n", expr.data.self_dispatch.args_length);
         for (int i = 0; i < expr.data.self_dispatch.args_length; i++)
         {
-            expression_to_str(ctx, str_buf, expr.data.self_dispatch.args[i]);
+            expression_to_str(ctx, str_buf, (bh_str){ 0 }, expr.data.self_dispatch.args[i]);
         }
         break;
     case COOL_EXPR_TYPE_IF:
         bh_str_buf_append_lit(str_buf, "if\n");
-        expression_to_str(ctx, str_buf, *expr.data.if_expr.predicate);
-        expression_to_str(ctx, str_buf, *expr.data.if_expr.then_branch);
-        expression_to_str(ctx, str_buf, *expr.data.if_expr.else_branch);
+        expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.if_expr.predicate);
+        expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.if_expr.then_branch);
+        expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.if_expr.else_branch);
         break;
     case COOL_EXPR_TYPE_WHILE:
         bh_str_buf_append_lit(str_buf, "while\n");
-        expression_to_str(ctx, str_buf, *expr.data.while_expr.predicate);
-        expression_to_str(ctx, str_buf, *expr.data.while_expr.body);
+        expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.while_expr.predicate);
+        expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.while_expr.body);
         break;
     case COOL_EXPR_TYPE_BLOCK:
         bh_str_buf_append_lit(str_buf, "block\n");
@@ -620,7 +675,7 @@ CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, CoolExp
         {
             CoolTypeOrError block_expr_type = get_expression_type(ctx, expr.data.block.body[i]);
             if (block_expr_type.is_error) return block_expr_type;
-            expression_to_str(ctx, str_buf, expr.data.block.body[i]);
+            TRY_EXPRESSION_TO_STR(expr.data.block.body[i], block_expr_type.type);
         }
         break;
     case COOL_EXPR_TYPE_NEW:
@@ -629,7 +684,7 @@ CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, CoolExp
         break;
     case COOL_EXPR_TYPE_ISVOID:
         bh_str_buf_append_lit(str_buf, "isvoid\n");
-        expression_to_str(ctx, str_buf, *expr.data.isvoid.e);
+        expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.isvoid.e);
         break;
     case COOL_EXPR_TYPE_PLUS:
     case COOL_EXPR_TYPE_MINUS:
@@ -645,14 +700,14 @@ CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, CoolExp
         if (expr.expression_type == COOL_EXPR_TYPE_LT) bh_str_buf_append_lit(str_buf, "lt\n");
         if (expr.expression_type == COOL_EXPR_TYPE_LE) bh_str_buf_append_lit(str_buf, "le\n");
         if (expr.expression_type == COOL_EXPR_TYPE_EQ) bh_str_buf_append_lit(str_buf, "eq\n");
-        expression_to_str(ctx, str_buf, *expr.data.binary.x);
-        expression_to_str(ctx, str_buf, *expr.data.binary.y);
+        TRY_EXPRESSION_TO_STR(*expr.data.binary.x, bh_str_from_cstr("Int"));
+        TRY_EXPRESSION_TO_STR(*expr.data.binary.y, bh_str_from_cstr("Int"));
         break;
     case COOL_EXPR_TYPE_NOT:
     case COOL_EXPR_TYPE_NEGATE:
         if (expr.expression_type == COOL_EXPR_TYPE_NOT) bh_str_buf_append_lit(str_buf, "not\n");
         if (expr.expression_type == COOL_EXPR_TYPE_NEGATE) bh_str_buf_append_lit(str_buf, "negate\n"); break;
-        expression_to_str(ctx, str_buf, *expr.data.unary.x);
+        expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.unary.x);
         break;
     case COOL_EXPR_TYPE_INTEGER:
         bh_str_buf_append_format(str_buf, "integer\n%i\n", expr.data.integer.value);
@@ -686,21 +741,21 @@ CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, CoolExp
             identifier_to_str(str_buf, binding.type_name);
             if (binding.exp != NULL)
             {
-                expression_to_str(ctx, str_buf, *binding.exp);
+                expression_to_str(ctx, str_buf, (bh_str){ 0 }, *binding.exp);
             }
         }
-        expression_to_str(ctx, str_buf, *expr.data.let.expr);
+        TRY_EXPRESSION_TO_STR(*expr.data.let.expr, expr_type);
         break;
     case COOL_EXPR_TYPE_CASE:
         bh_str_buf_append_lit(str_buf, "case\n");
-        expression_to_str(ctx, str_buf, *expr.data.case_expr.expr);
+        expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.case_expr.expr);
         bh_str_buf_append_format(str_buf, "%i\n", expr.data.case_expr.element_count);
         for (int i = 0; i < expr.data.case_expr.element_count; i++)
         {
             CoolCaseElement element = expr.data.case_expr.elements[i];
             identifier_to_str(str_buf, element.variable);
             identifier_to_str(str_buf, element.type_name);
-            expression_to_str(ctx, str_buf, *element.body);
+            expression_to_str(ctx, str_buf, (bh_str){ 0 }, *element.body);
         }
         break;
     default:
@@ -880,12 +935,15 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
     }
 
     bh_str_buf str_buf = bh_str_buf_init(GPA, 10000);
+    bh_allocator object_environment_allocator = pool_init(sizeof(ContextObject) * 1000, sizeof(ContextObject));
 
     ClassContext class_context = (ClassContext)
     {
         .classes = class_nodes,
         .class_count = class_count,
-        .class_idx = 0
+        .class_idx = 0,
+        .object_environment_head = NULL,
+        .object_environment_allocator = object_environment_allocator
     };
 
     // Write class map to file in order
@@ -908,7 +966,7 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
                 bh_str_buf_append_lit(&str_buf, "\n");
                 if (attr.expr.type != COOL_EXPR_TYPE_NULL)
                 {
-                    CoolTypeOrError result = expression_to_str(class_context, &str_buf, attr.expr);
+                    CoolTypeOrError result = expression_to_str(class_context, &str_buf, (bh_str){ 0 }, attr.expr);
                     if (result.is_error) return result.error;
                 }
             }
@@ -972,7 +1030,7 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
                 }
                 else
                 {
-                    CoolTypeOrError result = expression_to_str(class_context, &str_buf, method.body);
+                    CoolTypeOrError result = expression_to_str(class_context, &str_buf, (bh_str){ 0 }, method.body);
                     if (result.is_error) return result.error;
                 }
             }

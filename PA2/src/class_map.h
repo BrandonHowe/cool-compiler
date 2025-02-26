@@ -64,8 +64,19 @@ typedef struct CoolTypeOrError
     };
 } CoolTypeOrError;
 
+typedef struct ContextObject
+{
+    bh_str name;
+    bh_str type;
+    struct ContextObject* shadowing;
+    struct ContextObject* next;
+} ContextObject;
+
 typedef struct ClassContext
 {
+    ContextObject* object_environment_head;
+    bh_allocator object_environment_allocator;
+
     ClassNode* classes;
     int16_t class_count;
     int16_t class_idx;

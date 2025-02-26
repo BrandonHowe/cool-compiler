@@ -13,8 +13,9 @@ class Main inherits IO {
     --let str : String <- "Hello, world.\n" in
     --out_string(str)
     {
-        addOne(5);
-        out_string("blah");
+        let x : Int <- 123, y : String <- "poop" in x + y;
+        --addOne(5);
+        --out_string("blah");
     }
   } ;
 } ; 
