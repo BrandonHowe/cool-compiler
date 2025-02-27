@@ -59,7 +59,11 @@ typedef struct CoolTypeOrError
     bool is_error;
     union
     {
-        bh_str type;
+        struct
+        {
+            bh_str type;
+            bh_str self_type_class;
+        };
         CoolError error;
     };
 } CoolTypeOrError;

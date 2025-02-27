@@ -7,13 +7,13 @@ class A inherits IO {
 class Main inherits IO {
     addOne(val : Int) : Int { 6 };
 
-    --a : Int <- 1234;
+    a : Int <- 1234;
     --b : Int <- 1234 + 5678;
   main() : Object {
     --let str : String <- "Hello, world.\n" in
     --out_string(str)
     {
-        let x : Int <- 123, y : String <- "poop" in x + y;
+        a <- 8549;
         --addOne(5);
         --out_string("blah");
     }

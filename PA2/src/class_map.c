@@ -11,6 +11,7 @@
 #define RETURN_ERROR(line_num, message_cstr) return (CoolError){ .valid = true, .line = (line_num), .message = (message_cstr) }
 
 #define RETURN_TYPE(type_str) return (CoolTypeOrError){ .is_error = false, .type = (type_str) }
+#define RETURN_SELF_TYPE(type_str, class_name) return (CoolTypeOrError){ .is_error = false, .type = (type_str), .self_type_class = (class_name) }
 #define RETURN_TYPE_ERROR(line_num, message_cstr) return (CoolTypeOrError){ .is_error = true, .error = { .valid = true, .line = (line_num), .message = (message_cstr) } }
 
 // Fills in a ClassNode's parent and attributes based on data from the AST
@@ -391,14 +392,23 @@ bool is_class_subtype_of(ClassNode subclass, ClassNode parent_class)
     return false;
 }
 
-bool is_type_subtype_of(ClassNode* classes, int16_t class_count, CoolTypeOrError subtype, CoolTypeOrError parent_type)
+bool is_type_subtype_of(ClassContext ctx, CoolTypeOrError subtype, CoolTypeOrError parent_type)
 {
+    ClassNode* classes = ctx.classes;
+    int16_t class_count = ctx.class_count;
+
     ClassNode subclass = { 0 };
     ClassNode parent_class = { 0 };
 
+    bool subtype_is_self_type = bh_str_equal_lit(subtype.type, "SELF_TYPE");
+    bool parent_is_self_type = bh_str_equal_lit(parent_type.type, "SELF_TYPE");
+
+    if (subtype_is_self_type && parent_is_self_type) return true;
+    if (!subtype_is_self_type && parent_is_self_type) return false;
+
     for (int i = 0; i < class_count; i++)
     {
-        if (bh_str_equal(classes[i].name, subtype.type))
+        if (bh_str_equal(classes[i].name, subtype_is_self_type ? subtype.self_type_class : subtype.type))
         {
             subclass = classes[i];
         }
@@ -416,13 +426,81 @@ bool is_type_subtype_of(ClassNode* classes, int16_t class_count, CoolTypeOrError
 }
 
 // Finds the least upper bound type of 2 types
-CoolTypeOrError lub_type(ClassNode a, ClassNode b)
+CoolTypeOrError lub_class(ClassNode a, ClassNode b)
 {
+    int16_t a_depth = 0;
+    ClassNode a_depth_tester = a;
+    while (!bh_str_equal_lit(a_depth_tester.name, "Object"))
+    {
+        a_depth += 1;
+        a_depth_tester = *a_depth_tester.parent;
+    }
+    int16_t b_depth = 0;
+    ClassNode b_depth_tester = a;
+    while (!bh_str_equal_lit(b_depth_tester.name, "Object"))
+    {
+        b_depth += 1;
+        b_depth_tester = *b_depth_tester.parent;
+    }
+    a_depth_tester = a;
+    b_depth_tester = b;
+    if (a_depth > b_depth)
+    {
+        for (int i = 0; i < a_depth - b_depth; i++)
+        {
+            a_depth_tester = *a_depth_tester.parent;
+        }
+    }
+    else if (a_depth < b_depth)
+    {
+        for (int i = 0; i < b_depth - a_depth; i++)
+        {
+            b_depth_tester = *b_depth_tester.parent;
+        }
+    }
 
+    while (!bh_str_equal(a_depth_tester.name, b_depth_tester.name))
+    {
+        a_depth_tester = *a_depth_tester.parent;
+        b_depth_tester = *b_depth_tester.parent;
+    }
+
+    RETURN_TYPE(a_depth_tester.name);
+}
+
+CoolTypeOrError lub_type(ClassNode* classes, int16_t class_count, CoolTypeOrError a, CoolTypeOrError b)
+{
+    ClassNode a_class = { 0 };
+    ClassNode b_class = { 0 };
+
+    for (int i = 0; i < class_count; i++)
+    {
+        if (bh_str_equal(classes[i].name, a.type))
+        {
+            a_class = classes[i];
+        }
+        if (bh_str_equal(classes[i].name, b.type))
+        {
+            b_class = classes[i];
+        }
+        if (a_class.name.len && b_class.name.len)
+        {
+            break;
+        }
+    }
+
+    return lub_class(a_class, b_class);
 }
 
 CoolTypeOrError get_identifier_type_from_context(ClassContext ctx, CoolIdentifier identifier)
 {
+    if (bh_str_equal_lit(identifier.name, "self"))
+    {
+        // SELF_TYPE
+        RETURN_TYPE(ctx.classes[0].methods[1].return_type);
+    }
+
+    // We check for let bindings first since those will shadow any attributes
     ContextObject* current_node = ctx.object_environment_head;
     while (current_node != NULL)
     {
@@ -433,6 +511,17 @@ CoolTypeOrError get_identifier_type_from_context(ClassContext ctx, CoolIdentifie
 
         current_node = current_node->next;
     }
+
+    // Then we check for attributes in the current class
+    ClassNode class = ctx.classes[ctx.class_idx];
+    for (int i = 0; i < class.attribute_count; i++)
+    {
+        if (bh_str_equal(class.attributes[i].name, identifier.name))
+        {
+            RETURN_TYPE(class.attributes[i].type);
+        }
+    }
+
     RETURN_TYPE_ERROR(identifier.line_num, "The identifier could not be found");
 }
 
@@ -445,6 +534,17 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
     ClassNode class = ctx.classes[ctx.class_idx];
     switch (expr.expression_type)
     {
+    case COOL_EXPR_TYPE_ASSIGN:
+        {
+            CoolTypeOrError t = get_identifier_type_from_context(ctx, expr.data.assign.var);
+            if (t.is_error) return t;
+            CoolTypeOrError t_prime = TRY_GET_EXPRESSION_TYPE(t_prime, *expr.data.assign.rhs);
+            if (!is_type_subtype_of(ctx, t_prime, t))
+            {
+                RETURN_TYPE_ERROR(expr.data.assign.rhs->line_num, "Assigning value of invalid type to identifier");
+            }
+            return t_prime;
+        }
     case COOL_EXPR_TYPE_IDENTIFIER:
         return get_identifier_type_from_context(ctx, expr.data.identifier.variable);
     case COOL_EXPR_TYPE_LET:
@@ -453,10 +553,13 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             {
                 CoolLetBinding binding = expr.data.let.bindings[i];
                 CoolTypeOrError t0 = (CoolTypeOrError){ .type = binding.type_name.name };
-                CoolTypeOrError t1 = TRY_GET_EXPRESSION_TYPE(t1, *binding.exp);
-                if (!is_type_subtype_of(classes, class_count, t1, t0))
+                if (binding.exp != NULL)
                 {
-                    RETURN_TYPE_ERROR(binding.exp->line_num, "Let binding's initialized value is not subtype of parent type");
+                    CoolTypeOrError t1 = TRY_GET_EXPRESSION_TYPE(t1, *binding.exp);
+                    if (!is_type_subtype_of(ctx, t1, t0))
+                    {
+                        RETURN_TYPE_ERROR(binding.exp->line_num, "Let binding's initialized value is not subtype of parent type");
+                    }
                 }
 
                 // Allocate the new object into the object environment
@@ -510,7 +613,7 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             {
                 CoolTypeOrError expr_type = TRY_GET_EXPRESSION_TYPE(expr_type, *expr.data.static_dispatch.e);
                 CoolTypeOrError class_type = (CoolTypeOrError){ .type = expr.data.static_dispatch.type_name.name };
-                if (!is_type_subtype_of(classes, class_count, expr_type, class_type))
+                if (!is_type_subtype_of(ctx, expr_type, class_type))
                 {
                     RETURN_TYPE_ERROR(expr.data.static_dispatch.type_name.line_num, "Cannot static dispatch on subtype");
                 }
@@ -539,7 +642,7 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
                 {
                     CoolTypeOrError argument_type = TRY_GET_EXPRESSION_TYPE(argument_type, args[j]);
                     CoolTypeOrError parameter_type = (CoolTypeOrError){ .type = method.parameters[j].type };
-                    if (!is_type_subtype_of(classes, class_count, argument_type, parameter_type))
+                    if (!is_type_subtype_of(ctx, argument_type, parameter_type))
                     {
                         RETURN_TYPE_ERROR(args[j].line_num, "Method called with argument that is not assignable to parameter");
                     }
@@ -550,8 +653,14 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
                 //     : method.return_type;
 
                 bh_str tfinal = method.return_type;
-
-                RETURN_TYPE(tfinal);
+                if (bh_str_equal_lit(method.return_type, "SELF_TYPE"))
+                {
+                    RETURN_SELF_TYPE(tfinal, t0.name);
+                }
+                else
+                {
+                    RETURN_TYPE(tfinal);
+                }
             }
             RETURN_TYPE_ERROR(line_num, "No method found with specified name");
         }
@@ -574,6 +683,26 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             CoolTypeOrError then_type = TRY_GET_EXPRESSION_TYPE(then_type, *expr.data.if_expr.then_branch);
             CoolTypeOrError else_type = TRY_GET_EXPRESSION_TYPE(else_type, *expr.data.if_expr.else_branch);
             // Implement lub
+            return lub_type(classes, class_count, then_type, else_type);
+        }
+    case COOL_EXPR_TYPE_WHILE:
+        {
+            CoolTypeOrError predicate_type = TRY_GET_EXPRESSION_TYPE(predicate_type, *expr.data.while_expr.predicate);
+            if (!bh_str_equal_lit(predicate_type.type, "Bool"))
+            {
+                RETURN_TYPE_ERROR(expr.data.while_expr.predicate->line_num, "Loop predicate must be bool");
+            }
+            CoolTypeOrError t2 = TRY_GET_EXPRESSION_TYPE(t2, *expr.data.while_expr.body);
+            RETURN_TYPE(classes[0].name);
+        }
+    case COOL_EXPR_TYPE_NEW:
+        {
+            bh_str t_prime = expr.data.new_expr.class_name.name;
+            if (bh_str_equal_lit(t_prime, "SELF_TYPE"))
+            {
+                t_prime = class.name;
+            }
+            RETURN_TYPE(t_prime);
         }
     case COOL_EXPR_TYPE_PLUS:
     case COOL_EXPR_TYPE_MINUS:
@@ -586,9 +715,51 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             if (!bh_str_equal_lit(expr_type_2.type, "Int")) RETURN_TYPE_ERROR(expr.data.binary.y->line_num, "Cannot add non-integer");
             RETURN_TYPE(expr_type_1.type);
         }
+    case COOL_EXPR_TYPE_EQ:
+    case COOL_EXPR_TYPE_LT:
+    case COOL_EXPR_TYPE_LE:
+        {
+            CoolTypeOrError expr_type_1 = TRY_GET_EXPRESSION_TYPE(expr_type_1, *expr.data.binary.x);
+            CoolTypeOrError expr_type_2 = TRY_GET_EXPRESSION_TYPE(expr_type_2, *expr.data.binary.y);
+            bool t1_is_int = bh_str_equal_lit(expr_type_1.type, "Int");
+            bool t1_is_bool = bh_str_equal_lit(expr_type_1.type, "Bool");
+            bool t1_is_string = bh_str_equal_lit(expr_type_1.type, "String");
+            bool t2_is_int = bh_str_equal_lit(expr_type_2.type, "Int");
+            bool t2_is_bool = bh_str_equal_lit(expr_type_2.type, "Bool");
+            bool t2_is_string = bh_str_equal_lit(expr_type_2.type, "String");
+            // Non-primitive classes can be compared freely
+            if (!t1_is_int && !t1_is_bool && !t1_is_string && !t2_is_int && !t2_is_bool && !t2_is_string)
+            {
+                RETURN_TYPE(classes[1].name);
+            }
+            // Primitive classes must be the same
+            if (!bh_str_equal(expr_type_1.type, expr_type_2.type))
+            {
+                RETURN_TYPE_ERROR(expr.data.binary.x->line_num, "Different primitive types cannot be compared");
+            }
+
+            RETURN_TYPE(classes[1].name);
+        }
+    case COOL_EXPR_TYPE_NOT:
+        {
+            CoolTypeOrError expr_type = TRY_GET_EXPRESSION_TYPE(expr_type, *expr.data.unary.x);
+            if (!bh_str_equal_lit(expr_type.type, "Bool")) RETURN_TYPE_ERROR(expr.data.unary.x->line_num, "Cannot take not of non-bool");
+            RETURN_TYPE(expr_type.type);
+        }
+    case COOL_EXPR_TYPE_NEGATE:
+        {
+            CoolTypeOrError expr_type = TRY_GET_EXPRESSION_TYPE(expr_type, *expr.data.unary.x);
+            if (!bh_str_equal_lit(expr_type.type, "Int")) RETURN_TYPE_ERROR(expr.data.unary.x->line_num, "Cannot take negation of non-int");
+            RETURN_TYPE(expr_type.type);
+        }
+    case COOL_EXPR_TYPE_ISVOID:
+        {
+            // We still need to type check the expression even if we don't use it
+            CoolTypeOrError t1 = TRY_GET_EXPRESSION_TYPE(t1, *expr.data.isvoid.e);
+            RETURN_TYPE(classes[1].name);
+        }
     case COOL_EXPR_TYPE_INTEGER: RETURN_TYPE(classes[2].name);
-    case COOL_EXPR_TYPE_STRING:
-        RETURN_TYPE(classes[3].name);
+    case COOL_EXPR_TYPE_STRING: RETURN_TYPE(classes[3].name);
     case COOL_EXPR_TYPE_TRUE: RETURN_TYPE(classes[1].name);
     case COOL_EXPR_TYPE_FALSE: RETURN_TYPE(classes[1].name);
     default:
@@ -743,8 +914,23 @@ CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, bh_str 
             {
                 expression_to_str(ctx, str_buf, (bh_str){ 0 }, *binding.exp);
             }
+
+            // Allocate the new object into the object environment
+            ContextObject* new_object = bh_alloc(ctx.object_environment_allocator, 1);
+            new_object->name = binding.variable.name;
+            new_object->type = binding.type_name.name;
+            new_object->next = ctx.object_environment_head;
+            ctx.object_environment_head = new_object;
         }
-        TRY_EXPRESSION_TO_STR(*expr.data.let.expr, expr_type);
+        TRY_EXPRESSION_TO_STR(*expr.data.let.expr, (bh_str){ 0 });
+
+        // Free all the allocated objects
+        for (int i = 0; i < expr.data.let.binding_count; i++)
+        {
+            ContextObject* old_head = ctx.object_environment_head;
+            ctx.object_environment_head = old_head->next;
+            bh_free(ctx.object_environment_allocator, old_head);
+        }
         break;
     case COOL_EXPR_TYPE_CASE:
         bh_str_buf_append_lit(str_buf, "case\n");
@@ -1030,7 +1216,26 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
                 }
                 else
                 {
+                    // Allocate the new formals into the object environment
+                    for (int k = 0; k < method.parameter_count; k++)
+                    {
+                        ContextObject* new_object = bh_alloc(class_context.object_environment_allocator, 1);
+                        new_object->name = method.parameters[k].name;
+                        new_object->type = method.parameters[k].type;
+                        new_object->next = class_context.object_environment_head;
+                        class_context.object_environment_head = new_object;
+                    }
+
                     CoolTypeOrError result = expression_to_str(class_context, &str_buf, (bh_str){ 0 }, method.body);
+
+                    // Free the formals
+                    for (int k = 0; k < method.parameter_count; k++)
+                    {
+                        ContextObject* old_head = class_context.object_environment_head;
+                        class_context.object_environment_head = old_head->next;
+                        bh_free(class_context.object_environment_allocator, old_head);
+                    }
+
                     if (result.is_error) return result.error;
                 }
             }
