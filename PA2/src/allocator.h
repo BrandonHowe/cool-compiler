@@ -56,11 +56,14 @@ typedef struct bh_arena_data
 {
     uint32_t capacity;
     uint32_t used;
+    uint32_t savepoint;
     void* buffer;
 } bh_arena_data;
 
 bh_allocator arena_init(uint32_t buffer_size);
 void arena_free_all(bh_allocator allocator);
+void arena_save(bh_allocator allocator);
+void arena_load(bh_allocator allocator);
 void arena_deinit(bh_allocator allocator);
 
 typedef struct bh_pool_free_node {

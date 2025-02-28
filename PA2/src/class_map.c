@@ -10,7 +10,7 @@
 
 #define RETURN_ERROR(line_num, message_cstr) return (CoolError){ .valid = true, .line = (line_num), .message = (message_cstr) }
 
-#define RETURN_TYPE(type_str) return (CoolTypeOrError){ .is_error = false, .type = (type_str) }
+#define RETURN_TYPE(type_str) return (CoolTypeOrError){ .is_error = false, .type = (type_str), .self_type_class = { 0 } }
 #define RETURN_SELF_TYPE(type_str, class_name) return (CoolTypeOrError){ .is_error = false, .type = (type_str), .self_type_class = (class_name) }
 #define RETURN_TYPE_ERROR(line_num, message_cstr) return (CoolTypeOrError){ .is_error = true, .error = { .valid = true, .line = (line_num), .message = (message_cstr) } }
 
@@ -233,41 +233,13 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
         memcpy(class->methods, class->parent->methods, class->parent->method_count * sizeof(ClassMethod));
     }
 
-    // Sort classes by name
-    int16_t* sorted_indices = bh_alloc(allocator, method_count * sizeof(int16_t)); // 5 protected classes
-    {
-        int16_t sorted_count = 0;
-
-        for (int i = 0; i < ast_class.feature_count; i++)
-        {
-            if (!ast_class.features[i].is_method) continue;
-            bool inserted_in_middle = false;
-            for (int j = 0; j < sorted_count; j++)
-            {
-                if (bh_str_cmp(ast_class.features[i].name.name, ast_class.features[sorted_indices[j]].name.name) < 0) {
-                    for (int k = sorted_count; k > j; k--) {
-                        sorted_indices[k] = sorted_indices[k - 1];
-                    }
-                    sorted_indices[j] = i;
-                    inserted_in_middle = true;
-                    break;
-                }
-            }
-            if (!inserted_in_middle)
-            {
-                sorted_indices[sorted_count] = i;
-            }
-            sorted_count += 1;
-        }
-    }
-
     // Fill in all the methods
     bool is_main = bh_str_equal_lit(class->name, "Main");
     bool main_found = false;
     int method_idx = 0;
-    for (int i = 0; i < method_count; i++)
+    for (int i = 0; i < ast_class.feature_count; i++)
     {
-        CoolFeature feature = ast_class.features[sorted_indices[i]];
+        CoolFeature feature = ast_class.features[i];
         if (!feature.is_method) continue;
 
         // Check the new method doesn't override an inherited or existing method incorrectly
@@ -303,6 +275,7 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
         }
 
         class->methods[inherited_method_count + method_idx].name = feature.name.name;
+        class->methods[inherited_method_count + method_idx].name_line_num = feature.name.line_num;
         class->methods[inherited_method_count + method_idx].inherited_from = class->name;
         class->methods[inherited_method_count + method_idx].return_type = feature.type_name.name;
         class->methods[inherited_method_count + method_idx].body = feature.body;
@@ -436,7 +409,7 @@ CoolTypeOrError lub_class(ClassNode a, ClassNode b)
         a_depth_tester = *a_depth_tester.parent;
     }
     int16_t b_depth = 0;
-    ClassNode b_depth_tester = a;
+    ClassNode b_depth_tester = b;
     while (!bh_str_equal_lit(b_depth_tester.name, "Object"))
     {
         b_depth += 1;
@@ -473,13 +446,28 @@ CoolTypeOrError lub_type(ClassNode* classes, int16_t class_count, CoolTypeOrErro
     ClassNode a_class = { 0 };
     ClassNode b_class = { 0 };
 
+    bool a_is_self_type = bh_str_equal_lit(a.type, "SELF_TYPE");
+    bool b_is_self_type = bh_str_equal_lit(b.type, "SELF_TYPE");
+
+    bh_str a_name = a.type;
+    bh_str b_name = b.type;
+
+    if (a_is_self_type && b_is_self_type)
+    {
+        // assert(a.self_type_class.len > 0);
+        // RETURN_TYPE(a.self_type_class);
+        return a;
+    }
+    if (a_is_self_type) a_name = a.self_type_class;
+    if (b_is_self_type) b_name = b.self_type_class;
+
     for (int i = 0; i < class_count; i++)
     {
-        if (bh_str_equal(classes[i].name, a.type))
+        if (bh_str_equal(classes[i].name, a_name))
         {
             a_class = classes[i];
         }
-        if (bh_str_equal(classes[i].name, b.type))
+        if (bh_str_equal(classes[i].name, b_name))
         {
             b_class = classes[i];
         }
@@ -497,7 +485,7 @@ CoolTypeOrError get_identifier_type_from_context(ClassContext ctx, CoolIdentifie
     if (bh_str_equal_lit(identifier.name, "self"))
     {
         // SELF_TYPE
-        RETURN_TYPE(ctx.classes[0].methods[1].return_type);
+        RETURN_SELF_TYPE(ctx.classes[0].methods[1].return_type, ctx.classes[ctx.class_idx].name);
     }
 
     // We check for let bindings first since those will shadow any attributes
@@ -541,7 +529,7 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             CoolTypeOrError t_prime = TRY_GET_EXPRESSION_TYPE(t_prime, *expr.data.assign.rhs);
             if (!is_type_subtype_of(ctx, t_prime, t))
             {
-                RETURN_TYPE_ERROR(expr.data.assign.rhs->line_num, "Assigning value of invalid type to identifier");
+                RETURN_TYPE_ERROR(expr.line_num, "Assigning value of invalid type to identifier");
             }
             return t_prime;
         }
@@ -558,7 +546,7 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
                     CoolTypeOrError t1 = TRY_GET_EXPRESSION_TYPE(t1, *binding.exp);
                     if (!is_type_subtype_of(ctx, t1, t0))
                     {
-                        RETURN_TYPE_ERROR(binding.exp->line_num, "Let binding's initialized value is not subtype of parent type");
+                        RETURN_TYPE_ERROR(expr.line_num, "Let binding's initialized value is not subtype of parent type");
                     }
                 }
 
@@ -594,6 +582,11 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
 
             if (expr.expression_type == COOL_EXPR_TYPE_SELF_DISPATCH)
             {
+                if (expr.line_num == 49)
+                {
+
+                }
+
                 t0 = class;
                 args = expr.data.self_dispatch.args;
                 args_length = expr.data.self_dispatch.args_length;
@@ -604,6 +597,7 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             {
                 CoolTypeOrError class_type = TRY_GET_EXPRESSION_TYPE(class_type, *expr.data.dynamic_dispatch.e);
                 t0 = find_class_by_name(classes, class_count, class_type.type);
+                if (t0.name.len == 0) RETURN_TYPE_ERROR(expr.line_num, "Unkonwn class in dispatch");
                 args = expr.data.dynamic_dispatch.args;
                 args_length = expr.data.dynamic_dispatch.args_length;
                 method_name = expr.data.dynamic_dispatch.method.name;
@@ -615,9 +609,10 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
                 CoolTypeOrError class_type = (CoolTypeOrError){ .type = expr.data.static_dispatch.type_name.name };
                 if (!is_type_subtype_of(ctx, expr_type, class_type))
                 {
-                    RETURN_TYPE_ERROR(expr.data.static_dispatch.type_name.line_num, "Cannot static dispatch on subtype");
+                    RETURN_TYPE_ERROR(expr.line_num, "Cannot static dispatch on subtype");
                 }
                 t0 = find_class_by_name(classes, class_count, class_type.type);
+                if (t0.name.len == 0) RETURN_TYPE_ERROR(expr.line_num, "Unkonwn class in static dispatch");
                 args = expr.data.static_dispatch.args;
                 args_length = expr.data.static_dispatch.args_length;
                 method_name = expr.data.static_dispatch.method.name;
@@ -644,7 +639,7 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
                     CoolTypeOrError parameter_type = (CoolTypeOrError){ .type = method.parameters[j].type };
                     if (!is_type_subtype_of(ctx, argument_type, parameter_type))
                     {
-                        RETURN_TYPE_ERROR(args[j].line_num, "Method called with argument that is not assignable to parameter");
+                        RETURN_TYPE_ERROR(expr.line_num, "Method called with argument that is not assignable to parameter");
                     }
                 }
 
@@ -678,19 +673,50 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             CoolTypeOrError predicate_type = TRY_GET_EXPRESSION_TYPE(predicate_type, *expr.data.if_expr.predicate);
             if (!bh_str_equal_lit(predicate_type.type, "Bool"))
             {
-                RETURN_TYPE_ERROR(expr.data.if_expr.predicate->line_num, "If statement predicate must be bool");
+                RETURN_TYPE_ERROR(expr.line_num, "If statement predicate must be bool");
             }
             CoolTypeOrError then_type = TRY_GET_EXPRESSION_TYPE(then_type, *expr.data.if_expr.then_branch);
             CoolTypeOrError else_type = TRY_GET_EXPRESSION_TYPE(else_type, *expr.data.if_expr.else_branch);
             // Implement lub
             return lub_type(classes, class_count, then_type, else_type);
         }
+    case COOL_EXPR_TYPE_CASE:
+        {
+            CoolTypeOrError t0 = TRY_GET_EXPRESSION_TYPE(t0, *expr.data.case_expr.expr);
+            CoolTypeOrError tfinal = (CoolTypeOrError){ 0 };
+            for (int i = 0; i < expr.data.case_expr.element_count; i++)
+            {
+                CoolCaseElement element = expr.data.case_expr.elements[i];
+
+                ContextObject* new_object = bh_alloc(ctx.object_environment_allocator, 1);
+                new_object->name = element.variable.name;
+                new_object->type = element.type_name.name;
+                new_object->next = ctx.object_environment_head;
+                ctx.object_environment_head = new_object;
+
+                CoolTypeOrError t1 = TRY_GET_EXPRESSION_TYPE(t1, *element.body);
+
+                ContextObject* old_head = ctx.object_environment_head;
+                ctx.object_environment_head = old_head->next;
+                bh_free(ctx.object_environment_allocator, old_head);
+
+                if (tfinal.type.len == 0)
+                {
+                    tfinal = t1;
+                }
+                else
+                {
+                    tfinal = lub_type(classes, class_count, t1, tfinal);
+                }
+            }
+            return tfinal;
+        }
     case COOL_EXPR_TYPE_WHILE:
         {
             CoolTypeOrError predicate_type = TRY_GET_EXPRESSION_TYPE(predicate_type, *expr.data.while_expr.predicate);
             if (!bh_str_equal_lit(predicate_type.type, "Bool"))
             {
-                RETURN_TYPE_ERROR(expr.data.while_expr.predicate->line_num, "Loop predicate must be bool");
+                RETURN_TYPE_ERROR(expr.line_num, "Loop predicate must be bool");
             }
             CoolTypeOrError t2 = TRY_GET_EXPRESSION_TYPE(t2, *expr.data.while_expr.body);
             RETURN_TYPE(classes[0].name);
@@ -711,8 +737,8 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
         {
             CoolTypeOrError expr_type_1 = TRY_GET_EXPRESSION_TYPE(expr_type_1, *expr.data.binary.x);
             CoolTypeOrError expr_type_2 = TRY_GET_EXPRESSION_TYPE(expr_type_2, *expr.data.binary.y);
-            if (!bh_str_equal_lit(expr_type_1.type, "Int")) RETURN_TYPE_ERROR(expr.data.binary.x->line_num, "Cannot add non-integer");
-            if (!bh_str_equal_lit(expr_type_2.type, "Int")) RETURN_TYPE_ERROR(expr.data.binary.y->line_num, "Cannot add non-integer");
+            if (!bh_str_equal_lit(expr_type_1.type, "Int")) RETURN_TYPE_ERROR(expr.line_num, "Cannot add non-integer");
+            if (!bh_str_equal_lit(expr_type_2.type, "Int")) RETURN_TYPE_ERROR(expr.line_num, "Cannot add non-integer");
             RETURN_TYPE(expr_type_1.type);
         }
     case COOL_EXPR_TYPE_EQ:
@@ -735,7 +761,7 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             // Primitive classes must be the same
             if (!bh_str_equal(expr_type_1.type, expr_type_2.type))
             {
-                RETURN_TYPE_ERROR(expr.data.binary.x->line_num, "Different primitive types cannot be compared");
+                RETURN_TYPE_ERROR(expr.line_num, "Different primitive types cannot be compared");
             }
 
             RETURN_TYPE(classes[1].name);
@@ -743,13 +769,13 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
     case COOL_EXPR_TYPE_NOT:
         {
             CoolTypeOrError expr_type = TRY_GET_EXPRESSION_TYPE(expr_type, *expr.data.unary.x);
-            if (!bh_str_equal_lit(expr_type.type, "Bool")) RETURN_TYPE_ERROR(expr.data.unary.x->line_num, "Cannot take not of non-bool");
+            if (!bh_str_equal_lit(expr_type.type, "Bool")) RETURN_TYPE_ERROR(expr.line_num, "Cannot take not of non-bool");
             RETURN_TYPE(expr_type.type);
         }
     case COOL_EXPR_TYPE_NEGATE:
         {
             CoolTypeOrError expr_type = TRY_GET_EXPRESSION_TYPE(expr_type, *expr.data.unary.x);
-            if (!bh_str_equal_lit(expr_type.type, "Int")) RETURN_TYPE_ERROR(expr.data.unary.x->line_num, "Cannot take negation of non-int");
+            if (!bh_str_equal_lit(expr_type.type, "Int")) RETURN_TYPE_ERROR(expr.line_num, "Cannot take negation of non-int");
             RETURN_TYPE(expr_type.type);
         }
     case COOL_EXPR_TYPE_ISVOID:
@@ -788,7 +814,21 @@ CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, bh_str 
     CoolTypeOrError expr_type_or_error = get_expression_type(ctx, expr);
     if (provided_type.len == 0 && expr_type_or_error.is_error) return expr_type_or_error;
     bh_str expr_type = provided_type.len == 0 ? expr_type_or_error.type : provided_type;
-    bh_str_buf_append(str_buf, expr_type);
+    if (bh_str_equal_lit(expr_type, "SELF_TYPE") &&
+        expr_type_or_error.self_type_class.len > 0 &&
+        !is_type_subtype_of(
+            ctx,
+            (CoolTypeOrError){ .type = expr_type_or_error.self_type_class },
+            (CoolTypeOrError){ .type = ctx.classes[ctx.class_idx].name })
+        )
+    {
+        // expr_type_or_error = get_expression_type(ctx, expr);
+        bh_str_buf_append(str_buf, expr_type_or_error.self_type_class);
+    }
+    else
+    {
+        bh_str_buf_append(str_buf, expr_type);
+    }
     bh_str_buf_append_lit(str_buf, "\n");
     switch (expr.expression_type)
     {
@@ -871,8 +911,16 @@ CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, bh_str 
         if (expr.expression_type == COOL_EXPR_TYPE_LT) bh_str_buf_append_lit(str_buf, "lt\n");
         if (expr.expression_type == COOL_EXPR_TYPE_LE) bh_str_buf_append_lit(str_buf, "le\n");
         if (expr.expression_type == COOL_EXPR_TYPE_EQ) bh_str_buf_append_lit(str_buf, "eq\n");
-        TRY_EXPRESSION_TO_STR(*expr.data.binary.x, bh_str_from_cstr("Int"));
-        TRY_EXPRESSION_TO_STR(*expr.data.binary.y, bh_str_from_cstr("Int"));
+        if (expr.expression_type >= COOL_EXPR_TYPE_PLUS && expr.expression_type <= COOL_EXPR_TYPE_DIVIDE)
+        {
+            TRY_EXPRESSION_TO_STR(*expr.data.binary.x, bh_str_from_cstr("Int"));
+            TRY_EXPRESSION_TO_STR(*expr.data.binary.y, bh_str_from_cstr("Int"));
+        }
+        else
+        {
+            expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.binary.x);
+            expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.binary.y);
+        }
         break;
     case COOL_EXPR_TYPE_NOT:
     case COOL_EXPR_TYPE_NEGATE:
@@ -941,14 +989,31 @@ CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, bh_str 
             CoolCaseElement element = expr.data.case_expr.elements[i];
             identifier_to_str(str_buf, element.variable);
             identifier_to_str(str_buf, element.type_name);
+
+            // Allocate the new object into the object environment
+            ContextObject* new_object = bh_alloc(ctx.object_environment_allocator, 1);
+            new_object->name = element.variable.name;
+            new_object->type = element.type_name.name;
+            new_object->next = ctx.object_environment_head;
+            ctx.object_environment_head = new_object;
+
             expression_to_str(ctx, str_buf, (bh_str){ 0 }, *element.body);
+
+            // Free its memory
+            ContextObject* old_head = ctx.object_environment_head;
+            ctx.object_environment_head = old_head->next;
+            bh_free(ctx.object_environment_allocator, old_head);
         }
         break;
     default:
         assert(false);
     }
 
-    return (CoolTypeOrError){ 0 };
+    if (bh_str_equal_lit(expr_type, "SELF_TYPE"))
+    {
+        RETURN_SELF_TYPE(expr_type, ctx.classes[ctx.class_idx].name);
+    }
+    RETURN_TYPE(expr_type);
 }
 
 // Detect class inherited cycles using DFS
@@ -1132,8 +1197,7 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
         .object_environment_allocator = object_environment_allocator
     };
 
-    // Write class map to file in order
-    if (false)
+    if (true) // Write class map to file in order
     {
         bh_str_buf_append_format(&str_buf, "class_map\n%i\n", AST.class_count + 5);
         for (int i = 0; i < 5 + AST.class_count; i++)
@@ -1159,8 +1223,7 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
         }
     }
 
-    // Write implementation map to file in order
-    if (true)
+    if (true) // Write implementation map to file in order
     {
         bh_str_buf_append_format(&str_buf, "implementation_map\n%i\n", AST.class_count + 5);
         for (int i = 0; i < 5 + AST.class_count; i++)
@@ -1228,6 +1291,11 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
 
                     CoolTypeOrError result = expression_to_str(class_context, &str_buf, (bh_str){ 0 }, method.body);
 
+                    if (!is_type_subtype_of(class_context, result, (CoolTypeOrError){ .type = method.return_type }))
+                    {
+                        RETURN_ERROR(method.name_line_num, "Method body type does not conform");
+                    }
+
                     // Free the formals
                     for (int k = 0; k < method.parameter_count; k++)
                     {
@@ -1247,7 +1315,7 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
     }
 
     // Write parent map to file
-    if (false)
+    if (true)
     {
         bh_str_buf_append_format(&str_buf, "parent_map\n%i\n", AST.class_count + 5 - 1);
         for (int i = 0; i < 5 + AST.class_count; i++)
@@ -1259,6 +1327,59 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
             bh_str_buf_append_lit(&str_buf, "\n");
             bh_str_buf_append(&str_buf, class.parent->name);
             bh_str_buf_append_lit(&str_buf, "\n");
+        }
+    }
+
+    if (true) // Write the annotated AST
+    {
+        bh_str_buf_append_format(&str_buf, "%i\n", AST.class_count);
+        for (int i = 0; i < AST.class_count; i++)
+        {
+            CoolClass class = AST.classes[i];
+            class_context.class_idx = i + 5;
+            identifier_to_str(&str_buf, class.name);
+            if (class.inherits.type)
+            {
+                bh_str_buf_append_lit(&str_buf, "inherits\n");
+                identifier_to_str(&str_buf, class.inherits);
+            }
+            else
+            {
+                bh_str_buf_append_lit(&str_buf, "no_inherits\n");
+            }
+
+            bh_str_buf_append_format(&str_buf, "%i\n", class.feature_count);
+            for (int j = 0; j < class.feature_count; j++)
+            {
+                CoolFeature feature = class.features[j];
+                if (feature.is_method)
+                {
+                    bh_str_buf_append_lit(&str_buf, "method\n");
+                }
+                else if (feature.body.type)
+                {
+                    bh_str_buf_append_lit(&str_buf, "attribute_init\n");
+                }
+                else
+                {
+                    bh_str_buf_append_lit(&str_buf, "attribute_no_init\n");
+                }
+                identifier_to_str(&str_buf, feature.name);
+                if (feature.is_method)
+                {
+                    bh_str_buf_append_format(&str_buf, "%i\n", feature.formal_count);
+                    for (int k = 0; k < feature.formal_count; k++)
+                    {
+                        identifier_to_str(&str_buf, feature.formals[k].name);
+                        identifier_to_str(&str_buf, feature.formals[k].type_name);
+                    }
+                }
+                identifier_to_str(&str_buf, feature.type_name);
+                if (feature.is_method || feature.body.type)
+                {
+                    expression_to_str(class_context, &str_buf, (bh_str){ 0 }, feature.body);
+                }
+            }
         }
     }
 

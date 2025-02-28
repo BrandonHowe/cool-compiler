@@ -1,6 +1,4 @@
 class A inherits IO {
-    --addOne(val : Int) : Int { 6 };
-
     bleh() : Object { out_string("bloop") };
 };
 
@@ -8,14 +6,10 @@ class Main inherits IO {
     addOne(val : Int) : Int { 6 };
 
     a : Int <- 1234;
-    --b : Int <- 1234 + 5678;
-  main() : Object {
-    --let str : String <- "Hello, world.\n" in
-    --out_string(str)
+  main() : Int {
     {
         a <- 8549;
-        --addOne(5);
-        --out_string("blah");
+        123;
     }
   } ;
 } ; 

@@ -91,6 +91,7 @@ CoolFeature parse_feature(bh_str* str, bh_allocator allocator)
 
     if (bh_str_equal(feature_name_str, bh_str_from_cstr("attribute_init"))) feature.body = parse_expression(str, allocator);
     else if (bh_str_equal(feature_name_str, bh_str_from_cstr("method"))) feature.body = parse_expression(str, allocator);
+    else feature.body = (CoolExpression){ 0 };
 
     return feature;
 }

@@ -25,6 +25,7 @@ typedef struct ClassMethodParameter
 typedef struct ClassMethod
 {
     bh_str name;
+    int16_t name_line_num;
     bh_str inherited_from;
     bh_str return_type;
     int16_t parameter_count;

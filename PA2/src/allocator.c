@@ -60,6 +60,7 @@ void* arena_proc(bh_allocator* this_allocator, bh_allocator_mode mode, bh_alloca
 bh_allocator arena_init(uint32_t buffer_size)
 {
     bh_arena_data* data = calloc(sizeof(bh_arena_data) + buffer_size, 1);
+    memset(data, 0, sizeof(bh_arena_data) + buffer_size);
     data->used = 0;
     data->capacity = buffer_size;
     data->buffer = &data[1];
@@ -76,6 +77,18 @@ void arena_free_all(bh_allocator allocator)
 {
     bh_arena_data* data = allocator.data;
     data->used = 0;
+}
+
+void arena_save(bh_allocator allocator)
+{
+    bh_arena_data* data = allocator.data;
+    data->savepoint = data->used;
+}
+
+void arena_load(bh_allocator allocator)
+{
+    bh_arena_data* data = allocator.data;
+    data->used = data->savepoint;
 }
 
 void arena_deinit(bh_allocator allocator)
