@@ -3,7 +3,7 @@ class Main inherits IO {
     {
         let type : Int <- (new Int) in
         let spog : Test in
-        nonexistent_method(blah);
+        123;
     }
   } ;
 } ; 

@@ -16,3 +16,7 @@ To perform type checking ___. I used a custom pool allocator to manage the entir
 For memory management I felt the simplest approach was to just create a big arena allocator and dump all my allocations in there, most of the allocations have a similar lifetime anyways and I felt this was the best solution. I also created two string types (one owning and one non-owning), with the owning one only being used for writing to files. Most of the strings we need are in the AST anyways so string views work fine in almost all cases.
 
 // TODO: make sure you can't assign to self
+
+Return type/actual type:
+- A: SELF_TYPE / SELF_TYPE_A -> SELF_TYPE
+- A: A / SELF_TYPE_A -> A

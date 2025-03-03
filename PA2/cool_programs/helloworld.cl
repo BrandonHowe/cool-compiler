@@ -1,15 +1,8 @@
-class A inherits IO {
-    bleh() : Object { out_string("bloop") };
-};
-
 class Main inherits IO {
-    addOne(val : Int) : Int { 6 };
-
-    a : Int <- 1234;
-  main() : Int {
+blah() : Object { let self : Int <- 5 in 1234 };
+  main() : Object {
     {
-        a <- 8549;
-        123;
+        out_string("Hello world!");
     }
   } ;
-} ; 
+} ;

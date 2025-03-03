@@ -60,6 +60,12 @@ CoolError fill_class_attributes(CoolAST AST, ClassNode* classes, int16_t class_i
         CoolFeature feature = ast_class.features[i];
         if (feature.is_method) continue;
 
+        // Make sure it's not called self
+        if (bh_str_equal_lit(feature.name.name, "self"))
+        {
+            RETURN_ERROR(feature.name.line_num, "Class has an attribute called self");
+        }
+
         // Check the new attribute doesn't override an inherited or existing attribute
         for (int j = 0; j < inherited_attribute_counts + attribute_idx; j++)
         {
@@ -73,6 +79,11 @@ CoolError fill_class_attributes(CoolAST AST, ClassNode* classes, int16_t class_i
         bool type_valid = false;
         for (int j = 0; j < AST.class_count + 5; j++)
         {
+            if (bh_str_equal_lit(feature.type_name.name, "SELF_TYPE"))
+            {
+                type_valid = true;
+                break;
+            }
             if (bh_str_equal(classes[j].name, feature.type_name.name))
             {
                 type_valid = true;
@@ -101,7 +112,7 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
     ClassNode* class = &classes[class_idx];
     if (class->methods_filled) return (CoolError){ 0 };
 
-    // No attributes for most built-in classes
+    // Define methods for most built-in classes
     if (class_idx < 5)
     {
         class->method_count = 3;
@@ -114,7 +125,7 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
         strncpy(abort_buf, "abort", 5);
         bh_str abort_str = (bh_str){ .buf = abort_buf, .len = 5 };
         class->methods[0].name = abort_str;
-        class->methods[0].return_type = class->name;
+        class->methods[0].return_type = classes[0].name;
         class->methods[0].inherited_from = classes[0].name;
         char* type_name_buf = bh_alloc(allocator, 9);
         strncpy(type_name_buf, "type_name", 9);
@@ -224,14 +235,10 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
         if (!feature.is_method) continue;
         class->method_count += 1;
     }
-    int method_count = class->method_count - inherited_method_count;
 
     // Allocate memory and copy parent methods if necessary
     class->methods = bh_alloc(allocator, sizeof(ClassMethod) * class->method_count);
-    if (class->parent)
-    {
-        memcpy(class->methods, class->parent->methods, class->parent->method_count * sizeof(ClassMethod));
-    }
+    memcpy(class->methods, class->parent->methods, sizeof(ClassMethod) * inherited_method_count);
 
     // Fill in all the methods
     bool is_main = bh_str_equal_lit(class->name, "Main");
@@ -242,14 +249,25 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
         CoolFeature feature = ast_class.features[i];
         if (!feature.is_method) continue;
 
+        int class_idx = inherited_method_count + method_idx;
+        bool overriding = false;
+
         // Check the new method doesn't override an inherited or existing method incorrectly
         for (int j = 0; j < inherited_method_count + method_idx; j++)
         {
             if (!bh_str_equal(class->methods[j].name, feature.name.name)) continue;
 
-            if (j >= inherited_method_count && bh_str_equal(class->methods[j].name, feature.name.name))
+            if (bh_str_equal(class->methods[j].name, feature.name.name))
             {
-                RETURN_ERROR(feature.name.line_num, "Duplicate method definition in class");
+                if (j >= inherited_method_count)
+                {
+                    RETURN_ERROR(feature.name.line_num, "Duplicate method definition in class");
+                }
+                else
+                {
+                    class_idx = j;
+                    overriding = true;
+                }
             }
 
             if (!bh_str_equal(class->methods[j].return_type, feature.type_name.name))
@@ -274,21 +292,27 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
             main_found = true;
         }
 
-        class->methods[inherited_method_count + method_idx].name = feature.name.name;
-        class->methods[inherited_method_count + method_idx].name_line_num = feature.name.line_num;
-        class->methods[inherited_method_count + method_idx].inherited_from = class->name;
-        class->methods[inherited_method_count + method_idx].return_type = feature.type_name.name;
-        class->methods[inherited_method_count + method_idx].body = feature.body;
-        class->methods[inherited_method_count + method_idx].parameter_count = feature.formal_count;
+        class->methods[class_idx].name = feature.name.name;
+        class->methods[class_idx].name_line_num = feature.name.line_num;
+        class->methods[class_idx].inherited_from = class->name;
+        class->methods[class_idx].return_type = feature.type_name.name;
+        class->methods[class_idx].body = feature.body;
+        class->methods[class_idx].parameter_count = feature.formal_count;
         if (feature.formal_count > 0)
         {
-            class->methods[inherited_method_count + method_idx].parameters = bh_alloc(allocator, sizeof(ClassMethodParameter) * feature.formal_count);
+            class->methods[class_idx].parameters = bh_alloc(allocator, sizeof(ClassMethodParameter) * feature.formal_count);
         }
 
         // Fill in parameter info
         for (int j = 0; j < feature.formal_count; j++)
         {
-            ClassMethodParameter* parameters = class->methods[inherited_method_count + method_idx].parameters;
+            ClassMethodParameter* parameters = class->methods[class_idx].parameters;
+
+            // Make sure it's not called self
+            if (bh_str_equal_lit(feature.formals[j].name.name, "self"))
+            {
+                RETURN_ERROR(feature.formals[j].name.line_num, "Class has method with formal parameter named self");
+            }
 
             // Check that it wasn't used for a previous parameter
             for (int k = 0; k < j; k++)
@@ -319,7 +343,14 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
             }
         }
 
-        method_idx += 1;
+        if (!overriding)
+        {
+            method_idx += 1;
+        }
+        else
+        {
+            class->method_count -= 1;
+        }
     }
 
     class->methods_filled = true;
@@ -336,11 +367,14 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
     get_expression_type(ctx, (expression)); \
     if ((type_name).is_error) return (type_name) \
 
-ClassNode find_class_by_name(ClassNode* classes, int16_t class_count, bh_str class_name)
+ClassNode find_class_by_type(ClassNode* classes, int16_t class_count, CoolTypeOrError type)
 {
+    bh_str type_name = type.type;
+    if (bh_str_equal_lit(type_name, "SELF_TYPE")) type_name = type.self_type_class;
+
     for (int i = 0; i < class_count; i++)
     {
-        if (bh_str_equal(classes[i].name, class_name))
+        if (bh_str_equal(classes[i].name, type_name))
         {
             return classes[i];
         }
@@ -506,11 +540,30 @@ CoolTypeOrError get_identifier_type_from_context(ClassContext ctx, CoolIdentifie
     {
         if (bh_str_equal(class.attributes[i].name, identifier.name))
         {
-            RETURN_TYPE(class.attributes[i].type);
+            if (bh_str_equal_lit(class.attributes[i].type, "SELF_TYPE"))
+            {
+                RETURN_SELF_TYPE(class.attributes[i].type, class.name);
+            }
+            else
+            {
+                RETURN_TYPE(class.attributes[i].type);
+            }
         }
     }
 
     RETURN_TYPE_ERROR(identifier.line_num, "The identifier could not be found");
+}
+
+bool is_type_real(ClassContext ctx, CoolTypeOrError type)
+{
+    for (int i = 0; i < ctx.class_count; i++)
+    {
+        if (bh_str_equal(type.type, ctx.classes[i].name))
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Gets the type of an expression or returns an error
@@ -540,7 +593,15 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             for (int i = 0; i < expr.data.let.binding_count; i++)
             {
                 CoolLetBinding binding = expr.data.let.bindings[i];
+                if (bh_str_equal_lit(binding.variable.name, "self"))
+                {
+                    RETURN_TYPE_ERROR(expr.line_num, "Binding self in a let is not allowed");
+                }
                 CoolTypeOrError t0 = (CoolTypeOrError){ .type = binding.type_name.name };
+                if (!is_type_real(ctx, t0))
+                {
+                    RETURN_TYPE_ERROR(expr.line_num, "Unknown type annotation");
+                }
                 if (binding.exp != NULL)
                 {
                     CoolTypeOrError t1 = TRY_GET_EXPRESSION_TYPE(t1, *binding.exp);
@@ -578,30 +639,29 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             CoolExpression* args;
             int16_t args_length;
             bh_str method_name;
-            int16_t line_num;
+
+            // It's also a self dispatch if we are dynamically dispatching on SELF_TYPE
+            bool effectively_self_dispatch = expr.expression_type == COOL_EXPR_TYPE_SELF_DISPATCH;
 
             if (expr.expression_type == COOL_EXPR_TYPE_SELF_DISPATCH)
             {
-                if (expr.line_num == 49)
-                {
-
-                }
-
                 t0 = class;
                 args = expr.data.self_dispatch.args;
                 args_length = expr.data.self_dispatch.args_length;
                 method_name = expr.data.self_dispatch.method.name;
-                line_num = expr.data.self_dispatch.method.line_num;
             }
             else if (expr.expression_type == COOL_EXPR_TYPE_DYNAMIC_DISPATCH)
             {
                 CoolTypeOrError class_type = TRY_GET_EXPRESSION_TYPE(class_type, *expr.data.dynamic_dispatch.e);
-                t0 = find_class_by_name(classes, class_count, class_type.type);
-                if (t0.name.len == 0) RETURN_TYPE_ERROR(expr.line_num, "Unkonwn class in dispatch");
+                if (bh_str_equal_lit(class_type.type, "SELF_TYPE") && bh_str_equal(class_type.self_type_class, class.name))
+                {
+                    effectively_self_dispatch = true;
+                }
+                t0 = find_class_by_type(classes, class_count, class_type);
+                if (t0.name.len == 0) RETURN_TYPE_ERROR(expr.line_num, "Unknown class in dispatch");
                 args = expr.data.dynamic_dispatch.args;
                 args_length = expr.data.dynamic_dispatch.args_length;
                 method_name = expr.data.dynamic_dispatch.method.name;
-                line_num = expr.data.dynamic_dispatch.method.line_num;
             }
             else if (expr.expression_type == COOL_EXPR_TYPE_STATIC_DISPATCH)
             {
@@ -611,12 +671,11 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
                 {
                     RETURN_TYPE_ERROR(expr.line_num, "Cannot static dispatch on subtype");
                 }
-                t0 = find_class_by_name(classes, class_count, class_type.type);
+                t0 = find_class_by_type(classes, class_count, class_type);
                 if (t0.name.len == 0) RETURN_TYPE_ERROR(expr.line_num, "Unkonwn class in static dispatch");
                 args = expr.data.static_dispatch.args;
                 args_length = expr.data.static_dispatch.args_length;
                 method_name = expr.data.static_dispatch.method.name;
-                line_num = expr.data.static_dispatch.method.line_num;
             }
 
             for (int i = 0; i < t0.method_count; i++)
@@ -628,7 +687,6 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
                 // Check method arguments count matches parameter count
                 if (args_length != method.parameter_count)
                 {
-                    // TODO: Check line number for error
                     RETURN_TYPE_ERROR(expr.line_num, "Method called with wrong number of arguments");
                 }
 
@@ -643,21 +701,24 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
                     }
                 }
 
-                // bh_str tfinal = bh_str_equal_lit(method.return_type, "SELF_TYPE")
-                //     ? class.name
-                //     : method.return_type;
-
                 bh_str tfinal = method.return_type;
                 if (bh_str_equal_lit(method.return_type, "SELF_TYPE"))
                 {
-                    RETURN_SELF_TYPE(tfinal, t0.name);
+                    if (effectively_self_dispatch)
+                    {
+                        RETURN_SELF_TYPE(tfinal, t0.name);
+                    }
+                    else
+                    {
+                        RETURN_TYPE(t0.name);
+                    }
                 }
                 else
                 {
                     RETURN_TYPE(tfinal);
                 }
             }
-            RETURN_TYPE_ERROR(line_num, "No method found with specified name");
+            RETURN_TYPE_ERROR(expr.line_num, "No method found with specified name");
         }
     case COOL_EXPR_TYPE_BLOCK:
         {
@@ -687,6 +748,23 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             for (int i = 0; i < expr.data.case_expr.element_count; i++)
             {
                 CoolCaseElement element = expr.data.case_expr.elements[i];
+
+                // Make sure SELF_TYPE is not allowed
+                if (bh_str_equal_lit(element.type_name.name, "SELF_TYPE"))
+                {
+                    RETURN_TYPE_ERROR(expr.line_num, "SELF_TYPE is not allowed in case statement");
+                }
+
+                // Make sure the case branch isn't bound multiple times
+                for (int j = 0; j < i; j++)
+                {
+                    CoolCaseElement prev_element = expr.data.case_expr.elements[j];
+
+                    if (bh_str_equal(prev_element.type_name.name, element.type_name.name))
+                    {
+                        RETURN_TYPE_ERROR(expr.line_num, "Case branch is bound multiple times");
+                    }
+                }
 
                 ContextObject* new_object = bh_alloc(ctx.object_environment_allocator, 1);
                 new_object->name = element.variable.name;
@@ -726,7 +804,7 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             bh_str t_prime = expr.data.new_expr.class_name.name;
             if (bh_str_equal_lit(t_prime, "SELF_TYPE"))
             {
-                t_prime = class.name;
+                RETURN_SELF_TYPE(t_prime, class.name);
             }
             RETURN_TYPE(t_prime);
         }
@@ -814,21 +892,7 @@ CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, bh_str 
     CoolTypeOrError expr_type_or_error = get_expression_type(ctx, expr);
     if (provided_type.len == 0 && expr_type_or_error.is_error) return expr_type_or_error;
     bh_str expr_type = provided_type.len == 0 ? expr_type_or_error.type : provided_type;
-    if (bh_str_equal_lit(expr_type, "SELF_TYPE") &&
-        expr_type_or_error.self_type_class.len > 0 &&
-        !is_type_subtype_of(
-            ctx,
-            (CoolTypeOrError){ .type = expr_type_or_error.self_type_class },
-            (CoolTypeOrError){ .type = ctx.classes[ctx.class_idx].name })
-        )
-    {
-        // expr_type_or_error = get_expression_type(ctx, expr);
-        bh_str_buf_append(str_buf, expr_type_or_error.self_type_class);
-    }
-    else
-    {
-        bh_str_buf_append(str_buf, expr_type);
-    }
+    bh_str_buf_append(str_buf, expr_type);
     bh_str_buf_append_lit(str_buf, "\n");
     switch (expr.expression_type)
     {
@@ -925,7 +989,7 @@ CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, bh_str 
     case COOL_EXPR_TYPE_NOT:
     case COOL_EXPR_TYPE_NEGATE:
         if (expr.expression_type == COOL_EXPR_TYPE_NOT) bh_str_buf_append_lit(str_buf, "not\n");
-        if (expr.expression_type == COOL_EXPR_TYPE_NEGATE) bh_str_buf_append_lit(str_buf, "negate\n"); break;
+        if (expr.expression_type == COOL_EXPR_TYPE_NEGATE) bh_str_buf_append_lit(str_buf, "negate\n");
         expression_to_str(ctx, str_buf, (bh_str){ 0 }, *expr.data.unary.x);
         break;
     case COOL_EXPR_TYPE_INTEGER:
@@ -1009,9 +1073,14 @@ CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, bh_str 
         assert(false);
     }
 
-    if (bh_str_equal_lit(expr_type, "SELF_TYPE"))
+    if (bh_str_equal_lit(expr_type, "SELF_TYPE") && expr_type_or_error.self_type_class.len)
+    {
+        RETURN_SELF_TYPE(expr_type, expr_type_or_error.self_type_class);
+    }
+    if (bh_str_equal_lit(expr_type, "SELF_TYPE") && !expr_type_or_error.self_type_class.len)
     {
         RETURN_SELF_TYPE(expr_type, ctx.classes[ctx.class_idx].name);
+        // RETURN_SELF_TYPE(expr_type, expr_type_or_error.self_type_class);
     }
     RETURN_TYPE(expr_type);
 }
@@ -1237,6 +1306,7 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
             for (int j = 0; j < class.method_count; j++)
             {
                 ClassMethod method = class.methods[j];
+                class_context.method_idx = j;
                 // Output method name and formal count
                 bh_str_buf_append(&str_buf, method.name);
                 bh_str_buf_append_format(&str_buf, "\n%i\n", method.parameter_count);
@@ -1290,6 +1360,7 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
                     }
 
                     CoolTypeOrError result = expression_to_str(class_context, &str_buf, (bh_str){ 0 }, method.body);
+                    if (result.is_error) return result.error;
 
                     if (!is_type_subtype_of(class_context, result, (CoolTypeOrError){ .type = method.return_type }))
                     {
@@ -1314,8 +1385,7 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
         strncpy(output_name + file_name.len - 3, "type", 4);
     }
 
-    // Write parent map to file
-    if (true)
+    if (true) // Write parent map to file
     {
         bh_str_buf_append_format(&str_buf, "parent_map\n%i\n", AST.class_count + 5 - 1);
         for (int i = 0; i < 5 + AST.class_count; i++)
@@ -1349,9 +1419,11 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
             }
 
             bh_str_buf_append_format(&str_buf, "%i\n", class.feature_count);
+            int method_idx = 0;
             for (int j = 0; j < class.feature_count; j++)
             {
                 CoolFeature feature = class.features[j];
+                class_context.method_idx = method_idx;
                 if (feature.is_method)
                 {
                     bh_str_buf_append_lit(&str_buf, "method\n");
@@ -1377,7 +1449,34 @@ CoolError generate_class_map(CoolAST AST, bh_str file_name, bh_allocator allocat
                 identifier_to_str(&str_buf, feature.type_name);
                 if (feature.is_method || feature.body.type)
                 {
-                    expression_to_str(class_context, &str_buf, (bh_str){ 0 }, feature.body);
+                    // Allocate the new formals into the object environment
+                    for (int k = 0; k < feature.formal_count; k++)
+                    {
+                        ContextObject* new_object = bh_alloc(class_context.object_environment_allocator, 1);
+                        new_object->name = feature.formals[k].name.name;
+                        new_object->type = feature.formals[k].type_name.name;
+                        new_object->next = class_context.object_environment_head;
+                        class_context.object_environment_head = new_object;
+                    }
+
+                    CoolTypeOrError result = expression_to_str(class_context, &str_buf, (bh_str){ 0 }, feature.body);
+                    if (!feature.is_method)
+                    {
+                        if (!is_type_subtype_of(class_context, result, (CoolTypeOrError){ .type = feature.type_name.name }))
+                        {
+                            RETURN_ERROR(feature.name.line_num, "Initialized attribute value does not conform to type");
+                        }
+                    }
+
+                    // Free the formals from the object environment
+                    for (int k = 0; k < feature.formal_count; k++)
+                    {
+                        ContextObject* old_head = class_context.object_environment_head;
+                        class_context.object_environment_head = old_head->next;
+                        bh_free(class_context.object_environment_allocator, old_head);
+                    }
+                    if (result.is_error) return result.error;
+                    if (feature.is_method) method_idx += 1;
                 }
             }
         }

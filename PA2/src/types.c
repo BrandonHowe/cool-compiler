@@ -120,7 +120,7 @@ bh_str_buf bh_str_buf_init(bh_allocator allocator, uint32_t capacity)
 
 void bh_str_buf_append(bh_str_buf* str_buf, bh_str str)
 {
-    if (str_buf->len + str.len >= str_buf->cap)
+    if (str_buf->len + str.len + 1 >= str_buf->cap)
     {
         bh_str_buf_reserve(str_buf, str_buf->cap * 2);
     }
@@ -130,7 +130,7 @@ void bh_str_buf_append(bh_str_buf* str_buf, bh_str str)
 
 void bh_str_buf_append_str_buf(bh_str_buf* str_buf, bh_str_buf str_buf_2)
 {
-    if (str_buf->len + str_buf_2.len >= str_buf->cap)
+    if (str_buf->len + str_buf_2.len + 1 >= str_buf->cap)
     {
         bh_str_buf_reserve(str_buf, str_buf->cap * 2);
     }
@@ -144,7 +144,7 @@ void bh_str_buf_append_format(bh_str_buf* buf, const char* format, ...)
     va_start(va, format);
 
     uint16_t append_size = vsnprintf(NULL, 0, format, va);
-    bh_str_buf_reserve(buf, append_size);
+    bh_str_buf_reserve(buf, buf->len + append_size + 1);
 
     va_end(va);
     va_start(va, format);

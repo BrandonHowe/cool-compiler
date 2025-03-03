@@ -1,8 +1,9 @@
 class A {
-    feature : Int <- true;
+    feature : Int <- 1234;
 
     method() : Int {
         {
+            feature <- "String";
             5;
         }
     };

@@ -85,6 +85,8 @@ typedef struct ClassContext
     ClassNode* classes;
     int16_t class_count;
     int16_t class_idx;
+
+    int16_t method_idx;
 } ClassContext;
 
 CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr);
