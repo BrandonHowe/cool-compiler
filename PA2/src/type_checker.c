@@ -2,7 +2,7 @@
 // Created by Brandon Howe on 2/12/25.
 //
 
-#include "class_map.h"
+#include "type_checker.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -367,6 +367,7 @@ CoolError fill_class_methods(CoolAST AST, ClassNode* classes, int16_t class_idx,
     get_expression_type(ctx, (expression)); \
     if ((type_name).is_error) return (type_name) \
 
+// Gets a ClassNode from a bh_str
 ClassNode find_class_by_type(ClassNode* classes, int16_t class_count, CoolTypeOrError type)
 {
     bh_str type_name = type.type;
@@ -382,11 +383,12 @@ ClassNode find_class_by_type(ClassNode* classes, int16_t class_count, CoolTypeOr
     return (ClassNode){ 0 };
 }
 
-// Checks if subclass is a subtype of the parent class
+// Checks if subclass is a subtype of the parent class. Is not called directly and does not support SELF_TYPE directly
 bool is_class_subtype_of(ClassNode subclass, ClassNode parent_class)
 {
     if (bh_str_equal(subclass.name, parent_class.name)) return true;
 
+    // Walk through the subclass's parents until we find the parent class
     ClassNode* parent = subclass.parent;
     while (parent != NULL)
     {
@@ -399,6 +401,7 @@ bool is_class_subtype_of(ClassNode subclass, ClassNode parent_class)
     return false;
 }
 
+// Checks if a type is a subtype of another, including support for SELF_TYPE
 bool is_type_subtype_of(ClassContext ctx, CoolTypeOrError subtype, CoolTypeOrError parent_type)
 {
     ClassNode* classes = ctx.classes;
@@ -407,12 +410,14 @@ bool is_type_subtype_of(ClassContext ctx, CoolTypeOrError subtype, CoolTypeOrErr
     ClassNode subclass = { 0 };
     ClassNode parent_class = { 0 };
 
+    // Special rules for SELF_TYPE
     bool subtype_is_self_type = bh_str_equal_lit(subtype.type, "SELF_TYPE");
     bool parent_is_self_type = bh_str_equal_lit(parent_type.type, "SELF_TYPE");
 
     if (subtype_is_self_type && parent_is_self_type) return true;
     if (!subtype_is_self_type && parent_is_self_type) return false;
 
+    // Find the classes
     for (int i = 0; i < class_count; i++)
     {
         if (bh_str_equal(classes[i].name, subtype_is_self_type ? subtype.self_type_class : subtype.type))
@@ -432,9 +437,10 @@ bool is_type_subtype_of(ClassContext ctx, CoolTypeOrError subtype, CoolTypeOrErr
     return is_class_subtype_of(subclass, parent_class);
 }
 
-// Finds the least upper bound type of 2 types
+// Finds the least upper bound type of 2 classes. Is not called directly
 CoolTypeOrError lub_class(ClassNode a, ClassNode b)
 {
+    // Find the "depth" of each class in the inheritance tree
     int16_t a_depth = 0;
     ClassNode a_depth_tester = a;
     while (!bh_str_equal_lit(a_depth_tester.name, "Object"))
@@ -449,6 +455,8 @@ CoolTypeOrError lub_class(ClassNode a, ClassNode b)
         b_depth += 1;
         b_depth_tester = *b_depth_tester.parent;
     }
+
+    // Now we find the deepest ancestor of both nodes and start walking up from there
     a_depth_tester = a;
     b_depth_tester = b;
     if (a_depth > b_depth)
@@ -475,11 +483,13 @@ CoolTypeOrError lub_class(ClassNode a, ClassNode b)
     RETURN_TYPE(a_depth_tester.name);
 }
 
+// Finds the least upper bound of two types, with support for SELF_TYPE
 CoolTypeOrError lub_type(ClassNode* classes, int16_t class_count, CoolTypeOrError a, CoolTypeOrError b)
 {
     ClassNode a_class = { 0 };
     ClassNode b_class = { 0 };
 
+    // Custom logic for handling self type
     bool a_is_self_type = bh_str_equal_lit(a.type, "SELF_TYPE");
     bool b_is_self_type = bh_str_equal_lit(b.type, "SELF_TYPE");
 
@@ -488,8 +498,6 @@ CoolTypeOrError lub_type(ClassNode* classes, int16_t class_count, CoolTypeOrErro
 
     if (a_is_self_type && b_is_self_type)
     {
-        // assert(a.self_type_class.len > 0);
-        // RETURN_TYPE(a.self_type_class);
         return a;
     }
     if (a_is_self_type) a_name = a.self_type_class;
@@ -514,6 +522,7 @@ CoolTypeOrError lub_type(ClassNode* classes, int16_t class_count, CoolTypeOrErro
     return lub_class(a_class, b_class);
 }
 
+// Finds the identifier type from the context, or returns an error if it's not there
 CoolTypeOrError get_identifier_type_from_context(ClassContext ctx, CoolIdentifier identifier)
 {
     if (bh_str_equal_lit(identifier.name, "self"))
@@ -554,6 +563,7 @@ CoolTypeOrError get_identifier_type_from_context(ClassContext ctx, CoolIdentifie
     RETURN_TYPE_ERROR(identifier.line_num, "The identifier could not be found");
 }
 
+// Make sure the type actually exists
 bool is_type_real(ClassContext ctx, CoolTypeOrError type)
 {
     for (int i = 0; i < ctx.class_count; i++)
@@ -570,9 +580,9 @@ bool is_type_real(ClassContext ctx, CoolTypeOrError type)
 CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
 {
     ClassNode* classes = ctx.classes;
-    int16_t class_idx = ctx.class_idx;
     int16_t class_count = ctx.class_count;
     ClassNode class = ctx.classes[ctx.class_idx];
+    // We switch over all the different expression types now
     switch (expr.expression_type)
     {
     case COOL_EXPR_TYPE_ASSIGN:
@@ -643,6 +653,7 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             // It's also a self dispatch if we are dynamically dispatching on SELF_TYPE
             bool effectively_self_dispatch = expr.expression_type == COOL_EXPR_TYPE_SELF_DISPATCH;
 
+            // These are mostly the same. The code is different to handle different tagged union branches and SELF_TYPE
             if (expr.expression_type == COOL_EXPR_TYPE_SELF_DISPATCH)
             {
                 t0 = class;
@@ -722,6 +733,7 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
         }
     case COOL_EXPR_TYPE_BLOCK:
         {
+            // Return the type of the last expression
             CoolTypeOrError last_type;
             for (int i = 0; i < expr.data.block.body_length; i++)
             {
@@ -738,7 +750,6 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
             }
             CoolTypeOrError then_type = TRY_GET_EXPRESSION_TYPE(then_type, *expr.data.if_expr.then_branch);
             CoolTypeOrError else_type = TRY_GET_EXPRESSION_TYPE(else_type, *expr.data.if_expr.else_branch);
-            // Implement lub
             return lub_type(classes, class_count, then_type, else_type);
         }
     case COOL_EXPR_TYPE_CASE:
@@ -766,6 +777,7 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
                     }
                 }
 
+                // Make sure identifiers are bound in the scope
                 ContextObject* new_object = bh_alloc(ctx.object_environment_allocator, 1);
                 new_object->name = element.variable.name;
                 new_object->type = element.type_name.name;
@@ -774,6 +786,7 @@ CoolTypeOrError get_expression_type(ClassContext ctx, CoolExpression expr)
 
                 CoolTypeOrError t1 = TRY_GET_EXPRESSION_TYPE(t1, *element.body);
 
+                // And free them when we're done
                 ContextObject* old_head = ctx.object_environment_head;
                 ctx.object_environment_head = old_head->next;
                 bh_free(ctx.object_environment_allocator, old_head);
@@ -889,6 +902,8 @@ void identifier_to_str(bh_str_buf* str_buf, CoolIdentifier identifier)
 CoolTypeOrError expression_to_str(ClassContext ctx, bh_str_buf* str_buf, bh_str provided_type, CoolExpression expr)
 {
     bh_str_buf_append_format(str_buf, "%i\n", expr.line_num);
+    // We do all the type checking up front, but then we also
+    // type check the subexpressions later. It's a bit redundant
     CoolTypeOrError expr_type_or_error = get_expression_type(ctx, expr);
     if (provided_type.len == 0 && expr_type_or_error.is_error) return expr_type_or_error;
     bh_str expr_type = provided_type.len == 0 ? expr_type_or_error.type : provided_type;

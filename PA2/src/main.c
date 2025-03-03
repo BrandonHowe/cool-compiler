@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "class_map.h"
+#include "type_checker.h"
 #include "parser.h"
 #include "types.h"
 

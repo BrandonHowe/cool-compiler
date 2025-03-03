@@ -12,5 +12,5 @@ add_executable(semantic_analyzer src/main.c
         src/parser.h
         src/allocator.c
         src/allocator.h
-        src/class_map.c
-        src/class_map.h)
+        src/type_checker.c
+        src/type_checker.h)
