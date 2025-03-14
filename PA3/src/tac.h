@@ -90,6 +90,7 @@ typedef struct TACList
 
 TACExpr* TAC_list_append(TACList* list, TACExpr expr);
 TACSymbol TAC_request_symbol(TACList* list);
+TACSymbol get_bound_symbol_variable(const TACList* list, const TACSymbol symbol);
 TACList tac_list_from_ast(CoolAST AST, bh_allocator allocator, ClassNodeList class_list);
 TACSymbol tac_list_from_expression(CoolExpression expr, TACList* list, TACSymbol destination);
 

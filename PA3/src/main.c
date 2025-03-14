@@ -75,8 +75,8 @@ int main(int argc, char* argv[])
     parse_parent_map(&file, parser_arena, class_list);
     CoolAST AST = parse_ast(&file, parser_arena);
 
-    bh_allocator tac_arena = arena_init(100000);
-    TACList tac_list = tac_list_from_ast(AST, tac_arena, class_list);
+    // bh_allocator tac_arena = arena_init(500000);
+    TACList tac_list = tac_list_from_ast(AST, GPA, class_list);
 
     bh_str_buf str_buf = bh_str_buf_init(GPA, 10000);
     for (int i = 0; i < tac_list.count; i++)
@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
     fwrite(str_buf.buf, 1, str_buf.len, fptr);
     fclose(fptr);
 
-    // fwrite(str_buf.buf, 1, str_buf.len, stdout);
+    fwrite(str_buf.buf, 1, str_buf.len, stdout);
 
     bh_str_buf_deinit(&str_buf);
 

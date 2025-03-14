@@ -1,0 +1,4 @@
+comment start
+label Main_main_0
+t$0 <- new A
+return t$0
