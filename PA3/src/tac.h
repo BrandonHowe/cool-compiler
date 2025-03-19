@@ -78,20 +78,30 @@ typedef struct TACList
 {
     int16_t count;
     int16_t capacity;
-    int16_t curr_symbol;
-    bh_str label_base;
-    int16_t curr_label;
+    bh_str class_name;
+    bh_str method_name;
     TACExpr* items;
     bh_allocator allocator;
 
-    TACBinding* bindings;
-    int16_t binding_count;
+    int16_t _curr_label;
+    int16_t _curr_symbol;
+
+    TACBinding* _bindings;
+    int16_t _binding_count;
 } TACList;
+
+// Non owning version of TACList (for CFG etc)
+typedef struct TACSlice
+{
+    int16_t count;
+    TACExpr* items;
+} TACSlice;
 
 TACExpr* TAC_list_append(TACList* list, TACExpr expr);
 TACSymbol TAC_request_symbol(TACList* list);
 TACSymbol get_bound_symbol_variable(const TACList* list, const TACSymbol symbol);
-TACList tac_list_from_ast(CoolAST AST, bh_allocator allocator, ClassNodeList class_list);
+TACList tac_list_from_class_list(ClassNodeList class_list, bh_allocator allocator);
 TACSymbol tac_list_from_expression(CoolExpression expr, TACList* list, TACSymbol destination);
+TACList tac_list_from_method(ClassMethod method, bh_allocator allocator);
 
 #endif //TAC_H

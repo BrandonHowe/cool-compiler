@@ -37,13 +37,21 @@ bh_allocator GPA = (bh_allocator)
 // Procedure for an arena allocator
 void* arena_proc(bh_allocator* this_allocator, bh_allocator_mode mode, bh_allocator_args args)
 {
+    bh_arena_data* data = this_allocator->data;
+
     switch (mode)
     {
-    case bh_allocator_mode_alloc:
     case bh_allocator_mode_realloc:
+        if (args.ptr == &data->buffer[data->prev_offset])
         {
-            bh_arena_data* data = this_allocator->data;
+            data->used = data->prev_offset + args.size;
+            assert(data->used < data->capacity);
+            return &data->buffer[data->prev_offset];
+        }
+    case bh_allocator_mode_alloc:
+        {
             void* ptr = &data->buffer[data->used];
+            data->prev_offset = data->used;
             data->used += args.size;
             // printf("Allocating %i bytes, used: %i, cap: %i\n", args.size, data->used, data->capacity);
             assert(data->used < data->capacity);
@@ -83,6 +91,7 @@ uint32_t arena_save(bh_allocator allocator)
 {
     bh_arena_data* data = allocator.data;
     data->savepoint = data->used;
+    data->savepoint_prev = data->prev_offset;
     return data->used;
 }
 
@@ -90,12 +99,14 @@ void arena_load(bh_allocator allocator)
 {
     bh_arena_data* data = allocator.data;
     data->used = data->savepoint;
+    data->prev_offset = data->savepoint_prev;
 }
 
 void arena_load_manual(bh_allocator allocator, uint32_t savepoint)
 {
     bh_arena_data* data = allocator.data;
     data->used = savepoint;
+    data->prev_offset = data->savepoint_prev;
 }
 
 void arena_deinit(bh_allocator allocator)

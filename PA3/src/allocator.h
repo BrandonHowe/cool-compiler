@@ -56,7 +56,9 @@ typedef struct bh_arena_data
 {
     uint32_t capacity;
     uint32_t used;
+    uint32_t prev_offset;
     uint32_t savepoint;
+    uint32_t savepoint_prev;
     void* buffer;
 } bh_arena_data;
 

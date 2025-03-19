@@ -7,7 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "assembly.h"
 #include "ast.h"
+#include "cfg.h"
 #include "tac.h"
 #include "types.h"
 
@@ -75,88 +77,113 @@ int main(int argc, char* argv[])
     parse_parent_map(&file, parser_arena, class_list);
     CoolAST AST = parse_ast(&file, parser_arena);
 
-    // bh_allocator tac_arena = arena_init(500000);
-    TACList tac_list = tac_list_from_ast(AST, GPA, class_list);
+    ASMList asm_list = asm_list_init(GPA);
+    TACList tac_list = tac_list_from_class_list(class_list, GPA);
+    asm_from_tac_list(&asm_list, tac_list);
 
-    bh_str_buf str_buf = bh_str_buf_init(GPA, 10000);
-    for (int i = 0; i < tac_list.count; i++)
+    bh_str_buf asm_display = bh_str_buf_init(GPA, 10000);
+    display_asm_list(&asm_display, asm_list);
+    printf(asm_display.buf);
+
+    bh_allocator tac_arena = arena_init(100000);
+
+    if (false) // PA3c2 -- output first method as TAC
     {
-        TACExpr expr = tac_list.items[i];
-        if (expr.operation <= TAC_OP_CALL)
+        // bh_allocator tac_arena = arena_init(500000);
+        TACList tac_list = tac_list_from_class_list(class_list, GPA);
+
+        bh_str_buf str_buf = bh_str_buf_init(GPA, 10000);
+        for (int i = 0; i < tac_list.count; i++)
         {
-            if (expr.lhs.type == TAC_SYMBOL_TYPE_VARIABLE)
+            TACExpr expr = tac_list.items[i];
+            if (expr.operation <= TAC_OP_CALL)
             {
-                bh_str_buf_append(&str_buf, expr.lhs.variable);
-                bh_str_buf_append_lit(&str_buf, " <- ");
+                if (expr.lhs.type == TAC_SYMBOL_TYPE_VARIABLE)
+                {
+                    bh_str_buf_append(&str_buf, expr.lhs.variable);
+                    bh_str_buf_append_lit(&str_buf, " <- ");
+                }
+                else
+                {
+                    bh_str_buf_append_format(&str_buf, "t$%i <- ", expr.lhs.symbol);
+                }
             }
-            else
+            switch (expr.operation)
             {
-                bh_str_buf_append_format(&str_buf, "t$%i <- ", expr.lhs.symbol);
+            case TAC_OP_ASSIGN: bh_str_buf_append_lit(&str_buf, ""); break;
+            case TAC_OP_PLUS: bh_str_buf_append_lit(&str_buf, "+ "); break;
+            case TAC_OP_MINUS: bh_str_buf_append_lit(&str_buf, "- "); break;
+            case TAC_OP_TIMES: bh_str_buf_append_lit(&str_buf, "* "); break;
+            case TAC_OP_DIVIDE: bh_str_buf_append_lit(&str_buf, "/ "); break;
+            case TAC_OP_LT: bh_str_buf_append_lit(&str_buf, "< "); break;
+            case TAC_OP_LTE: bh_str_buf_append_lit(&str_buf, "<= "); break;
+            case TAC_OP_EQ: bh_str_buf_append_lit(&str_buf, "= "); break;
+            case TAC_OP_INT: bh_str_buf_append_lit(&str_buf, "int "); break;
+            case TAC_OP_STRING: bh_str_buf_append_lit(&str_buf, "string\n"); break;
+            case TAC_OP_BOOL: bh_str_buf_append_lit(&str_buf, "bool "); break;
+            case TAC_OP_NOT: bh_str_buf_append_lit(&str_buf, "not "); break;
+            case TAC_OP_NEG: bh_str_buf_append_lit(&str_buf, "~ "); break;
+            case TAC_OP_NEW: bh_str_buf_append_lit(&str_buf, "new "); break;
+            case TAC_OP_DEFAULT: bh_str_buf_append_lit(&str_buf, "default "); break;
+            case TAC_OP_ISVOID: bh_str_buf_append_lit(&str_buf, "isvoid "); break;
+            case TAC_OP_CALL: bh_str_buf_append_lit(&str_buf, "call "); break;
+            case TAC_OP_JMP:
+                bh_str_buf_append_lit(&str_buf, "jmp ");
+                bh_str_buf_append(&str_buf, tac_list.class_name);
+                bh_str_buf_append_lit(&str_buf, "_");
+                bh_str_buf_append(&str_buf, tac_list.method_name);
+                bh_str_buf_append_lit(&str_buf, "_");
+                break;
+            case TAC_OP_LABEL:
+                bh_str_buf_append_lit(&str_buf, "label ");
+                bh_str_buf_append(&str_buf, tac_list.class_name);
+                bh_str_buf_append_lit(&str_buf, "_");
+                bh_str_buf_append(&str_buf, tac_list.method_name);
+                bh_str_buf_append_lit(&str_buf, "_");
+                break;
+            case TAC_OP_RETURN: bh_str_buf_append_lit(&str_buf, "return "); break;
+            case TAC_OP_COMMENT: bh_str_buf_append_lit(&str_buf, "comment "); break;
+            case TAC_OP_BT: bh_str_buf_append_lit(&str_buf, "bt "); break;
+            default: assert(0 && "Invalid expression"); break;
             }
-        }
-        switch (expr.operation)
-        {
-        case TAC_OP_ASSIGN: bh_str_buf_append_lit(&str_buf, ""); break;
-        case TAC_OP_PLUS: bh_str_buf_append_lit(&str_buf, "+ "); break;
-        case TAC_OP_MINUS: bh_str_buf_append_lit(&str_buf, "- "); break;
-        case TAC_OP_TIMES: bh_str_buf_append_lit(&str_buf, "* "); break;
-        case TAC_OP_DIVIDE: bh_str_buf_append_lit(&str_buf, "/ "); break;
-        case TAC_OP_LT: bh_str_buf_append_lit(&str_buf, "< "); break;
-        case TAC_OP_LTE: bh_str_buf_append_lit(&str_buf, "<= "); break;
-        case TAC_OP_EQ: bh_str_buf_append_lit(&str_buf, "= "); break;
-        case TAC_OP_INT: bh_str_buf_append_lit(&str_buf, "int "); break;
-        case TAC_OP_STRING: bh_str_buf_append_lit(&str_buf, "string\n"); break;
-        case TAC_OP_BOOL: bh_str_buf_append_lit(&str_buf, "bool "); break;
-        case TAC_OP_NOT: bh_str_buf_append_lit(&str_buf, "not "); break;
-        case TAC_OP_NEG: bh_str_buf_append_lit(&str_buf, "~ "); break;
-        case TAC_OP_NEW: bh_str_buf_append_lit(&str_buf, "new "); break;
-        case TAC_OP_DEFAULT: bh_str_buf_append_lit(&str_buf, "default "); break;
-        case TAC_OP_ISVOID: bh_str_buf_append_lit(&str_buf, "isvoid "); break;
-        case TAC_OP_CALL: bh_str_buf_append_lit(&str_buf, "call "); break;
-        case TAC_OP_JMP:
-            bh_str_buf_append_lit(&str_buf, "jmp ");
-            bh_str_buf_append(&str_buf, tac_list.label_base);
-            break;
-        case TAC_OP_LABEL:
-            bh_str_buf_append_lit(&str_buf, "label ");
-            bh_str_buf_append(&str_buf, tac_list.label_base);
-            break;
-        case TAC_OP_RETURN: bh_str_buf_append_lit(&str_buf, "return "); break;
-        case TAC_OP_COMMENT: bh_str_buf_append_lit(&str_buf, "comment "); break;
-        case TAC_OP_BT: bh_str_buf_append_lit(&str_buf, "bt "); break;
-        default: assert(0 && "Invalid expression"); break;
-        }
-        append_tac_symbol(&str_buf, expr.rhs1);
-        if (expr.rhs2.type)
-        {
-            bh_str_buf_append_lit(&str_buf, " ");
-        }
-        if (expr.operation == TAC_OP_BT) bh_str_buf_append(&str_buf, tac_list.label_base);
-        if (expr.operation == TAC_OP_CALL)
-        {
-            for (int i = 0; i < expr.arg_count; i++)
+            append_tac_symbol(&str_buf, expr.rhs1);
+            if (expr.rhs2.type)
             {
                 bh_str_buf_append_lit(&str_buf, " ");
-                append_tac_symbol(&str_buf, expr.args[i]);
             }
+            if (expr.operation == TAC_OP_BT)
+            {
+                bh_str_buf_append(&str_buf, tac_list.class_name);
+                bh_str_buf_append_lit(&str_buf, "_");
+                bh_str_buf_append(&str_buf, tac_list.method_name);
+                bh_str_buf_append_lit(&str_buf, "_");
+            }
+            if (expr.operation == TAC_OP_CALL)
+            {
+                for (int i = 0; i < expr.arg_count; i++)
+                {
+                    bh_str_buf_append_lit(&str_buf, " ");
+                    append_tac_symbol(&str_buf, expr.args[i]);
+                }
+            }
+            append_tac_symbol(&str_buf, expr.rhs2);
+            bh_str_buf_append_lit(&str_buf, "\n");
         }
-        append_tac_symbol(&str_buf, expr.rhs2);
-        bh_str_buf_append_lit(&str_buf, "\n");
+
+        char* output_name  = bh_alloc(GPA, file_name.len + 10);
+        strncpy(output_name, file_name.buf, file_name.len - 4);
+        strncpy(output_name + file_name.len - 4, "tac", 3);
+
+        FILE* fptr;
+        fptr = fopen(output_name, "wb");
+        assert(fptr != NULL);
+        fwrite(str_buf.buf, 1, str_buf.len, fptr);
+        fclose(fptr);
+
+        fwrite(str_buf.buf, 1, str_buf.len, stdout);
+
+        bh_str_buf_deinit(&str_buf);
     }
-
-    char* output_name = bh_alloc(GPA, file_name.len + 10);
-    strncpy(output_name, file_name.buf, file_name.len - 4);
-    strncpy(output_name + file_name.len - 4, "tac", 3);
-
-    FILE* fptr;
-    fptr = fopen(output_name, "wb");
-    assert(fptr != NULL);
-    fwrite(str_buf.buf, 1, str_buf.len, fptr);
-    fclose(fptr);
-
-    fwrite(str_buf.buf, 1, str_buf.len, stdout);
-
-    bh_str_buf_deinit(&str_buf);
 
     return 0;
 }

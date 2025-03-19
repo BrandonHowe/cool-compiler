@@ -1,4 +1,8 @@
 comment start
 label Main_main_0
-t$0 <- new A
+t$3 <- int 5
+t$4 <- int 6
+t$1 <- + t$3 t$4
+t$2 <- int 7
+t$0 <- + t$1 t$2
 return t$0
