@@ -737,7 +737,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     asm_list_append_comment(asm_list, "method definition");
 
     // Setup stack and stuff
-    asm_list_append_push(asm_list, RA);
+    // asm_list_append_push(asm_list, RA);
     asm_list_append_push(asm_list, RBP);
     asm_list_append_mov(asm_list, RBP, RSP);
     asm_list_append_ld(asm_list, R12, RBP, 2);
@@ -823,12 +823,11 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     }
 
     asm_list_append_label(asm_list, (bh_str){ .buf = label_buf, .len = label_len + 4 });
-    // asm_list_append_pop(asm_list, RA);
     asm_list_append_mov(asm_list, RSP, RBP);
     asm_list_append_pop(asm_list, RBP);
-    asm_list_append_pop(asm_list, RA);
-    asm_list_append_li(asm_list, R14, tac_list._curr_symbol, ASMImmediateUnitsWord);
-    asm_list_append_arith(asm_list, ASM_OP_ADD, RSP, R14);
+    // asm_list_append_pop(asm_list, RA);
+    // asm_list_append_li(asm_list, R14, tac_list._curr_symbol, ASMImmediateUnitsWord);
+    // asm_list_append_arith(asm_list, ASM_OP_ADD, RSP, R14);
     asm_list_append_return(asm_list);
 
     asm_list_append_comment(asm_list, ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;"); // Spacer
@@ -1304,7 +1303,6 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
         if (param.reg.offset || force_offset)
         {
             int16_t offset = param.reg.offset * 8;
-            if (param.reg.name == RBP) offset += 8;
             bh_str_buf_append_format(str_buf, "%i(", offset);
         }
         switch (param.reg.name)
