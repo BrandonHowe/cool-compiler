@@ -1,7 +1,5 @@
 comment start
 label Main_main_0
-t$1 <- int 9
-t$2 <- t$1
-t$3 <- int 456
-t$0 <- + t$2 t$3
+t$1 <- bool true
+t$0 <- not t$1
 return t$0

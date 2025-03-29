@@ -436,79 +436,25 @@ IO.out_string.end:      ;; method body ends
 Main.main:              ;; method definition
                         mov fp <- sp
                         pop r0
-                        ;; stack room for temporaries: 3
-                        li r2 <- 3
+                        ;; stack room for temporaries: 2
+                        li r2 <- 2
                         sub sp <- sp r2
                         push ra
                         ;; self[3] holds field x (Int)
                         ;; self[4] holds field io (IO)
                         ;; method body begins
-                        push r0
+                        ;; new Bool
                         push fp
                         push r0
-                        push fp
-                        ;; new Int
-                        push fp
-                        push r0
-                        la r2 <- Int..new
+                        la r2 <- Bool..new
                         call r2
                         pop r0
                         pop fp
-                        li r2 <- 5
+                        li r2 <- 1
                         st r1[3] <- r2
-                        push r1
-                        ;; new Int
-                        push fp
-                        push r0
-                        la r2 <- Int..new
-                        call r2
-                        pop r0
-                        pop fp
-                        li r2 <- 6
-                        st r1[3] <- r2
-                        push r1
-                        push r0
-                        call eq_handler
-                        pop fp
-                        pop r0
-                        push r1
-                        push r0
-                        push fp
-                        ;; new Int
-                        push fp
-                        push r0
-                        la r2 <- Int..new
-                        call r2
-                        pop r0
-                        pop fp
-                        li r2 <- 7
-                        st r1[3] <- r2
-                        push r1
-                        ;; new Int
-                        push fp
-                        push r0
-                        la r2 <- Int..new
-                        call r2
-                        pop r0
-                        pop fp
-                        li r2 <- 8
-                        st r1[3] <- r2
-                        push r1
-                        push r0
-                        call eq_handler
-                        pop fp
-                        pop r0
-                        push r1
-                        push r0
-                        call eq_handler
-                        pop fp
-                        pop r0
                         ld r1 <- r1[3]
                         bnz r1 l3
 l4:                     ;; false branch
-                        ;; io.out_int(...)
-                        push r0
-                        push fp
                         ;; new Int
                         push fp
                         push r0
@@ -518,26 +464,8 @@ l4:                     ;; false branch
                         pop fp
                         li r2 <- 0
                         st r1[3] <- r2
-                        push r1
-                        ;; io
-                        ld r1 <- r0[4]
-                        bnz r1 l6
-                        la r1 <- string9
-                        syscall IO.out_string
-                        syscall exit
-l6:                     push r1
-                        ;; obtain vtable from object in r1 with static type IO
-                        ld r2 <- r1[2]
-                        ;; look up out_int() at offset 7 in vtable
-                        ld r2 <- r2[7]
-                        call r2
-                        pop fp
-                        pop r0
-                        jmp l5
-l3:                     ;; true branch
-                        ;; io.out_int(...)
-                        push r0
-                        push fp
+                        ld r1 <- r1[3]
+                        st fp[0] <- r1
                         ;; new Int
                         push fp
                         push r0
@@ -545,27 +473,36 @@ l3:                     ;; true branch
                         call r2
                         pop r0
                         pop fp
-                        li r2 <- 1
+                        li r2 <- 246
                         st r1[3] <- r2
-                        push r1
-                        ;; io
-                        ld r1 <- r0[4]
-                        bnz r1 l7
-                        la r1 <- string9
-                        syscall IO.out_string
-                        syscall exit
-l7:                     push r1
-                        ;; obtain vtable from object in r1 with static type IO
-                        ld r2 <- r1[2]
-                        ;; look up out_int() at offset 7 in vtable
-                        ld r2 <- r2[7]
+                        ld r1 <- r1[3]
+                        ld r2 <- fp[0]
+                        sub r1 <- r2 r1
+                        st fp[0] <- r1
+                        ;; new Int
+                        push fp
+                        push r0
+                        la r2 <- Int..new
                         call r2
-                        pop fp
                         pop r0
+                        pop fp
+                        ld r2 <- fp[0]
+                        st r1[3] <- r2
+                        jmp l5
+l3:                     ;; true branch
+                        ;; new Int
+                        push fp
+                        push r0
+                        la r2 <- Int..new
+                        call r2
+                        pop r0
+                        pop fp
+                        li r2 <- 123
+                        st r1[3] <- r2
 l5:                     ;; end of if conditional
 Main.main.end:          ;; method body ends
                         pop ra
-                        li r2 <- 3
+                        li r2 <- 2
                         add sp <- sp r2
                         return
                         ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -648,11 +585,11 @@ String.substr:          ;; method definition
                         ld r1 <- r1[3]
                         ld r0 <- r0[3]
                         syscall String.substr
-                        bnz r1 l8
-                        la r1 <- string10
+                        bnz r1 l6
+                        la r1 <- string9
                         syscall IO.out_string
                         syscall exit
-l8:                     st r3[3] <- r1
+l6:                     st r3[3] <- r1
                         mov r1 <- r3
 String.substr.end:      ;; method body ends
                         pop ra
@@ -670,8 +607,7 @@ string5:                constant "Object"
 string6:                constant "String"
 string7:                constant "ZZ"
 string8:                constant "abort\n"
-string9:                constant "ERROR: 11: Exception: dispatch on void\n"
-string10:               constant "ERROR: 0: Exception: String.substr out of range\n"
+string9:                constant "ERROR: 0: Exception: String.substr out of range\n"
                         ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 eq_handler:             ;; helper function for =
                         mov fp <- sp

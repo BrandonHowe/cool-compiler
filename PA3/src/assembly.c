@@ -457,9 +457,14 @@ void asm_from_tac_symbol(ASMList* asm_list, const TACSymbol symbol)
         asm_list_append_call_method(asm_list, 2, CONSTRUCTOR_METHOD);
         asm_list_append_li(asm_list, R14, symbol.integer);
         asm_list_append_st(asm_list, R13, 3, R14);
-        // asm_list_append_to_stack(asm_list, R13); // figure this jawn out
         break;
     case TAC_SYMBOL_TYPE_BOOL:
+        asm_list_append_call_method(asm_list, 2, CONSTRUCTOR_METHOD);
+        if (symbol.integer > 0)
+        {
+            asm_list_append_li(asm_list, R14, symbol.integer);
+            asm_list_append_st(asm_list, R13, 3, R14);
+        }
         break;
     case TAC_SYMBOL_TYPE_STRING:
         break;
@@ -476,16 +481,18 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
 {
     ClassNode curr_class_node = tac_list.class_list.class_nodes[tac_list.class_idx];
     const bh_str class_name = curr_class_node.name;
+    int16_t bool_class_idx = -1;
     int16_t io_class_idx = -1;
     int16_t int_class_idx = -1;
     int16_t string_class_idx = -1;
     for (int i = 0; i < asm_list->class_list->class_count; i++)
     {
         ClassNode class_node = asm_list->class_list->class_nodes[i];
+        if (bh_str_equal_lit(class_node.name, "Bool")) bool_class_idx = i;
         if (bh_str_equal_lit(class_node.name, "IO")) io_class_idx = i;
         if (bh_str_equal_lit(class_node.name, "Int")) int_class_idx = i;
         if (bh_str_equal_lit(class_node.name, "String")) string_class_idx = i;
-        if (io_class_idx > -1 && int_class_idx > -1 && string_class_idx > -1) break;
+        if (bool_class_idx > -1 && io_class_idx > -1 && int_class_idx > -1 && string_class_idx > -1) break;
     }
     for (int i = 0; i < tac_list.count; i++)
     {
@@ -562,10 +569,51 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
         case TAC_OP_STRING:
             break;
         case TAC_OP_BOOL:
+            asm_list_append_comment(asm_list, "new Bool");
+            asm_from_tac_symbol(asm_list, expr.rhs1);
+            asm_list_append_st(asm_list, RBP, 2 + expr.lhs.symbol, R13);
             break;
         case TAC_OP_NOT:
+        {
+            bh_str_buf label_buf_1 = bh_str_buf_init(asm_list->string_allocator, 4);
+            bh_str_buf_append_format(&label_buf_1, "l%i", ++asm_list->_global_label);
+            bh_str label_str_1 = (bh_str){ .buf = label_buf_1.buf, .len = label_buf_1.len };
+
+            bh_str_buf label_buf_2 = bh_str_buf_init(asm_list->string_allocator, 4);
+            bh_str_buf_append_format(&label_buf_2, "l%i", ++asm_list->_global_label);
+            bh_str label_str_2 = (bh_str){ .buf = label_buf_2.buf, .len = label_buf_2.len };
+
+            bh_str_buf label_buf_3 = bh_str_buf_init(asm_list->string_allocator, 4);
+            bh_str_buf_append_format(&label_buf_3, "l%i", ++asm_list->_global_label);
+            bh_str label_str_3 = (bh_str){ .buf = label_buf_3.buf, .len = label_buf_3.len };
+
+            asm_list_append_ld(asm_list, R13, RBP, 2 + expr.rhs1.symbol);
+            asm_list_append_bnz(asm_list, R13, label_str_1);
+
+            asm_list_append_label(asm_list, label_str_2);
+            asm_list_append_comment(asm_list, "false branch");
+            asm_list_append_call_method(asm_list, bool_class_idx, -1);
+            asm_list_append_li(asm_list, R14, 1);
+            asm_list_append_st(asm_list, R13, 3, R14);
+            asm_list_append_jmp(asm_list, label_str_3);
+
+            asm_list_append_label(asm_list, label_str_1);
+            asm_list_append_comment(asm_list, "true branch");
+            asm_list_append_call_method(asm_list, bool_class_idx, -1);
+
+            asm_list_append_label(asm_list, label_str_3);
             break;
+        }
         case TAC_OP_NEG:
+            asm_list_append_call_method(asm_list, int_class_idx, -1);
+            asm_list_append_push(asm_list, R13);
+            asm_list_append_ld(asm_list, R14, R13, 3);
+            asm_list_append_ld(asm_list, R13, RBP, 2 + expr.rhs1.symbol);
+            asm_list_append_ld(asm_list, R13, R13, 3);
+            asm_list_append_arith(asm_list, ASM_OP_SUB, R14, R13);
+            asm_list_append_pop(asm_list, R13);
+            asm_list_append_st(asm_list, R13, 3, R14);
+            asm_list_append_st(asm_list, RBP, 2 + expr.lhs.symbol, R13);
             break;
         case TAC_OP_NEW:
             {
