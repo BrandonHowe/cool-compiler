@@ -1515,8 +1515,8 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             break;
         case ASM_OP_BLT:
             bh_str_buf_append_lit(str_buf, "cmpq");
-            x86_asm_param(str_buf, class_list, instr.params[0]);            bh_str_buf_append_lit(str_buf, ",");
-            bh_str_buf_append_lit(str_buf, ",");
+            x86_asm_param(str_buf, class_list, instr.params[0]);
+            // bh_str_buf_append_lit(str_buf, ",");
             x86_asm_param(str_buf, class_list, instr.params[1]);
             bh_str_buf_append_lit(str_buf, "\njl ");
             x86_asm_param(str_buf, class_list, instr.params[2]);
