@@ -1507,9 +1507,9 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             break;
         case ASM_OP_BEQ:
             bh_str_buf_append_lit(str_buf, "cmpq");
-            display_asm_param(str_buf, class_list, instr.params[0]);
+            x86_asm_param(str_buf, class_list, instr.params[0]);
             bh_str_buf_append_lit(str_buf, ",");
-            display_asm_param(str_buf, class_list, instr.params[1]);
+            x86_asm_param(str_buf, class_list, instr.params[1]);
             bh_str_buf_append_lit(str_buf, "\nje ");
             x86_asm_param(str_buf, class_list, instr.params[2]);
             break;
