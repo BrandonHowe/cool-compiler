@@ -1334,7 +1334,7 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
             switch (param.method.method_idx)
             {
             case 0:
-                bh_str_buf_append_lit(str_buf, "exit");
+                bh_str_buf_append_lit(str_buf, "call exit");
                 break;
             case -2:
                 bh_str_buf_append_lit(str_buf, "string_abort");
@@ -1508,13 +1508,15 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
         case ASM_OP_BEQ:
             bh_str_buf_append_lit(str_buf, "cmpq");
             display_asm_param(str_buf, class_list, instr.params[0]);
+            bh_str_buf_append_lit(str_buf, ",");
             display_asm_param(str_buf, class_list, instr.params[1]);
             bh_str_buf_append_lit(str_buf, "\nje ");
             x86_asm_param(str_buf, class_list, instr.params[2]);
             break;
         case ASM_OP_BLT:
             bh_str_buf_append_lit(str_buf, "cmpq");
-            x86_asm_param(str_buf, class_list, instr.params[0]);
+            x86_asm_param(str_buf, class_list, instr.params[0]);            bh_str_buf_append_lit(str_buf, ",");
+            bh_str_buf_append_lit(str_buf, ",");
             x86_asm_param(str_buf, class_list, instr.params[1]);
             bh_str_buf_append_lit(str_buf, "\njl ");
             x86_asm_param(str_buf, class_list, instr.params[2]);
@@ -1522,14 +1524,15 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
         case ASM_OP_BLE:
             bh_str_buf_append_lit(str_buf, "cmpq");
             x86_asm_param(str_buf, class_list, instr.params[0]);
+            bh_str_buf_append_lit(str_buf, ",");
             x86_asm_param(str_buf, class_list, instr.params[1]);
             bh_str_buf_append_lit(str_buf, "\njle ");
             x86_asm_param(str_buf, class_list, instr.params[2]);
             break;
         case ASM_OP_BNZ:
-            bh_str_buf_append_lit(str_buf, "bnz");
+            bh_str_buf_append_lit(str_buf, "cmpq $0,");
             x86_asm_param(str_buf, class_list, instr.params[0]);
-            bh_str_buf_append_lit(str_buf, " ");
+            bh_str_buf_append_lit(str_buf, "\n jne ");
             x86_asm_param(str_buf, class_list, instr.params[1]);
             break;
         case ASM_OP_ADD:
@@ -1559,11 +1562,11 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
         case ASM_OP_ALLOC:
             bh_str_buf_append_lit(str_buf, "movq $8, %rsi\nmovq");
             x86_asm_param(str_buf, class_list, instr.params[1]);
-            bh_str_buf_append_lit(str_buf, " %rdi\ncall calloc\nmovq %rax,");
+            bh_str_buf_append_lit(str_buf, ", %rdi\ncall calloc\nmovq %rax,");
             x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_RETURN:
-            bh_str_buf_append_lit(str_buf, "ret");
+            bh_str_buf_append_lit(str_buf, "retq");
             break;
         default:
             assert(0 && "Unhandled asm instruction in display");
