@@ -1370,7 +1370,7 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
                 bh_str_buf_append_lit(str_buf, "movl $1, %esi\nmovl $4096, %edi\ncall calloc\npushq %rax\nmovq %rax, %rdi\n");
                 bh_str_buf_append_lit(str_buf, "movq $4096, %rsi\nmovq stdin(%rip), %rdx\ncall fgets\npopq %rdi\nmovl $0, %eax\n");
                 bh_str_buf_append_lit(str_buf, "pushq %rax\nmovq %rsp, %rdx\nmovq $percent.ld, %rsi\ncall sscanf\npopq %rax\n");
-                bh_str_buf_append_lit(str_buf, "movq $0, %rsi\ncmpq $2147483647, %rax\ncmovg %rsi, %rax\ncmpq $-2147483648 %rax\n");
+                bh_str_buf_append_lit(str_buf, "movq $0, %rsi\ncmpq $2147483647, %rax\ncmovg %rsi, %rax\ncmpq $-2147483648, %rax\n");
                 bh_str_buf_append_lit(str_buf, "cmovl %rsi, %rax\nmovq %rax, %r13");
             }
             else if (param.method.method_idx == 4) // in_string
