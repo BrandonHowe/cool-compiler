@@ -13,40 +13,6 @@
 #include "tac.h"
 #include "types.h"
 
-bh_str read_file_text(const char* file_name)
-{
-    FILE *file = fopen(file_name, "r");
-    if (file == NULL) {
-        perror("Failed to open file");
-        return (bh_str){ 0 };
-    }
-
-    // Seek to the end to determine the file size
-    fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
-    rewind(file);
-
-    // Allocate memory to hold the file content
-    char* buffer = malloc(fileSize);
-    if (buffer == NULL) {
-        perror("Failed to allocate memory");
-        fclose(file);
-        return (bh_str){ 0 };
-    }
-
-    // Read the file into the buffer
-    size_t bytesRead = fread(buffer, 1, fileSize, file);
-    if (bytesRead != fileSize) {
-        perror("Failed to read the file");
-        free(buffer);
-        fclose(file);
-        return (bh_str){ 0 };
-    }
-
-    fclose(file);
-    return (bh_str){ .buf = buffer, .len = bytesRead };
-}
-
 void append_tac_symbol(bh_str_buf* str_buf, ClassNodeList class_list, TACSymbol symbol)
 {
     switch (symbol.type)
@@ -126,7 +92,7 @@ int main(int argc, char* argv[])
     builtin_append_comp_handler(&asm_list, TAC_OP_LT);
     builtin_append_start(&asm_list);
 
-    if (true) // Write asm to file
+    if (false) // Write asm to file
     {
         bh_str_buf asm_display = bh_str_buf_init(GPA, 10000);
         display_asm_list(&asm_display, asm_list);
@@ -140,13 +106,28 @@ int main(int argc, char* argv[])
         assert(fptr != NULL);
         fwrite(asm_display.buf, 1, asm_display.len, fptr);
         fclose(fptr);
+    }
 
-        // fwrite(asm_display.buf, 1, asm_display.len, stdout);
+    if (true) // Write x86 to file
+    {
+        bh_str_buf asm_display = bh_str_buf_init(GPA, 10000);
+        x86_asm_list(&asm_display, asm_list);
+        builtin_append_string_helpers(&asm_display);
+
+        char* output_name  = bh_alloc(GPA, file_name.len + 8);
+        strncpy(output_name, file_name.buf, file_name.len - 7);
+        strncpy(output_name + file_name.len - 7, "s", 1);
+
+        FILE* fptr;
+        fptr = fopen(output_name, "wb");
+        assert(fptr != NULL);
+        fwrite(asm_display.buf, 1, asm_display.len, fptr);
+        fclose(fptr);
     }
 
     bh_allocator tac_arena = arena_init(100000);
 
-    if (true) // PA3c2 -- output first method as TAC
+    if (false) // PA3c2 -- output first method as TAC
     {
         // bh_allocator tac_arena = arena_init(500000);
         TACList tac_list = tac_list_from_class_list(class_list, GPA);

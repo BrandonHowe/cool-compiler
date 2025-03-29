@@ -46,4 +46,6 @@ void bh_str_buf_clear(bh_str_buf* str_buf);
 void bh_str_buf_deinit(bh_str_buf* str_buf);
 void bh_str_buf_append_lit(bh_str_buf* str_buf, const char* cstr);
 
+bh_str read_file_text(const char* file_name);
+
 #endif //TYPES_H

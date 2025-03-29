@@ -40,6 +40,8 @@ typedef enum ASMOpType
     ASM_OP_BNZ,
     ASM_OP_ADD,
     ASM_OP_SUB,
+    ASM_OP_MUL,
+    ASM_OP_DIV,
     ASM_OP_LABEL,
     ASM_OP_CONSTANT,
     ASM_OP_COMMENT,
@@ -79,12 +81,18 @@ typedef enum ASMRegister
     RA, // Not a real register
 } ASMRegister;
 
+typedef enum ASMImmediateUnits
+{
+    ASMImmediateUnitsBase,
+    ASMImmediateUnitsWord
+} ASMImmediateUnits;
+
 typedef struct ASMParam
 {
     ASMParamType type;
     union
     {
-        struct { int16_t val; } immediate;
+        struct { int16_t val; ASMImmediateUnits units; } immediate;
         struct { ASMRegister name; int16_t offset; } reg;
         struct { int16_t class_idx; int16_t method_idx; } method;
         bh_str label;
@@ -119,8 +127,11 @@ void asm_from_constructor(ASMList* asm_list, ClassNode class_node, int16_t class
 void asm_from_tac_list(ASMList* asm_list, TACList tac_list);
 void asm_from_method(ASMList* asm_list, TACList tac_list);
 ASMList asm_list_init(bh_allocator allocator);
-void display_asm_list(bh_str_buf* str_buf, ASMList asm_list);
 
+void display_asm_list(bh_str_buf* str_buf, ASMList asm_list);
+void x86_asm_list(bh_str_buf* str_buf, ASMList asm_list);
+
+void builtin_append_string_helpers(bh_str_buf* buf);
 void builtin_append_string_constants(ASMList* asm_list);
 void builtin_append_comp_handler(ASMList* asm_list, TACOp op);
 void builtin_append_start(ASMList* asm_list);

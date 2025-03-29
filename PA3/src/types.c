@@ -7,6 +7,7 @@
 #include <alloca.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 bh_str bh_str_from_cstr(const char* cstr)
@@ -183,4 +184,38 @@ void bh_str_buf_clear(bh_str_buf* str_buf)
 void bh_str_buf_deinit(bh_str_buf* str_buf)
 {
     bh_free(str_buf->allocator, str_buf->buf);
+}
+
+bh_str read_file_text(const char* file_name)
+{
+    FILE *file = fopen(file_name, "r");
+    if (file == NULL) {
+        perror("Failed to open file");
+        return (bh_str){ 0 };
+    }
+
+    // Seek to the end to determine the file size
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    rewind(file);
+
+    // Allocate memory to hold the file content
+    char* buffer = malloc(fileSize);
+    if (buffer == NULL) {
+        perror("Failed to allocate memory");
+        fclose(file);
+        return (bh_str){ 0 };
+    }
+
+    // Read the file into the buffer
+    size_t bytesRead = fread(buffer, 1, fileSize, file);
+    if (bytesRead != fileSize) {
+        perror("Failed to read the file");
+        free(buffer);
+        fclose(file);
+        return (bh_str){ 0 };
+    }
+
+    fclose(file);
+    return (bh_str){ .buf = buffer, .len = bytesRead };
 }
