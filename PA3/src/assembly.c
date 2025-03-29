@@ -741,6 +741,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     asm_list_append_push(asm_list, RBP);
     asm_list_append_mov(asm_list, RBP, RSP);
     asm_list_append_ld(asm_list, R12, RBP, 2);
+    asm_list_append_comment(asm_list, "stack room for temporaries");
     asm_list_append_li(asm_list, R14, tac_list._curr_symbol, ASMImmediateUnitsWord);
     asm_list_append_arith(asm_list, ASM_OP_SUB, RSP, R14);
 
@@ -848,6 +849,10 @@ void builtin_append_string_constants(ASMList* asm_list)
     asm_list_append_comment(asm_list, "global string constants");
     asm_list_append_label(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "string_abort"));
     asm_list_append_string_constant(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "abort\\n"));
+    asm_list_append_label(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "percent.d"));
+    asm_list_append_string_constant(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "%ld"));
+    asm_list_append_label(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "percent.ld"));
+    asm_list_append_string_constant(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, " %ld"));
     asm_list_append_label(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "void_dispatch_error_begin"));
     asm_list_append_string_constant(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "ERROR: "));
     asm_list_append_label(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "void_dispatch_error_end"));
@@ -1449,11 +1454,11 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             break;
         case ASM_OP_COMMENT:
             x86_asm_param(str_buf, class_list, instr.params[0]);
-            if (bh_str_equal_lit(instr.params[0].comment, "method definition"))
-            {
-                bh_str_buf_append_lit(str_buf, "\npushq %rbp\nmovq %rsp, %rbp\nmovq 16(%rbp), %r12");
-                i += 2;
-            }
+            // if (bh_str_equal_lit(instr.params[0].comment, "method definition"))
+            // {
+            //     bh_str_buf_append_lit(str_buf, "\npushq %rbp\nmovq %rsp, %rbp\nmovq 16(%rbp), %r12");
+            //     i += 2;
+            // }
             break;
         case ASM_OP_LABEL:
             bh_str_buf_append_lit(str_buf, ".globl ");
@@ -1461,6 +1466,10 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             bh_str_buf_append_lit(str_buf, "\n");
             x86_asm_param(str_buf, class_list, instr.params[0]);
             bh_str_buf_append_lit(str_buf, ":");
+            if (bh_str_equal_lit(instr.params[0].label, "start"))
+            {
+                bh_str_buf_append_lit(str_buf, "\n.globl main\n.type main, @function\nmain:");
+            }
             break;
         case ASM_OP_CONSTANT:
             if (instr.params[0].type != ASM_PARAM_STRING_CONSTANT)
@@ -1474,12 +1483,12 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_POP:
-            if (instr.params[0].reg.name == RA)
-            {
-                bh_str_buf_append_lit(str_buf, "movq %rbp, %rsp\npopq %rbp");
-                i += 2;
-                break;
-            }
+            // if (instr.params[0].reg.name == RA)
+            // {
+            //     bh_str_buf_append_lit(str_buf, "movq %rbp, %rsp\npopq %rbp");
+            //     i += 2;
+            //     break;
+            // }
             bh_str_buf_append_lit(str_buf, "popq");
             x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
