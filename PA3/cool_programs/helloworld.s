@@ -537,8 +537,8 @@ Main.blah:              ## method definition
                         pushq %rbp
                         movq %rsp, %rbp
                         movq 16(%rbp), %r12
-                        ## stack room for temporaries: 1
-                        movq $8, %r14
+                        ## stack room for temporaries: 2
+                        movq $16, %r14
                         subq %r14, %rsp
                         ## return address handling
                         ## self[3] holds field x (Int)
@@ -551,7 +551,36 @@ Main.blah:              ## method definition
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq $123, %r14
+                        movq $5, %r14
+                        movq %r14, 24(%r13)
+                        movq 24(%r13), %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $4, %r14
+                        movq %r14, 24(%r13)
+                        movq 24(%r13), %r13
+                        movq 0(%rbp), %r14
+                        
+movq %r14, %rax
+imull %r13d, %eax
+shlq $32, %rax
+shrq $32, %rax
+movl %eax, %r13d
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq 0(%rbp), %r14
                         movq %r14, 24(%r13)
 .globl Main.blah.end
 Main.blah.end:          ## method body ends
