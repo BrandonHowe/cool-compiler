@@ -16,6 +16,7 @@ typedef enum TACSymbolType
     TAC_SYMBOL_TYPE_INTEGER,
     TAC_SYMBOL_TYPE_BOOL,
     TAC_SYMBOL_TYPE_STRING,
+    TAC_SYMBOL_TYPE_METHOD,
 } TACSymbolType;
 
 typedef struct TACSymbol
@@ -27,6 +28,7 @@ typedef struct TACSymbol
         int16_t integer;
         bh_str string;
         bh_str variable;
+        struct { int16_t class_idx; int16_t method_idx; } method;
     };
 } TACSymbol;
 
@@ -60,7 +62,8 @@ typedef enum TACOp
     TAC_OP_LABEL,
     TAC_OP_RETURN,
     TAC_OP_COMMENT,
-    TAC_OP_BT
+    TAC_OP_BT,
+    TAC_OP_IGNORE,
 } TACOp;
 
 typedef struct TACExpr
@@ -78,10 +81,12 @@ typedef struct TACList
 {
     int16_t count;
     int16_t capacity;
-    bh_str class_name;
+    int16_t class_idx;
+    int16_t method_idx;
     bh_str method_name;
     TACExpr* items;
     bh_allocator allocator;
+    ClassNodeList class_list;
 
     int16_t _curr_label;
     int16_t _curr_symbol;

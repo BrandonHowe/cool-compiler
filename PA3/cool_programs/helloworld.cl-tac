@@ -1,8 +1,7 @@
 comment start
 label Main_main_0
-t$3 <- int 5
-t$4 <- int 6
-t$1 <- + t$3 t$4
-t$2 <- int 7
-t$0 <- + t$1 t$2
+t$1 <- int 9
+t$2 <- t$1
+t$3 <- int 456
+t$0 <- + t$2 t$3
 return t$0

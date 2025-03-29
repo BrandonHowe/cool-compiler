@@ -47,7 +47,7 @@ bh_str read_file_text(const char* file_name)
     return (bh_str){ .buf = buffer, .len = bytesRead };
 }
 
-void append_tac_symbol(bh_str_buf* str_buf, TACSymbol symbol)
+void append_tac_symbol(bh_str_buf* str_buf, ClassNodeList class_list, TACSymbol symbol)
 {
     switch (symbol.type)
     {
@@ -57,6 +57,7 @@ void append_tac_symbol(bh_str_buf* str_buf, TACSymbol symbol)
     case TAC_SYMBOL_TYPE_INTEGER: bh_str_buf_append_format(str_buf, "%i", symbol.integer); break;
     case TAC_SYMBOL_TYPE_STRING: bh_str_buf_append(str_buf, symbol.string); break;
     case TAC_SYMBOL_TYPE_BOOL: bh_str_buf_append_format(str_buf, "%s", symbol.integer ? "true" : "false"); break;
+    case TAC_SYMBOL_TYPE_METHOD: bh_str_buf_append(str_buf, class_list.class_nodes[symbol.method.class_idx].methods[symbol.method.method_idx].name); break;
     }
 }
 
@@ -70,27 +71,86 @@ int main(int argc, char* argv[])
     bh_str file = read_file_text(argv[1]);
     bh_str file_name = bh_str_from_cstr(argv[1]);
 
-    // bh_allocator parser_arena = arena_init(1000000);
+    // bh_allocator parser_arena = resizable_arena_init(GPA, 100);
     bh_allocator parser_arena = GPA;
     ClassNodeList class_list = parse_class_map(&file, parser_arena);
     parse_implementation_map(&file, parser_arena, class_list);
     parse_parent_map(&file, parser_arena, class_list);
-    CoolAST AST = parse_ast(&file, parser_arena);
 
+    bh_allocator tac_allocator = arena_init(1000000);
     ASMList asm_list = asm_list_init(GPA);
-    TACList tac_list = tac_list_from_class_list(class_list, GPA);
-    asm_from_tac_list(&asm_list, tac_list);
+    asm_list.class_list = &class_list;
+    asm_list.tac_allocator = tac_allocator;
+    asm_list.string_allocator = arena_init(10000);
+    asm_from_vtable(&asm_list);
 
-    bh_str_buf asm_display = bh_str_buf_init(GPA, 10000);
-    display_asm_list(&asm_display, asm_list);
-    printf(asm_display.buf);
+    for (int i = 0; i < class_list.class_count; i++)
+    {
+        asm_from_constructor(&asm_list, class_list.class_nodes[i], i);
+    }
+
+    for (int i = 0; i < class_list.class_count; i++)
+    {
+        for (int j = 0; j < class_list.class_nodes[i].method_count; j++)
+        {
+            const ClassMethod method = class_list.class_nodes[i].methods[j];
+
+            if (bh_str_equal(method.inherited_from, class_list.class_nodes[i].name))
+            {
+                int16_t capacity = 200;
+                TACList list = (TACList)
+                {
+                    .allocator = tac_allocator,
+                    .capacity = capacity,
+                    .count = 0,
+                    .items = bh_alloc(tac_allocator, capacity * sizeof(TACExpr)),
+                    .class_list = class_list,
+                    .class_idx = i,
+                    .method_idx = j,
+                    .method_name = method.name,
+                    ._bindings = bh_alloc(tac_allocator, capacity * sizeof(TACBinding)),
+                    ._binding_count = 0
+                };
+
+                tac_list_from_expression(method.body, &list, (TACSymbol){ 0 });
+
+                asm_from_method(&asm_list, list);
+            }
+        }
+    }
+
+    builtin_append_string_constants(&asm_list);
+
+    builtin_append_comp_handler(&asm_list, TAC_OP_EQ);
+    builtin_append_comp_handler(&asm_list, TAC_OP_LTE);
+    builtin_append_comp_handler(&asm_list, TAC_OP_LT);
+    builtin_append_start(&asm_list);
+
+    if (true) // Write asm to file
+    {
+        bh_str_buf asm_display = bh_str_buf_init(GPA, 10000);
+        display_asm_list(&asm_display, asm_list);
+
+        char* output_name  = bh_alloc(GPA, file_name.len + 10);
+        strncpy(output_name, file_name.buf, file_name.len - 4);
+        strncpy(output_name + file_name.len - 4, "asm", 3);
+
+        FILE* fptr;
+        fptr = fopen(output_name, "wb");
+        assert(fptr != NULL);
+        fwrite(asm_display.buf, 1, asm_display.len, fptr);
+        fclose(fptr);
+
+        // fwrite(asm_display.buf, 1, asm_display.len, stdout);
+    }
 
     bh_allocator tac_arena = arena_init(100000);
 
-    if (false) // PA3c2 -- output first method as TAC
+    if (true) // PA3c2 -- output first method as TAC
     {
         // bh_allocator tac_arena = arena_init(500000);
         TACList tac_list = tac_list_from_class_list(class_list, GPA);
+        const bh_str class_name = tac_list.class_list.class_nodes[tac_list.class_idx].name;
 
         bh_str_buf str_buf = bh_str_buf_init(GPA, 10000);
         for (int i = 0; i < tac_list.count; i++)
@@ -110,6 +170,7 @@ int main(int argc, char* argv[])
             }
             switch (expr.operation)
             {
+            case TAC_OP_IGNORE: bh_str_buf_append_lit(&str_buf, "init call");
             case TAC_OP_ASSIGN: bh_str_buf_append_lit(&str_buf, ""); break;
             case TAC_OP_PLUS: bh_str_buf_append_lit(&str_buf, "+ "); break;
             case TAC_OP_MINUS: bh_str_buf_append_lit(&str_buf, "- "); break;
@@ -129,14 +190,14 @@ int main(int argc, char* argv[])
             case TAC_OP_CALL: bh_str_buf_append_lit(&str_buf, "call "); break;
             case TAC_OP_JMP:
                 bh_str_buf_append_lit(&str_buf, "jmp ");
-                bh_str_buf_append(&str_buf, tac_list.class_name);
+                bh_str_buf_append(&str_buf, class_name);
                 bh_str_buf_append_lit(&str_buf, "_");
                 bh_str_buf_append(&str_buf, tac_list.method_name);
                 bh_str_buf_append_lit(&str_buf, "_");
                 break;
             case TAC_OP_LABEL:
                 bh_str_buf_append_lit(&str_buf, "label ");
-                bh_str_buf_append(&str_buf, tac_list.class_name);
+                bh_str_buf_append(&str_buf, class_name);
                 bh_str_buf_append_lit(&str_buf, "_");
                 bh_str_buf_append(&str_buf, tac_list.method_name);
                 bh_str_buf_append_lit(&str_buf, "_");
@@ -146,14 +207,14 @@ int main(int argc, char* argv[])
             case TAC_OP_BT: bh_str_buf_append_lit(&str_buf, "bt "); break;
             default: assert(0 && "Invalid expression"); break;
             }
-            append_tac_symbol(&str_buf, expr.rhs1);
+            append_tac_symbol(&str_buf, class_list, expr.rhs1);
             if (expr.rhs2.type)
             {
                 bh_str_buf_append_lit(&str_buf, " ");
             }
             if (expr.operation == TAC_OP_BT)
             {
-                bh_str_buf_append(&str_buf, tac_list.class_name);
+                bh_str_buf_append(&str_buf, class_name);
                 bh_str_buf_append_lit(&str_buf, "_");
                 bh_str_buf_append(&str_buf, tac_list.method_name);
                 bh_str_buf_append_lit(&str_buf, "_");
@@ -163,10 +224,10 @@ int main(int argc, char* argv[])
                 for (int i = 0; i < expr.arg_count; i++)
                 {
                     bh_str_buf_append_lit(&str_buf, " ");
-                    append_tac_symbol(&str_buf, expr.args[i]);
+                    append_tac_symbol(&str_buf, class_list, expr.args[i]);
                 }
             }
-            append_tac_symbol(&str_buf, expr.rhs2);
+            append_tac_symbol(&str_buf, class_list, expr.rhs2);
             bh_str_buf_append_lit(&str_buf, "\n");
         }
 

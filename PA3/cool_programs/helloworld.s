@@ -59,6 +59,14 @@ String..vtable:         ## virtual function table for String
                         .quad String.length
                         .quad String.substr
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl ZZ..vtable
+ZZ..vtable:             ## virtual function table for ZZ
+                        .quad string7
+                        .quad ZZ..new
+                        .quad Object.abort
+                        .quad Object.copy
+                        .quad Object.type_name
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Bool..new
 Bool..new:              ## constructor for Bool
                         pushq %rbp
@@ -241,6 +249,65 @@ String..new:            ## constructor for String
                         popq %rbp
                         ret
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl ZZ..new
+ZZ..new:                ## constructor for ZZ
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        ## stack room for temporaries: 1
+                        movq $8, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        movq $5, %r12
+                        movq $8, %rsi
+			movq %r12, %rdi
+			call calloc
+			movq %rax, %r12
+                        ## store class tag, object size and vtable pointer
+                        movq $13, %r14
+                        movq %r14, 0(%r12)
+                        movq $5, %r14
+                        movq %r14, 8(%r12)
+                        movq $ZZ..vtable, %r14
+                        movq %r14, 16(%r12)
+                        ## initialize attributes
+                        ## self[3] holds field a (Int)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq %r13, 24(%r12)
+                        ## self[4] holds field b (Object)
+                        movq $0, %r13
+                        movq %r13, 32(%r12)
+                        ## self[3] a initializer <- 5
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $5, %r14
+                        movq %r14, 24(%r13)
+                        movq %r13, 24(%r12)
+                        ## self[4] b initializer <- new Object
+                        ## new Object
+                        pushq %rbp
+                        pushq %r12
+                        movq $Object..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq %r13, 32(%r12)
+                        movq %r12, %r13
+                        ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Object.abort
 Object.abort:           ## method definition
                         pushq %rbp
@@ -251,7 +318,7 @@ Object.abort:           ## method definition
                         subq %r14, %rsp
                         ## return address handling
                         ## method body begins
-                        movq $string7, %r13
+                        movq $string8, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
@@ -461,12 +528,16 @@ Main.main:              ## method definition
                         pushq %rbp
                         movq %rsp, %rbp
                         movq 16(%rbp), %r12
-                        ## stack room for temporaries: 2
-                        movq $16, %r14
+                        ## stack room for temporaries: 3
+                        movq $24, %r14
                         subq %r14, %rsp
                         ## return address handling
                         ## self[3] holds field x (Int)
                         ## method body begins
+                        pushq %r12
+                        pushq %rbp
+                        pushq %r12
+                        pushq %rbp
                         ## new Int
                         pushq %rbp
                         pushq %r12
@@ -476,8 +547,7 @@ Main.main:              ## method definition
                         popq %rbp
                         movq $5, %r14
                         movq %r14, 24(%r13)
-                        movq 24(%r13), %r13
-                        movq %r13, 0(%rbp)
+                        pushq %r13
                         ## new Int
                         pushq %rbp
                         pushq %r12
@@ -487,21 +557,15 @@ Main.main:              ## method definition
                         popq %rbp
                         movq $6, %r14
                         movq %r14, 24(%r13)
-                        movq 24(%r13), %r13
-                        movq 0(%rbp), %r14
-                        addq %r14, %r13
-                        movq %r13, 0(%rbp)
-                        ## new Int
-                        pushq %rbp
+                        pushq %r13
                         pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
+                        call eq_handler
+                        addq $24, %rsp
                         popq %rbp
-                        movq 0(%rbp), %r14
-                        movq %r14, 24(%r13)
-                        movq 24(%r13), %r13
-                        movq %r13, 0(%rbp)
+                        popq %r12
+                        pushq %r13
+                        pushq %r12
+                        pushq %rbp
                         ## new Int
                         pushq %rbp
                         pushq %r12
@@ -511,10 +575,7 @@ Main.main:              ## method definition
                         popq %rbp
                         movq $7, %r14
                         movq %r14, 24(%r13)
-                        movq 24(%r13), %r13
-                        movq 0(%rbp), %r14
-                        addq %r14, %r13
-                        movq %r13, 0(%rbp)
+                        pushq %r13
                         ## new Int
                         pushq %rbp
                         pushq %r12
@@ -522,8 +583,20 @@ Main.main:              ## method definition
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq 0(%rbp), %r14
+                        movq $8, %r14
                         movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        call eq_handler
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
+                        pushq %r13
+                        pushq %r12
+                        call eq_handler
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
 .globl Main.main.end
 Main.main.end:          ## method body ends
                         ## return address handling
@@ -630,7 +703,7 @@ String.substr:          ## method definition
 			movq %rax, %r13
                         cmpq $0, %r13
 			jne l3
-                        movq $string8, %r13
+                        movq $string9, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
@@ -715,7 +788,13 @@ string6:                # "String"
 .byte 0
 
 .globl string7
-string7:                # "abort\\n"
+string7:                # "ZZ"
+.byte  90 # 'Z'
+.byte  90 # 'Z'
+.byte 0
+
+.globl string8
+string8:                # "abort\\n"
 .byte  97 # 'a'
 .byte  98 # 'b'
 .byte 111 # 'o'
@@ -725,8 +804,8 @@ string7:                # "abort\\n"
 .byte 110 # 'n'
 .byte 0
 
-.globl string8
-string8:                # "ERROR: 0: Exception: String.substr out of range\\n"
+.globl string9
+string9:                # "ERROR: 0: Exception: String.substr out of range\\n"
 .byte  69 # 'E'
 .byte  82 # 'R'
 .byte  82 # 'R'

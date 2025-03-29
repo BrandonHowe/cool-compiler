@@ -69,6 +69,19 @@ void arena_load(bh_allocator allocator);
 void arena_load_manual(bh_allocator allocator, uint32_t savepoint);
 void arena_deinit(bh_allocator allocator);
 
+typedef struct bh_resizable_arena_data {
+    uint32_t capacity;
+    uint32_t used;
+    uint32_t prev_offset;
+    uint32_t savepoint;
+    uint32_t savepoint_prev;
+    void* buffer;
+    bh_allocator backing;
+} bh_resizable_arena_data;
+
+bh_allocator resizable_arena_init(bh_allocator backing, uint32_t initial_size);
+void resizable_arena_free_all(bh_allocator allocator);
+
 typedef struct bh_pool_free_node {
     struct bh_pool_free_node *next;
 } bh_pool_free_node;

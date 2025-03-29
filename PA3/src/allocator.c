@@ -115,6 +115,82 @@ void arena_deinit(bh_allocator allocator)
     free(data);
 }
 
+void* resizable_arena_proc(bh_allocator* this_allocator, bh_allocator_mode mode, bh_allocator_args args)
+{
+    bh_resizable_arena_data* data = this_allocator->data;
+    switch (mode)
+    {
+        case bh_allocator_mode_alloc:
+        {
+            // Check if there is enough space; if not, expand.
+            if (data->used + args.size > data->capacity)
+            {
+                uint32_t new_capacity = data->capacity * 2;
+                printf("Resizing arena to %i\n", new_capacity);
+                if (new_capacity < data->used + args.size)
+                    new_capacity = data->used + args.size;
+                // Allocate new buffer via the backing allocator.
+                void* new_buffer = bh_alloc(data->backing, new_capacity);
+                // Copy old data.
+                memcpy(new_buffer, data->buffer, data->used);
+                // Free old buffer.
+                bh_free(data->backing, data->buffer);
+                // Update arena buffer and capacity.
+                data->buffer = new_buffer;
+                data->capacity = new_capacity;
+            }
+            void* ptr = (char*)data->buffer + data->used;
+            data->prev_offset = data->used;
+            data->used += args.size;
+            return ptr;
+        }
+        case bh_allocator_mode_realloc:
+        {
+            // Only support realloc on the most recent allocation.
+            if (args.ptr == (char*)data->buffer + data->prev_offset)
+            {
+                if (data->prev_offset + args.size > data->capacity)
+                {
+                    uint32_t new_capacity = data->capacity * 2;
+                    if (new_capacity < data->prev_offset + args.size)
+                        new_capacity = data->prev_offset + args.size;
+                    void* new_buffer = bh_alloc(data->backing, new_capacity);
+                    memcpy(new_buffer, data->buffer, data->prev_offset);
+                    bh_free(data->backing, data->buffer);
+                    data->buffer = new_buffer;
+                    data->capacity = new_capacity;
+                }
+                data->used = data->prev_offset + args.size;
+                return (char*)data->buffer + data->prev_offset;
+            }
+            break;
+        }
+        case bh_allocator_mode_free:
+            return NULL;
+        default: break;
+    }
+    assert(0);
+    return NULL;
+}
+
+bh_allocator resizable_arena_init(bh_allocator backing, uint32_t initial_size)
+{
+    bh_resizable_arena_data* data = calloc(1, sizeof(bh_resizable_arena_data));
+    data->backing = backing;
+    // Allocate initial buffer using the backing allocator.
+    data->used = 0;
+    data->capacity = initial_size;
+    data->buffer = bh_alloc(backing, initial_size);
+    bh_allocator allocator = { .data = data, .proc = resizable_arena_proc };
+    return allocator;
+}
+
+void resizable_arena_free_all(bh_allocator allocator)
+{
+    bh_resizable_arena_data* data = allocator.data;
+    data->used = 0;
+}
+
 // Procedure for an arena allocator
 void* pool_proc(bh_allocator* this_allocator, bh_allocator_mode mode, bh_allocator_args args)
 {

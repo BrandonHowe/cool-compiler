@@ -14,6 +14,13 @@ bh_str bh_str_from_cstr(const char* cstr)
     return (bh_str){ .buf = cstr, .len = strlen(cstr) };
 }
 
+bh_str bh_str_alloc_cstr(bh_allocator allocator, const char* cstr)
+{
+    char* buf = bh_alloc(allocator, strlen(cstr));
+    strncpy(buf, cstr, strlen(cstr));
+    return (bh_str){ .buf = buf, .len = strlen(cstr) };
+}
+
 int8_t bh_str_equal(const bh_str str1, const bh_str str2)
 {
     if (str1.len != str2.len) return 0;
@@ -154,6 +161,11 @@ void bh_str_buf_append_format(bh_str_buf* buf, const char* format, ...)
     buf->len += append_size;
 
     va_end(va);
+}
+
+void bh_str_buf_append_lit(bh_str_buf* str_buf, const char* cstr)
+{
+    bh_str_buf_append(str_buf, bh_str_from_cstr(cstr));
 }
 
 void bh_str_buf_reserve(bh_str_buf* str_buf, uint32_t capacity)

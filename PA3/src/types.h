@@ -17,6 +17,7 @@ typedef struct bh_str
 } bh_str;
 
 bh_str bh_str_from_cstr(const char* cstr);
+bh_str bh_str_alloc_cstr(bh_allocator allocator, const char* cstr);
 int8_t bh_str_equal(const bh_str str1, const bh_str str2);
 int8_t bh_str_cmp(const bh_str str1, const bh_str str2);
 bh_str until_newline(const bh_str str);
@@ -43,7 +44,6 @@ void bh_str_buf_append_format(bh_str_buf* buf, const char* format, ...);
 void bh_str_buf_reserve(bh_str_buf* str_buf, uint32_t capacity);
 void bh_str_buf_clear(bh_str_buf* str_buf);
 void bh_str_buf_deinit(bh_str_buf* str_buf);
-
-#define bh_str_buf_append_lit(str_buf, cstr) bh_str_buf_append((str_buf), (bh_str_from_cstr(cstr)))
+void bh_str_buf_append_lit(bh_str_buf* str_buf, const char* cstr);
 
 #endif //TYPES_H
