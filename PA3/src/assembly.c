@@ -1363,13 +1363,13 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
                 assert(0 && "Unhandled internal string");
             }
         }
-        else if (bh_str_equal_lit(class_list.class_nodes[param.method.class_idx].name, "IO"))
+        else if (bh_str_equal_lit(class_list.class_nodes[param.method.class_idx].name, "IO") && param.method.method_idx >= 3)
         {
             if (param.method.method_idx == 3) // in_int
             {
-                bh_str_buf_append_lit(str_buf, "movl $1, %esi\nmovl $4096, %edi\ncall calloc\npushq %rax\nmovq %rax, %rdi");
-                bh_str_buf_append_lit(str_buf, "movq $4096, %rsi\nmovq stdin(%rip), %rdx\ncall fgets\npopq %rdi\nmovl $0, %eax");
-                bh_str_buf_append_lit(str_buf, "pushq %rax\nmovq %rsp, %rdx\nmovq $percent.ld, %rsi\ncall sscanf\npopq %rax");
+                bh_str_buf_append_lit(str_buf, "movl $1, %esi\nmovl $4096, %edi\ncall calloc\npushq %rax\nmovq %rax, %rdi\n");
+                bh_str_buf_append_lit(str_buf, "movq $4096, %rsi\nmovq stdin(%rip), %rdx\ncall fgets\npopq %rdi\nmovl $0, %eax\n");
+                bh_str_buf_append_lit(str_buf, "pushq %rax\nmovq %rsp, %rdx\nmovq $percent.ld, %rsi\ncall sscanf\npopq %rax\n");
                 bh_str_buf_append_lit(str_buf, "movq $0, %rsi\ncmpq $2147483647, %rax\ncmovg %rsi, %ax\ncmpq $-2147483648 %rax");
                 bh_str_buf_append_lit(str_buf, "cmovl %rsi, %rax\nmovq %rax, %r13");
             }
@@ -1410,7 +1410,7 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
         bh_str_buf_append(str_buf, param.label);
         break;
     case ASM_PARAM_COMMENT:
-        bh_str_buf_append_lit(str_buf, ";; ");
+        bh_str_buf_append_lit(str_buf, "## ");
         bh_str_buf_append(str_buf, param.comment);
         break;
     case ASM_PARAM_CONSTANT:
@@ -1557,9 +1557,10 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_ALLOC:
-            bh_str_buf_append_lit(str_buf, "alloc");
-            x86_asm_param(str_buf, class_list, instr.params[0]);
+            bh_str_buf_append_lit(str_buf, "movq $8, %rsi\nmovq");
             x86_asm_param(str_buf, class_list, instr.params[1]);
+            bh_str_buf_append_lit(str_buf, " %rdi\ncall calloc\nmovq %rax,");
+            x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_RETURN:
             bh_str_buf_append_lit(str_buf, "ret");
