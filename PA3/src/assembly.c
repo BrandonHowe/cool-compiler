@@ -297,11 +297,11 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
     asm_list_append_label(asm_list, (bh_str){ .buf = constructor_buf, .len = class_node.name.len + 5 });
 
     // initialization stuff
+    asm_list_append_push(asm_list, RBP);
     asm_list_append_mov(asm_list, RBP, RSP);
     asm_list_append_comment(asm_list, "stack room for temporaries");
     asm_list_append_li(asm_list, R14, 2, ASMImmediateUnitsWord);
     asm_list_append_arith(asm_list, ASM_OP_SUB, RSP, R14);
-    asm_list_append_push(asm_list, RA);
 
     // call malloc
     int16_t attribute_count = class_node.attribute_count;
@@ -400,9 +400,11 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
 
     // restore stack
     asm_list_append_mov(asm_list, R13, R12);
-    asm_list_append_pop(asm_list, RA);
-    asm_list_append_li(asm_list, R14, 2, ASMImmediateUnitsWord);
-    asm_list_append_arith(asm_list, ASM_OP_ADD, RSP, R14);
+    asm_list_append_mov(asm_list, RSP, RBP);
+    asm_list_append_pop(asm_list, RBP);
+    // asm_list_append_pop(asm_list, RA);
+    // asm_list_append_li(asm_list, R14, 2, ASMImmediateUnitsWord);
+    // asm_list_append_arith(asm_list, ASM_OP_ADD, RSP, R14);
     asm_list_append_return(asm_list);
 }
 
