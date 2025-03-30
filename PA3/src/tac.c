@@ -250,34 +250,28 @@ TACSymbol tac_list_from_expression(CoolExpression expr, TACList* list, TACSymbol
         }
     case COOL_EXPR_TYPE_WHILE:
         {
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = list->_curr_label }});
+            int16_t label_cond = list->_curr_label++;
+            int16_t label_join = list->_curr_label++;
+
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(while_pred_str) }});
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = list->_curr_label++ }});
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_cond }});
             TACSymbol cond = tac_list_from_expression(*expr.data.while_expr.predicate, list, (TACSymbol){ 0 });
             const TACExpr not_cond = (TACExpr){ .operation = TAC_OP_NOT, .lhs = destination, .rhs1 = cond };
-            TACExpr* not_cond_ptr = TAC_list_append(list, not_cond);
+            TAC_list_append(list, not_cond);
             const TACExpr bt_false = (TACExpr){
                 .operation = TAC_OP_BT,
                 .lhs = destination,
                 .rhs1 = not_cond.lhs,
-                .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = list->_curr_label + 1 }
+                .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }
             };
-            TACExpr* bt_false_ptr = TAC_list_append(list, bt_false);
-            const TACExpr bt_true = (TACExpr){
-                .operation = TAC_OP_BT,
-                .lhs = destination,
-                .rhs1 = cond,
-                .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = list->_curr_label }
-            };
-            TAC_list_append(list, bt_true);
+            TAC_list_append(list, bt_false);
 
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(while_body_str) }});
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = list->_curr_label++ }});
             tac_list_from_expression(*expr.data.while_expr.body, list, TAC_request_symbol(list));
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = list->_curr_label - 2 }});
 
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(while_join_str) }});
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = list->_curr_label++ }});
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }});
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_DEFAULT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(object_str) }});
 
             return destination;

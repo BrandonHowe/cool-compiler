@@ -1344,8 +1344,14 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
             case -2:
                 bh_str_buf_append_lit(str_buf, "string_abort");
                 break;
-            case -3:
+            case INTERNAL_EQ_HANDLER:
                 bh_str_buf_append_lit(str_buf, "eq_handler");
+                break;
+            case INTERNAL_LE_HANDLER:
+                bh_str_buf_append_lit(str_buf, "le_handler");
+                break;
+            case INTERNAL_LT_HANDLER:
+                bh_str_buf_append_lit(str_buf, "lt_handler");
                 break;
             default:
                 assert(0 && "Unhandled internal method");
@@ -1578,7 +1584,7 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_RETURN:
-            bh_str_buf_append_lit(str_buf, "retq");
+            bh_str_buf_append_lit(str_buf, "ret");
             break;
         default:
             assert(0 && "Unhandled asm instruction in display");
