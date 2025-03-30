@@ -87,9 +87,9 @@ int main(int argc, char* argv[])
 
     builtin_append_string_constants(&asm_list);
 
-    builtin_append_comp_handler(&asm_list, TAC_OP_EQ);
-    builtin_append_comp_handler(&asm_list, TAC_OP_LTE);
-    builtin_append_comp_handler(&asm_list, TAC_OP_LT);
+    // builtin_append_comp_handler(&asm_list, TAC_OP_EQ);
+    // builtin_append_comp_handler(&asm_list, TAC_OP_LTE);
+    // builtin_append_comp_handler(&asm_list, TAC_OP_LT);
     builtin_append_start(&asm_list);
 
     if (false) // Write asm to file

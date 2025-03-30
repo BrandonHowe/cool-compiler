@@ -1,3 +1,252 @@
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl eq_handler
+eq_handler:             ## helper function for =
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        movq 32(%rbp), %r12
+                        ## return address handling
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        cmpq %r14, %r13
+			je eq_true
+                        movq $0, %r15
+                        cmpq %r15, %r13
+			je eq_false
+                        cmpq %r15, %r14
+			je eq_false
+                        movq 0(%r13), %r13
+                        movq 0(%r14), %r14
+                        ## place the sum of the type tags in r1
+                        addq %r14, %r13
+                        movq $0, %r14
+                        cmpq %r14, %r13
+			je eq_bool
+                        movq $2, %r14
+                        cmpq %r14, %r13
+			je eq_int
+                        movq $6, %r14
+                        cmpq %r14, %r13
+			je eq_string
+                        ## otherwise, use pointer comparison
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        cmpq %r14, %r13
+			je eq_true
+.globl eq_false
+eq_false:               ## not equal
+                        ## new Bool
+                        pushq %rbp
+                        pushq %r12
+                        movq $Bool..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        jmp eq_end
+.globl eq_true
+eq_true:                ## equal
+                        ## new Bool
+                        pushq %rbp
+                        pushq %r12
+                        movq $Bool..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+                        jmp eq_end
+.globl eq_bool
+eq_bool:                ## two Bools
+.globl eq_int
+eq_int:                 ## two Ints
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14
+                        cmpq %r14, %r13
+			je eq_true
+                        jmp eq_false
+.globl eq_string
+eq_string:              ## two Strings
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14
+
+  movq %r13, %rdi
+  movq %r14, %rsi
+  call strcmp
+  cmp $0, %eax
+  je eq_true
+                        jmp eq_false
+.globl eq_end
+eq_end:                 ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl le_handler
+le_handler:             ## helper function for <=
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        movq 32(%rbp), %r12
+                        ## return address handling
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        cmpq %r14, %r13
+			je le_true
+                        movq $0, %r15
+                        cmpq %r15, %r13
+			je le_false
+                        cmpq %r15, %r14
+			je le_false
+                        movq 0(%r13), %r13
+                        movq 0(%r14), %r14
+                        ## place the sum of the type tags in r1
+                        addq %r14, %r13
+                        movq $0, %r14
+                        cmpq %r14, %r13
+			je le_bool
+                        movq $2, %r14
+                        cmpq %r14, %r13
+			je le_int
+                        movq $6, %r14
+                        cmpq %r14, %r13
+			je le_string
+                        ## for non-primitives, equality is our only hope
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        cmpq %r14, %r13
+			je le_true
+.globl le_false
+le_false:               ## not less-than-or-equal
+                        ## new Bool
+                        pushq %rbp
+                        pushq %r12
+                        movq $Bool..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        jmp le_end
+.globl le_true
+le_true:                ## less-than-or-equal
+                        ## new Bool
+                        pushq %rbp
+                        pushq %r12
+                        movq $Bool..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+                        jmp le_end
+.globl le_bool
+le_bool:                ## two Bools
+.globl le_int
+le_int:                 ## two Ints
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14
+                        cmpl %r14d, %r13d
+			jle le_true
+                        jmp le_false
+.globl le_string
+le_string:              ## two Strings
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14
+
+  movq %r13, %rdi
+  movq %r14, %rsi
+  call strcmp
+  cmp $0, %eax
+  jle le_true
+                        jmp le_false
+.globl le_end
+le_end:                 ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl lt_handler
+lt_handler:             ## helper function for <
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        movq 32(%rbp), %r12
+                        ## return address handling
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        movq $0, %r15
+                        cmpq %r15, %r13
+			je lt_false
+                        cmpq %r15, %r14
+			je lt_false
+                        movq 0(%r13), %r13
+                        movq 0(%r14), %r14
+                        ## place the sum of the type tags in r1
+                        addq %r14, %r13
+                        movq $0, %r14
+                        cmpq %r14, %r13
+			je lt_bool
+                        movq $2, %r14
+                        cmpq %r14, %r13
+			je lt_int
+                        movq $6, %r14
+                        cmpq %r14, %r13
+			je lt_string
+                        ## for non-primitives, < is always false
+.globl lt_false
+lt_false:               ## not less than
+                        ## new Bool
+                        pushq %rbp
+                        pushq %r12
+                        movq $Bool..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        jmp lt_end
+.globl lt_true
+lt_true:                ## less than
+                        ## new Bool
+                        pushq %rbp
+                        pushq %r12
+                        movq $Bool..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+                        jmp lt_end
+.globl lt_bool
+lt_bool:                ## two Bools
+.globl lt_int
+lt_int:                 ## two Ints
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14
+                        cmpl %r14d, %r13d
+			jl lt_true
+                        jmp lt_false
+.globl lt_string
+lt_string:              ## two Strings
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14
+
+  movq %r13, %rdi
+  movq %r14, %rsi
+  call strcmp
+  cmp $0, %eax
+  jl lt_true
+                        jmp lt_false
+.globl lt_end
+lt_end:                 ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
 
 
 .globl cooloutstr
