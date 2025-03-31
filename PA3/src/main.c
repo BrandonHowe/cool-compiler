@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
     // builtin_append_comp_handler(&asm_list, TAC_OP_LT);
     builtin_append_start(&asm_list);
 
-    if (false) // Write asm to file
+    if (true) // Write asm to file
     {
         bh_str_buf asm_display = bh_str_buf_init(GPA, 10000);
         display_asm_list(&asm_display, asm_list);

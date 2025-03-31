@@ -656,25 +656,35 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             break;
         case TAC_OP_CALL:
         {
-            // Check for void
-            bh_str_buf label_buf = bh_str_buf_init(asm_list->string_allocator, 4);
-            bh_str_buf_append_format(&label_buf, "l%i", ++asm_list->_global_label);
-            bh_str label_str = (bh_str){ .buf = label_buf.buf, .len = label_buf.len };
-            asm_list_append_bnz(asm_list, R13, label_str);
-            asm_list_append_la(asm_list, R13, INTERNAL_STRINGS, INTERNAL_VOID_DISPATCH_START_STR);
-            asm_list_append_syscall(asm_list, io_class_idx, 6);
-            asm_list_append_li(asm_list, R13, expr.arg_count, ASMImmediateUnitsBase);
-            asm_list_append_syscall(asm_list, io_class_idx, 5);
-            asm_list_append_la(asm_list, R13, INTERNAL_STRINGS, INTERNAL_VOID_DISPATCH_END_STR);
-            asm_list_append_syscall(asm_list, io_class_idx, 6);
-            asm_list_append_syscall(asm_list, INTERNAL_CLASS, 0);
-            asm_list_append_label(asm_list, label_str);
+            // Check for void if not self dispatch
+            if (expr.args[expr.arg_count - 1].symbol > 0)
+            {
+                bh_str_buf label_buf = bh_str_buf_init(asm_list->string_allocator, 4);
+                bh_str_buf_append_format(&label_buf, "l%i", ++asm_list->_global_label);
+                bh_str label_str = (bh_str){ .buf = label_buf.buf, .len = label_buf.len };
+                asm_list_append_bnz(asm_list, R13, label_str);
+                asm_list_append_la(asm_list, R13, INTERNAL_STRINGS, INTERNAL_VOID_DISPATCH_START_STR);
+                asm_list_append_syscall(asm_list, io_class_idx, 6);
+                asm_list_append_li(asm_list, R13, expr.arg_count, ASMImmediateUnitsBase);
+                asm_list_append_syscall(asm_list, io_class_idx, 5);
+                asm_list_append_la(asm_list, R13, INTERNAL_STRINGS, INTERNAL_VOID_DISPATCH_END_STR);
+                asm_list_append_syscall(asm_list, io_class_idx, 6);
+                asm_list_append_syscall(asm_list, INTERNAL_CLASS, 0);
+                asm_list_append_label(asm_list, label_str);
+            }
 
             // Push all the params onto the stack
             for (int j = 0; j < expr.arg_count; j++)
             {
-                asm_list_append_ld(asm_list, R13, RBP, -0 - expr.args[j].symbol);
-                asm_list_append_push(asm_list, R13);
+                if (j == expr.arg_count - 1 && expr.args[j].symbol == 0)
+                {
+                    asm_list_append_push(asm_list, R12);
+                }
+                else
+                {
+                    asm_list_append_ld(asm_list, R13, RBP, -0 - expr.args[j].symbol);
+                    asm_list_append_push(asm_list, R13);
+                }
             }
 
             // Perform the call
