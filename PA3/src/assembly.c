@@ -532,7 +532,9 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
         case TAC_OP_TIMES:
         case TAC_OP_DIVIDE:
             asm_list_append_ld(asm_list, R13, RBP, -0 - expr.rhs1.symbol);
+            asm_list_append_ld(asm_list, R13, R13, 3);
             asm_list_append_ld(asm_list, R14, RBP, -0 - expr.rhs2.symbol);
+            asm_list_append_ld(asm_list, R14, R14, 3);
             asm_list_append(asm_list, (ASMInstr){
                 .op = ASM_OP_ADD + (expr.operation - TAC_OP_PLUS),
                 .params = {
@@ -541,7 +543,11 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                     (ASMParam){ .type = ASM_PARAM_REGISTER, .reg = R13 },
                 }
             });
-            asm_list_append_to_stack(asm_list, R13);
+            asm_list_append_st(asm_list, RBP, -0 - expr.lhs.symbol, R13);
+            asm_list_append_call_method(asm_list, int_class_idx, -1);
+            asm_list_append_ld(asm_list, R14, RBP, -0 - expr.lhs.symbol);
+            asm_list_append_st(asm_list, R13, 3, R14);
+            asm_list_append_st(asm_list, RBP, -0 - expr.lhs.symbol, R13);
             break;
         case TAC_OP_LT:
             asm_from_tac_symbol(asm_list, expr.rhs1);
