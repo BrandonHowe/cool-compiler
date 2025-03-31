@@ -34,6 +34,7 @@ Main..vtable:           ## virtual function table for Main
                         .quad Object.abort
                         .quad Object.copy
                         .quad Object.type_name
+                        .quad Main.blah
                         .quad Main.main
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Object..vtable
@@ -531,21 +532,18 @@ IO.out_string.end:      ## method body ends
                         popq %rbp
                         ret
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.globl Main.main
-Main.main:              ## method definition
+.globl Main.blah
+Main.blah:              ## method definition
                         pushq %rbp
                         movq %rsp, %rbp
                         movq 16(%rbp), %r12
-                        ## stack room for temporaries: 2
-                        movq $16, %r14
+                        ## stack room for temporaries: 1
+                        movq $8, %r14
                         subq %r14, %rsp
                         ## return address handling
                         ## self[3] holds field x (Int)
                         ## self[4] holds field io (IO)
                         ## method body begins
-                        ## io.out_int(...)
-                        pushq %r12
-                        pushq %rbp
                         ## io.in_int(...)
                         pushq %r12
                         pushq %rbp
@@ -568,6 +566,77 @@ l3:                     pushq %r13
                         addq $8, %rsp
                         popq %rbp
                         popq %r12
+.globl Main.blah.end
+Main.blah.end:          ## method body ends
+                        ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl Main.main
+Main.main:              ## method definition
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        movq 16(%rbp), %r12
+                        ## stack room for temporaries: 2
+                        movq $16, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        ## self[3] holds field x (Int)
+                        ## self[4] holds field io (IO)
+                        ## method body begins
+                        ## io.out_int(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## io.in_int(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## io
+                        movq 32(%r12), %r13
+                        cmpq $0, %r13
+			jne l4
+                        movq $string10, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l4
+l4:                     pushq %r13
+                        ## obtain vtable from object in r1 with static type IO
+                        movq 16(%r13), %r14
+                        ## look up in_int() at offset 5 in vtable
+                        movq 40(%r14), %r14
+                        call *%r14
+                        addq $8, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        movq %r13, 0(%rbp)
+                        ## blah(...)
+                        pushq %r12
+                        pushq %rbp
+                        pushq %r12
+                        ## obtain vtable for self object of type Main
+                        movq 16(%r12), %r14
+                        ## look up blah() at offset 5 in vtable
+                        movq 40(%r14), %r14
+                        call *%r14
+                        addq $8, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        movq 0(%rbp), %r14
+                        addq %r14, %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq 0(%rbp), %r14
+                        movq %r14, 24(%r13)
                         movq 24(%r13), %r13
                         movq %r13, 0(%rbp)
                         ## new Int
@@ -596,14 +665,14 @@ l3:                     pushq %r13
                         ## io
                         movq 32(%r12), %r13
                         cmpq $0, %r13
-			jne l4
-                        movq $string9, %r13
+			jne l5
+                        movq $string10, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
 			call exit
-.globl l4
-l4:                     pushq %r13
+.globl l5
+l5:                     pushq %r13
                         ## obtain vtable from object in r1 with static type IO
                         movq 16(%r13), %r14
                         ## look up out_int() at offset 7 in vtable
@@ -717,14 +786,14 @@ String.substr:          ## method definition
 			call coolsubstr
 			movq %rax, %r13
                         cmpq $0, %r13
-			jne l5
-                        movq $string10, %r13
+			jne l6
+                        movq $string11, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
 			call exit
-.globl l5
-l5:                     movq %r13, 24(%r15)
+.globl l6
+l6:                     movq %r13, 24(%r15)
                         movq %r15, %r13
 .globl String.substr.end
 String.substr.end:      ## method body ends
@@ -820,7 +889,7 @@ string8:                # "abort\\n"
 .byte 0
 
 .globl string9
-string9:                # "ERROR: 11: Exception: dispatch on void\\n"
+string9:                # "ERROR: 9: Exception: dispatch on void\\n"
 .byte  69 # 'E'
 .byte  82 # 'R'
 .byte  82 # 'R'
@@ -828,8 +897,7 @@ string9:                # "ERROR: 11: Exception: dispatch on void\\n"
 .byte  82 # 'R'
 .byte  58 # ':'
 .byte  32 # ' '
-.byte  49 # '1'
-.byte  49 # '1'
+.byte  57 # '9'
 .byte  58 # ':'
 .byte  32 # ' '
 .byte  69 # 'E'
@@ -864,7 +932,51 @@ string9:                # "ERROR: 11: Exception: dispatch on void\\n"
 .byte 0
 
 .globl string10
-string10:               # "ERROR: 0: Exception: String.substr out of range\\n"
+string10:               # "ERROR: 12: Exception: dispatch on void\\n"
+.byte  69 # 'E'
+.byte  82 # 'R'
+.byte  82 # 'R'
+.byte  79 # 'O'
+.byte  82 # 'R'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  49 # '1'
+.byte  50 # '2'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  69 # 'E'
+.byte 120 # 'x'
+.byte  99 # 'c'
+.byte 101 # 'e'
+.byte 112 # 'p'
+.byte 116 # 't'
+.byte 105 # 'i'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte 100 # 'd'
+.byte 105 # 'i'
+.byte 115 # 's'
+.byte 112 # 'p'
+.byte  97 # 'a'
+.byte 116 # 't'
+.byte  99 # 'c'
+.byte 104 # 'h'
+.byte  32 # ' '
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  32 # ' '
+.byte 118 # 'v'
+.byte 111 # 'o'
+.byte 105 # 'i'
+.byte 100 # 'd'
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string11
+string11:               # "ERROR: 0: Exception: String.substr out of range\\n"
 .byte  69 # 'E'
 .byte  82 # 'R'
 .byte  82 # 'R'
