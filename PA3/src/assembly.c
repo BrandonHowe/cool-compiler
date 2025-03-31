@@ -685,9 +685,9 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             // asm_list_append_li(asm_list, R15, expr.arg_count, ASMImmediateUnitsWord);
             // asm_list_append_arith(asm_list, ASM_OP_ADD, RSP, R15);
             // asm_list_append_pop(asm_list, R15);
-            asm_list_append_st(asm_list, RBP, -0 - expr.lhs.symbol, R13);
             asm_list_append_pop(asm_list, RBP);
             asm_list_append_pop(asm_list, R12);
+            asm_list_append_st(asm_list, RBP, -0 - expr.lhs.symbol, R13);
             break;
         }
         case TAC_OP_JMP:
