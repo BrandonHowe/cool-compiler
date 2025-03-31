@@ -748,7 +748,8 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     asm_list_append_mov(asm_list, RBP, RSP);
     asm_list_append_ld(asm_list, R12, RBP, 2);
     asm_list_append_comment(asm_list, "stack room for temporaries");
-    asm_list_append_li(asm_list, R14, tac_list._curr_symbol, ASMImmediateUnitsWord);
+    int16_t temp_count = tac_list._curr_symbol + (tac_list._curr_label & 1);
+    asm_list_append_li(asm_list, R14, temp_count, ASMImmediateUnitsWord);
     asm_list_append_arith(asm_list, ASM_OP_SUB, RSP, R14);
 
     asm_list_append_comment(asm_list, "method body begins");
@@ -832,7 +833,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     asm_list_append_mov(asm_list, RSP, RBP);
     asm_list_append_pop(asm_list, RBP);
     // asm_list_append_pop(asm_list, RA);
-    // asm_list_append_li(asm_list, R14, tac_list._curr_symbol, ASMImmediateUnitsWord);
+    // asm_list_append_li(asm_list, R14, temp_count, ASMImmediateUnitsWord);
     // asm_list_append_arith(asm_list, ASM_OP_ADD, RSP, R14);
     asm_list_append_return(asm_list);
 
@@ -1582,6 +1583,7 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_ALLOC:
+            bh_str_buf_append_lit(str_buf, "## guarantee 16-byte alignment before call\nandq $0xFFFFFFFFFFFFFFF0, %rsp\n");
             bh_str_buf_append_lit(str_buf, "movq $8, %rsi\nmovq");
             x86_asm_param(str_buf, class_list, instr.params[1]);
             bh_str_buf_append_lit(str_buf, ", %rdi\ncall calloc\nmovq %rax,");
