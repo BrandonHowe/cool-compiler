@@ -1395,6 +1395,7 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
             }
             if (param.method.method_idx == 5) // out_int
             {
+                bh_str_buf_append_lit(str_buf, "## guarantee 16-byte alignment before call\nandq $0xFFFFFFFFFFFFFFF0, %rsp\n");
                 bh_str_buf_append_lit(str_buf, "movq $percent.d, %rdi\nmovl %r13d, %eax\ncdqe\nmovq %rax, %rsi\nmovl $0, %eax\ncall printf");
             }
             else if (param.method.method_idx == 6) // out_string
