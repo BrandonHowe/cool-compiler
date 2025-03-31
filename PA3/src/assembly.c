@@ -656,8 +656,9 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             break;
         case TAC_OP_CALL:
         {
+            int16_t is_self_dispatch = expr.args[expr.arg_count - 1].symbol == 0;
             // Check for void if not self dispatch
-            if (expr.args[expr.arg_count - 1].symbol > 0)
+            if (!is_self_dispatch)
             {
                 bh_str_buf label_buf = bh_str_buf_init(asm_list->string_allocator, 4);
                 bh_str_buf_append_format(&label_buf, "l%i", ++asm_list->_global_label);
@@ -676,7 +677,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             // Push all the params onto the stack
             for (int j = 0; j < expr.arg_count; j++)
             {
-                if (j == expr.arg_count - 1 && expr.args[j].symbol == 0)
+                if (j == expr.arg_count - 1 && is_self_dispatch)
                 {
                     asm_list_append_push(asm_list, R12);
                 }
@@ -688,7 +689,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             }
 
             // Perform the call
-            asm_list_append_ld(asm_list, R14, R13, 2);
+            asm_list_append_ld(asm_list, R14, is_self_dispatch ? R12 : R13, 2);
             asm_list_append_ld(asm_list, R14, R14, expr.rhs1.method.method_idx + 2);
             asm_list_append_call(asm_list, R14);
             // asm_list_append_push(asm_list, R15);
