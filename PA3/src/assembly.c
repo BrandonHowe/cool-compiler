@@ -1555,13 +1555,13 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             x86_asm_param(str_buf, class_list, instr.params[1]);
             break;
         case ASM_OP_ADD:
-            bh_str_buf_append_lit(str_buf, "add");
+            bh_str_buf_append_lit(str_buf, "addq");
             x86_asm_param(str_buf, class_list, instr.params[1]);
             bh_str_buf_append_lit(str_buf, ",");
             x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_SUB:
-            bh_str_buf_append_lit(str_buf, "sub");
+            bh_str_buf_append_lit(str_buf, "subq");
             x86_asm_param(str_buf, class_list, instr.params[1]);
             bh_str_buf_append_lit(str_buf, ",");
             x86_asm_param(str_buf, class_list, instr.params[0]);

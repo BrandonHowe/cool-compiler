@@ -536,8 +536,8 @@ Main.main:              ## method definition
                         pushq %rbp
                         movq %rsp, %rbp
                         movq 16(%rbp), %r12
-                        ## stack room for temporaries: 1
-                        movq $8, %r14
+                        ## stack room for temporaries: 2
+                        movq $16, %r14
                         subq %r14, %rsp
                         ## return address handling
                         ## self[3] holds field x (Int)
@@ -546,16 +546,9 @@ Main.main:              ## method definition
                         ## io.out_int(...)
                         pushq %r12
                         pushq %rbp
-                        ## new Int
-                        pushq %rbp
+                        ## io.in_int(...)
                         pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq $123, %r14
-                        movq %r14, 24(%r13)
-                        pushq %r13
+                        pushq %rbp
                         ## io
                         movq 32(%r12), %r13
                         cmpq $0, %r13
@@ -567,6 +560,50 @@ Main.main:              ## method definition
 			call exit
 .globl l3
 l3:                     pushq %r13
+                        ## obtain vtable from object in r1 with static type IO
+                        movq 16(%r13), %r14
+                        ## look up in_int() at offset 5 in vtable
+                        movq 40(%r14), %r14
+                        call *%r14
+                        addq $8, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $123, %r14
+                        movq %r14, 24(%r13)
+                        movq 24(%r13), %r13
+                        movq 0(%rbp), %r14
+                        addq %r14, %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq 0(%rbp), %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        ## io
+                        movq 32(%r12), %r13
+                        cmpq $0, %r13
+			jne l4
+                        movq $string9, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l4
+l4:                     pushq %r13
                         ## obtain vtable from object in r1 with static type IO
                         movq 16(%r13), %r14
                         ## look up out_int() at offset 7 in vtable
@@ -680,14 +717,14 @@ String.substr:          ## method definition
 			call coolsubstr
 			movq %rax, %r13
                         cmpq $0, %r13
-			jne l4
+			jne l5
                         movq $string10, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
 			call exit
-.globl l4
-l4:                     movq %r13, 24(%r15)
+.globl l5
+l5:                     movq %r13, 24(%r15)
                         movq %r15, %r13
 .globl String.substr.end
 String.substr.end:      ## method body ends
