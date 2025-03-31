@@ -675,10 +675,11 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             asm_list_append_ld(asm_list, R14, R13, 2);
             asm_list_append_ld(asm_list, R14, R14, expr.rhs1.method.method_idx + 2);
             asm_list_append_call(asm_list, R14);
-            asm_list_append_push(asm_list, R15);
-            asm_list_append_li(asm_list, R15, expr.arg_count, ASMImmediateUnitsWord);
-            asm_list_append_arith(asm_list, ASM_OP_ADD, RSP, R15);
-            asm_list_append_pop(asm_list, R15);
+            // asm_list_append_push(asm_list, R15);
+            // asm_list_append_li(asm_list, R15, expr.arg_count, ASMImmediateUnitsWord);
+            // asm_list_append_arith(asm_list, ASM_OP_ADD, RSP, R15);
+            // asm_list_append_pop(asm_list, R15);
+            asm_list_append_st(asm_list, RBP, -0 - expr.lhs.symbol, R13);
             asm_list_append_pop(asm_list, RBP);
             asm_list_append_pop(asm_list, R12);
             break;
@@ -1064,7 +1065,7 @@ void display_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_l
         if (param.reg.offset || force_offset)
         {
             int16_t offset = param.reg.offset;
-            if (param.reg.name == RBP) offset += 1;
+            // if (param.reg.name == RBP) offset += 1; // MAKES COOL-ASM WORK
             bh_str_buf_append_format(str_buf, "[%i]", offset);
         }
         break;
