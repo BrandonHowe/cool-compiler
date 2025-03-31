@@ -748,7 +748,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     asm_list_append_mov(asm_list, RBP, RSP);
     asm_list_append_ld(asm_list, R12, RBP, 2);
     asm_list_append_comment(asm_list, "stack room for temporaries");
-    int16_t temp_count = tac_list._curr_symbol + (tac_list._curr_label & 1);
+    int16_t temp_count = tac_list._curr_symbol + (tac_list._curr_symbol & 1);
     asm_list_append_li(asm_list, R14, temp_count, ASMImmediateUnitsWord);
     asm_list_append_arith(asm_list, ASM_OP_SUB, RSP, R14);
 
