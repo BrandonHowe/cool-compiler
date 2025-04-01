@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include "assembly.h"
 #include "ast.h"
@@ -37,17 +38,16 @@ int main(int argc, char* argv[])
     bh_str file = read_file_text(argv[1]);
     bh_str file_name = bh_str_from_cstr(argv[1]);
 
-    // bh_allocator parser_arena = resizable_arena_init(GPA, 100);
-    bh_allocator parser_arena = GPA;
+    bh_allocator parser_arena = arena_init(100);
     ClassNodeList class_list = parse_class_map(&file, parser_arena);
     parse_implementation_map(&file, parser_arena, class_list);
     parse_parent_map(&file, parser_arena, class_list);
 
-    bh_allocator tac_allocator = arena_init(1000000);
-    ASMList asm_list = asm_list_init(GPA);
+    bh_allocator tac_allocator = arena_init(100);
+    ASMList asm_list = asm_list_init();
     asm_list.class_list = &class_list;
     asm_list.tac_allocator = tac_allocator;
-    asm_list.string_allocator = arena_init(10000);
+    asm_list.string_allocator = arena_init(100);
     asm_from_vtable(&asm_list);
 
     for (int i = 0; i < class_list.class_count; i++)
@@ -63,22 +63,28 @@ int main(int argc, char* argv[])
 
             if (bh_str_equal(method.inherited_from, class_list.class_nodes[i].name))
             {
-                int16_t capacity = 200;
-                TACList list = (TACList)
-                {
-                    .allocator = tac_allocator,
-                    .capacity = capacity,
-                    .count = 0,
-                    .items = bh_alloc(tac_allocator, capacity * sizeof(TACExpr)),
-                    .class_list = class_list,
-                    .class_idx = i,
-                    .method_idx = j,
-                    .method_name = method.name,
-                    ._bindings = bh_alloc(tac_allocator, capacity * sizeof(TACBinding)),
-                    ._binding_count = 0
-                };
+                arena_free_all(tac_allocator);
+
+                TACList list = TAC_list_init(100, GPA);
+                list.class_list = class_list;
+                list.class_idx = i;
+                list.method_idx = j;
+                list.method_name = method.name;
 
                 tac_list_from_expression(method.body, &list, (TACSymbol){ 0 });
+
+                int16_t strings_handled = 0;
+                for (int k = 0; k < list.count; k++)
+                {
+                    if (list.items[k].operation == TAC_OP_STRING)
+                    {
+                        bh_str_buf label_buf_1 = bh_str_buf_init(asm_list.string_allocator, 10);
+                        bh_str_buf_append_format(&label_buf_1, "string%i", asm_list._string_counter + strings_handled++);
+                        bh_str label_str_1 = (bh_str){ .buf = label_buf_1.buf, .len = label_buf_1.len };
+
+                        builtin_append_custom_string_constant(&asm_list, label_str_1, list.items[k].rhs1.string);
+                    }
+                }
 
                 asm_from_method(&asm_list, list);
             }
@@ -86,51 +92,12 @@ int main(int argc, char* argv[])
     }
 
     builtin_append_string_constants(&asm_list);
-
-    // builtin_append_comp_handler(&asm_list, TAC_OP_EQ);
-    // builtin_append_comp_handler(&asm_list, TAC_OP_LTE);
-    // builtin_append_comp_handler(&asm_list, TAC_OP_LT);
     builtin_append_start(&asm_list);
-
-    if (false) // Write asm to file
-    {
-        bh_str_buf asm_display = bh_str_buf_init(GPA, 10000);
-        display_asm_list(&asm_display, asm_list);
-
-        char* output_name  = bh_alloc(GPA, file_name.len + 10);
-        strncpy(output_name, file_name.buf, file_name.len - 4);
-        strncpy(output_name + file_name.len - 4, "asm", 3);
-
-        FILE* fptr;
-        fptr = fopen(output_name, "wb");
-        assert(fptr != NULL);
-        fwrite(asm_display.buf, 1, asm_display.len, fptr);
-        fclose(fptr);
-    }
-
-    if (true) // Write x86 to file
-    {
-        bh_str_buf asm_display = bh_str_buf_init(GPA, 10000);
-        x86_asm_list(&asm_display, asm_list);
-        builtin_append_string_helpers(&asm_display);
-
-        char* output_name  = bh_alloc(GPA, file_name.len + 8);
-        strncpy(output_name, file_name.buf, file_name.len - 7);
-        strncpy(output_name + file_name.len - 7, "s", 1);
-
-        FILE* fptr;
-        fptr = fopen(output_name, "wb");
-        assert(fptr != NULL);
-        fwrite(asm_display.buf, 1, asm_display.len, fptr);
-        fclose(fptr);
-    }
-
-    bh_allocator tac_arena = arena_init(100000);
 
     if (true) // PA3c2 -- output first method as TAC
     {
-        // bh_allocator tac_arena = arena_init(500000);
-        TACList tac_list = tac_list_from_class_list(class_list, GPA);
+        bh_allocator tac_arena = arena_init(500000);
+        TACList tac_list = tac_list_from_class_list(class_list, tac_arena);
         const bh_str class_name = tac_list.class_list.class_nodes[tac_list.class_idx].name;
 
         bh_str_buf str_buf = bh_str_buf_init(GPA, 10000);
@@ -227,5 +194,36 @@ int main(int argc, char* argv[])
         bh_str_buf_deinit(&str_buf);
     }
 
-    return 0;
+    if (false) // Write asm to file
+    {
+        bh_str_buf asm_display = bh_str_buf_init(GPA, 10000);
+        display_asm_list(&asm_display, asm_list);
+
+        char* output_name  = bh_alloc(GPA, file_name.len + 10);
+        strncpy(output_name, file_name.buf, file_name.len - 4);
+        strncpy(output_name + file_name.len - 4, "asm", 3);
+
+        FILE* fptr;
+        fptr = fopen(output_name, "wb");
+        assert(fptr != NULL);
+        fwrite(asm_display.buf, 1, asm_display.len, fptr);
+        fclose(fptr);
+    }
+
+    if (true) // Write x86 to file
+    {
+        bh_str_buf asm_display = bh_str_buf_init(GPA, 1000000);
+        x86_asm_list(&asm_display, asm_list);
+        builtin_append_string_helpers(&asm_display);
+
+        char* output_name  = bh_alloc(GPA, file_name.len + 8);
+        strncpy(output_name, file_name.buf, file_name.len - 7);
+        strncpy(output_name + file_name.len - 7, "s", 1);
+
+        FILE* fptr;
+        fptr = fopen(output_name, "wb");
+        assert(fptr != NULL);
+        fwrite(asm_display.buf, 1, asm_display.len, fptr);
+        fclose(fptr);
+    }
 }

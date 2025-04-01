@@ -19,3 +19,4 @@ add_executable(semantic_analyzer src/main.c
         src/cfg.c
         src/assembly.c
         src/assembly.h)
+

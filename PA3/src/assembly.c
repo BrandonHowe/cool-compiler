@@ -6,11 +6,17 @@
 
 #include <assert.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #pragma region Assembly operations
 
 void asm_list_append(ASMList* asm_list, const ASMInstr instr)
 {
+    if (asm_list->instruction_count + 1 >= asm_list->instruction_capacity)
+    {
+        asm_list->instruction_capacity *= 2;
+        mprotect(asm_list->instructions, asm_list->instruction_capacity * sizeof(ASMInstr), PROT_READ | PROT_WRITE);
+    }
     asm_list->instructions[asm_list->instruction_count] = instr;
     asm_list->instruction_count += 1;
 }
@@ -378,20 +384,14 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
             // attribute initializer
             if (attribute.expr.type)
             {
-                TACList list = (TACList)
-                {
-                    .allocator = asm_list->tac_allocator,
-                    .capacity = 1000,
-                    .count = 0,
-                    .class_list = *asm_list->class_list,
-                    .items = bh_alloc(asm_list->tac_allocator, 1000 * sizeof(TACExpr)),
-                    ._bindings = bh_alloc(asm_list->tac_allocator, 1000 * sizeof(TACBinding)),
-                    ._binding_count = 0
-                };
+                TACList list = TAC_list_init(1000, asm_list->tac_allocator);
+                list.class_list = *asm_list->class_list;
+                list.class_idx = class_idx;
+
                 tac_list_from_expression(attribute.expr, &list, (TACSymbol){ 0 });
                 asm_from_tac_list(asm_list, list);
                 asm_list_append_st(asm_list, R12, i + 3, R13);
-                arena_free_all(asm_list->tac_allocator);
+                // arena_free_all(asm_list->tac_allocator);
             }
         }
     }
@@ -464,15 +464,29 @@ void asm_list_append_call_method(ASMList* asm_list, const int16_t class_idx, con
 
 void asm_from_tac_symbol(ASMList* asm_list, const TACSymbol symbol)
 {
+    int16_t bool_class_idx = -1;
+    int16_t io_class_idx = -1;
+    int16_t int_class_idx = -1;
+    int16_t string_class_idx = -1;
+    for (int i = 0; i < asm_list->class_list->class_count; i++)
+    {
+        ClassNode class_node = asm_list->class_list->class_nodes[i];
+        if (bh_str_equal_lit(class_node.name, "Bool")) bool_class_idx = i;
+        if (bh_str_equal_lit(class_node.name, "IO")) io_class_idx = i;
+        if (bh_str_equal_lit(class_node.name, "Int")) int_class_idx = i;
+        if (bh_str_equal_lit(class_node.name, "String")) string_class_idx = i;
+        if (bool_class_idx > -1 && io_class_idx > -1 && int_class_idx > -1 && string_class_idx > -1) break;
+    }
+
     switch (symbol.type)
     {
     case TAC_SYMBOL_TYPE_INTEGER:
-        asm_list_append_call_method(asm_list, 2, CONSTRUCTOR_METHOD);
+        asm_list_append_call_method(asm_list, int_class_idx, CONSTRUCTOR_METHOD);
         asm_list_append_li(asm_list, R14, symbol.integer, ASMImmediateUnitsBase);
         asm_list_append_st(asm_list, R13, 3, R14);
         break;
     case TAC_SYMBOL_TYPE_BOOL:
-        asm_list_append_call_method(asm_list, 2, CONSTRUCTOR_METHOD);
+        asm_list_append_call_method(asm_list, bool_class_idx, CONSTRUCTOR_METHOD);
         if (symbol.integer > 0)
         {
             asm_list_append_li(asm_list, R14, symbol.integer, ASMImmediateUnitsBase);
@@ -480,6 +494,9 @@ void asm_from_tac_symbol(ASMList* asm_list, const TACSymbol symbol)
         }
         break;
     case TAC_SYMBOL_TYPE_STRING:
+        asm_list_append_call_method(asm_list, string_class_idx, CONSTRUCTOR_METHOD);
+        asm_list_append_la(asm_list, R14, INTERNAL_CUSTOM_STRINGS, asm_list->_string_counter++);
+        asm_list_append_st(asm_list, R13, 3, R14);
         break;
     case TAC_SYMBOL_TYPE_SYMBOL:
         break;
@@ -487,6 +504,7 @@ void asm_from_tac_symbol(ASMList* asm_list, const TACSymbol symbol)
         break;
     default:
         assert(0 && "Unhandled asm from tac symbol type");
+        break;
     }
 }
 
@@ -588,6 +606,9 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             asm_list_append_st(asm_list, RBP, -0 - expr.lhs.symbol, R13);
             break;
         case TAC_OP_STRING:
+            asm_list_append_comment(asm_list, "new String");
+            asm_from_tac_symbol(asm_list, expr.rhs1);
+            asm_list_append_st(asm_list, RBP, -0 - expr.lhs.symbol, R13);
             break;
         case TAC_OP_BOOL:
             asm_list_append_comment(asm_list, "new Bool");
@@ -596,15 +617,15 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             break;
         case TAC_OP_NOT:
         {
-            bh_str_buf label_buf_1 = bh_str_buf_init(asm_list->string_allocator, 4);
+            bh_str_buf label_buf_1 = bh_str_buf_init(asm_list->string_allocator, 6);
             bh_str_buf_append_format(&label_buf_1, "l%i", ++asm_list->_global_label);
             bh_str label_str_1 = (bh_str){ .buf = label_buf_1.buf, .len = label_buf_1.len };
 
-            bh_str_buf label_buf_2 = bh_str_buf_init(asm_list->string_allocator, 4);
+            bh_str_buf label_buf_2 = bh_str_buf_init(asm_list->string_allocator, 6);
             bh_str_buf_append_format(&label_buf_2, "l%i", ++asm_list->_global_label);
             bh_str label_str_2 = (bh_str){ .buf = label_buf_2.buf, .len = label_buf_2.len };
 
-            bh_str_buf label_buf_3 = bh_str_buf_init(asm_list->string_allocator, 4);
+            bh_str_buf label_buf_3 = bh_str_buf_init(asm_list->string_allocator, 6);
             bh_str_buf_append_format(&label_buf_3, "l%i", ++asm_list->_global_label);
             bh_str label_str_3 = (bh_str){ .buf = label_buf_3.buf, .len = label_buf_3.len };
 
@@ -679,6 +700,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                     break;
                 default:
                     assert(0 && "Unhandled tac ignore");
+                    break;
             }
             break;
         case TAC_OP_CALL:
@@ -775,6 +797,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
         }
         default:
             assert(0 && "Trying to convert unhandled tac expression to assembly");
+            break;
         }
     }
 }
@@ -863,6 +886,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
             asm_list_append_ld(asm_list, R14, RBP, 2);
             asm_list_append_ld(asm_list, R13, R14, 3);
             asm_list_append_syscall(asm_list, io_class_idx, 6);
+            asm_list_append_mov(asm_list, R13, R12);
         }
     }
     else if (bh_str_equal_lit(class_name, "String"))
@@ -884,9 +908,6 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     asm_list_append_label(asm_list, (bh_str){ .buf = label_buf, .len = label_len + 4 });
     asm_list_append_mov(asm_list, RSP, RBP);
     asm_list_append_pop(asm_list, RBP);
-    // asm_list_append_pop(asm_list, RA);
-    // asm_list_append_li(asm_list, R14, temp_count, ASMImmediateUnitsWord);
-    // asm_list_append_arith(asm_list, ASM_OP_ADD, RSP, R14);
     asm_list_append_return(asm_list);
 
     asm_list_append_comment(asm_list, ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;"); // Spacer
@@ -926,6 +947,12 @@ void builtin_append_string_constants(ASMList* asm_list)
         asm_list_append_label(asm_list, label);
         asm_list_append_string_constant(asm_list, class_node.name);
     }
+}
+
+void builtin_append_custom_string_constant(ASMList* asm_list, const bh_str label, const bh_str data)
+{
+    asm_list_append_label(asm_list, label);
+    asm_list_append_string_constant(asm_list, data);
 }
 
 // I used the reference compiler's output for this code
@@ -1142,6 +1169,7 @@ void display_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_l
                 break;
             default:
                 assert(0 && "Unhandled internal method");
+                break;
             }
         }
         else if (param.method.class_idx == INTERNAL_STRINGS)
@@ -1159,7 +1187,12 @@ void display_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_l
                 break;
             default:
                 assert(0 && "Unhandled internal string");
+                break;
             }
+        }
+        else if (param.method.class_idx == INTERNAL_STRINGS)
+        {
+            bh_str_buf_append_format(str_buf, "string%i", param.method.method_idx);
         }
         else
         {
@@ -1338,6 +1371,7 @@ void display_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             break;
         default:
             assert(0 && "Unhandled asm instruction in display");
+            break;
         }
         bh_str_buf_append_lit(str_buf, "\n");
     }
@@ -1418,6 +1452,7 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
                 break;
             default:
                 assert(0 && "Unhandled internal method");
+                break;
             }
         }
         else if (param.method.class_idx == INTERNAL_STRINGS)
@@ -1435,7 +1470,12 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
                 break;
             default:
                 assert(0 && "Unhandled internal string");
+                break;
             }
+        }
+        else if (param.method.class_idx == INTERNAL_CUSTOM_STRINGS)
+        {
+            bh_str_buf_append_format(str_buf, "$string%i", param.method.method_idx);
         }
         else if (bh_str_equal_lit(class_list.class_nodes[param.method.class_idx].name, "IO") && param.method.method_idx >= 3)
         {
@@ -1524,11 +1564,6 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             break;
         case ASM_OP_COMMENT:
             x86_asm_param(str_buf, class_list, instr.params[0]);
-            // if (bh_str_equal_lit(instr.params[0].comment, "method definition"))
-            // {
-            //     bh_str_buf_append_lit(str_buf, "\npushq %rbp\nmovq %rsp, %rbp\nmovq 16(%rbp), %r12");
-            //     i += 2;
-            // }
             break;
         case ASM_OP_LABEL:
             bh_str_buf_append_lit(str_buf, ".globl ");
@@ -1655,6 +1690,7 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             break;
         default:
             assert(0 && "Unhandled asm instruction in display");
+            break;
         }
         bh_str_buf_append_lit(str_buf, "\n");
     }
@@ -1662,12 +1698,19 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
 
 #pragma endregion
 
-ASMList asm_list_init(bh_allocator allocator)
+ASMList asm_list_init()
 {
+    int16_t base_capacity = 100;
+#ifdef WIN32
+    ASMInstr* data = VirtualAlloc(NULL, 10000000, MEM_RESERVE, PAGE_NOACCESS);
+    VirtualAlloc(data, base_capacity * sizeof(ASMInstr), MEM_COMMIT, PAGE_READWRITE);
+#else
+    ASMInstr* data = mmap(NULL, 10000000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    mprotect(data, base_capacity * sizeof(ASMInstr), PROT_READ | PROT_WRITE);
+#endif
     return (ASMList){
-        .allocator = allocator,
-        .instruction_capacity = 1000,
-        .instructions = bh_alloc(allocator, 1000 * sizeof(ASMInstr)),
+        .instruction_capacity = base_capacity,
+        .instructions = data,
         .instruction_count = 0
     };
 }

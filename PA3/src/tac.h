@@ -103,6 +103,7 @@ typedef struct TACSlice
 } TACSlice;
 
 TACExpr* TAC_list_append(TACList* list, TACExpr expr);
+TACList TAC_list_init(int16_t capacity, bh_allocator allocator);
 TACSymbol TAC_request_symbol(TACList* list);
 TACSymbol get_bound_symbol_variable(const TACList* list, const TACSymbol symbol);
 TACList tac_list_from_class_list(ClassNodeList class_list, bh_allocator allocator);

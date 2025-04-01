@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 
 // Procedure for general purpose allocator (GPA)
 void* gpa_proc(struct bh_allocator* this_allocator, bh_allocator_mode mode, bh_allocator_args args)
@@ -45,7 +46,11 @@ void* arena_proc(bh_allocator* this_allocator, bh_allocator_mode mode, bh_alloca
         if (args.ptr == &data->buffer[data->prev_offset])
         {
             data->used = data->prev_offset + args.size;
-            assert(data->used < data->capacity);
+            if (data->used >= data->capacity)
+            {
+                mprotect(data, sizeof(bh_arena_data) + data->capacity * 2, PROT_READ | PROT_WRITE);
+                data->capacity *= 2;
+            }
             return &data->buffer[data->prev_offset];
         }
     case bh_allocator_mode_alloc:
@@ -54,7 +59,12 @@ void* arena_proc(bh_allocator* this_allocator, bh_allocator_mode mode, bh_alloca
             data->prev_offset = data->used;
             data->used += args.size;
             // printf("Allocating %i bytes, used: %i, cap: %i\n", args.size, data->used, data->capacity);
-            assert(data->used < data->capacity);
+            // assert(data->used < data->capacity);
+            if (data->used >= data->capacity)
+            {
+                mprotect(data, sizeof(bh_arena_data) + data->capacity * 2, PROT_READ | PROT_WRITE);
+                data->capacity *= 2;
+            }
             return ptr;
         }
     case bh_allocator_mode_free:
@@ -67,7 +77,13 @@ void* arena_proc(bh_allocator* this_allocator, bh_allocator_mode mode, bh_alloca
 
 bh_allocator arena_init(uint32_t buffer_size)
 {
-    bh_arena_data* data = calloc(sizeof(bh_arena_data) + buffer_size, 1);
+#ifdef WIN32
+    bh_arena_data* data = VirtualAlloc(NULL, 10000000, MEM_RESERVE, PAGE_NOACCESS);
+    VirtualAlloc(data, sizeof(bh_arena_data) + buffer_size, MEM_COMMIT, PAGE_READWRITE);
+#else
+    bh_arena_data* data = mmap(NULL, 10000000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    mprotect(data, sizeof(bh_arena_data) + buffer_size, PROT_READ | PROT_WRITE);
+#endif
     memset(data, 0, sizeof(bh_arena_data) + buffer_size);
     data->used = 0;
     data->capacity = buffer_size;
@@ -84,6 +100,7 @@ bh_allocator arena_init(uint32_t buffer_size)
 void arena_free_all(bh_allocator allocator)
 {
     bh_arena_data* data = allocator.data;
+    if (data == NULL) return;
     data->used = 0;
 }
 
@@ -126,7 +143,6 @@ void* resizable_arena_proc(bh_allocator* this_allocator, bh_allocator_mode mode,
             if (data->used + args.size > data->capacity)
             {
                 uint32_t new_capacity = data->capacity * 2;
-                printf("Resizing arena to %i\n", new_capacity);
                 if (new_capacity < data->used + args.size)
                     new_capacity = data->used + args.size;
                 // Allocate new buffer via the backing allocator.

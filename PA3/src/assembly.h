@@ -12,6 +12,7 @@
 #define CONSTRUCTOR_METHOD (-1)
 #define INTERNAL_CLASS (-1)
 #define INTERNAL_STRINGS (-2)
+#define INTERNAL_CUSTOM_STRINGS (-3)
 #define INTERNAL_ABORT_STR (-2)
 #define INTERNAL_VOID_DISPATCH_START_STR (-3)
 #define INTERNAL_VOID_DISPATCH_END_STR (-4)
@@ -112,13 +113,13 @@ typedef struct ASMList
     ASMInstr* instructions;
     int16_t instruction_count;
     int16_t instruction_capacity;
-    bh_allocator allocator;
     bh_allocator tac_allocator;
     bh_allocator string_allocator;
     ClassNodeList* class_list;
 
     int16_t _stack_depth;
     int16_t _global_label;
+    int16_t _string_counter;
 } ASMList;
 
 void asm_from_vtable(ASMList* asm_list);
@@ -126,7 +127,7 @@ void asm_list_append_call_method(ASMList* asm_list, int16_t class_idx, int16_t m
 void asm_from_constructor(ASMList* asm_list, ClassNode class_node, int16_t class_idx);
 void asm_from_tac_list(ASMList* asm_list, TACList tac_list);
 void asm_from_method(ASMList* asm_list, TACList tac_list);
-ASMList asm_list_init(bh_allocator allocator);
+ASMList asm_list_init();
 
 void display_asm_list(bh_str_buf* str_buf, ASMList asm_list);
 void x86_asm_list(bh_str_buf* str_buf, ASMList asm_list);
@@ -135,5 +136,6 @@ void builtin_append_string_helpers(bh_str_buf* buf);
 void builtin_append_string_constants(ASMList* asm_list);
 void builtin_append_comp_handler(ASMList* asm_list, TACOp op);
 void builtin_append_start(ASMList* asm_list);
+void builtin_append_custom_string_constant(ASMList* asm_list, bh_str label, bh_str data);
 
 #endif //ASSEMBLY_H

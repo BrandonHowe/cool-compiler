@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <sys/mman.h>
 
 TACExpr* TAC_list_append(TACList* list, TACExpr expr)
 {
@@ -14,12 +15,33 @@ TACExpr* TAC_list_append(TACList* list, TACExpr expr)
     expr.rhs2 = get_bound_symbol_variable(list, expr.rhs2);
     if (list->count + 1 >= list->capacity)
     {
-        bh_realloc(list->allocator, list->items, list->capacity * 2);
         list->capacity *= 2;
+        mprotect(list->items, list->capacity * sizeof(TACExpr), PROT_READ | PROT_WRITE);
     }
     list->items[list->count] = expr;
     list->count += 1;
     return &list->items[list->count - 1];
+}
+
+TACList TAC_list_init(const int16_t capacity, bh_allocator allocator)
+{
+#ifdef WIN32
+    TACExpr* data = VirtualAlloc(NULL, 10000000, MEM_RESERVE, PAGE_NOACCESS);
+    VirtualAlloc(data, base_capacity * sizeof(TACExpr), MEM_COMMIT, PAGE_READWRITE);
+#else
+    TACExpr* data = mmap(NULL, 10000000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    mprotect(data, capacity * sizeof(TACExpr), PROT_READ | PROT_WRITE);
+#endif
+    TACList list = (TACList)
+    {
+        .allocator = allocator,
+        .capacity = capacity,
+        .count = 0,
+        .items = data,
+        ._bindings = bh_alloc(allocator, 100 * sizeof(TACBinding)),
+        ._binding_count = 0
+    };
+    return list;
 }
 
 TACSymbol TAC_request_symbol(TACList* list)
@@ -72,16 +94,11 @@ TACList tac_list_from_class_list(ClassNodeList class_list, bh_allocator allocato
     }
 
     int initial_size = 10000;
-    TACList list = (TACList)
-    {
-        .allocator = allocator,
-        .capacity = initial_size,
-        .count = 0,
-        .class_list = class_list,
-        .items = bh_alloc(allocator, initial_size * sizeof(TACExpr)),
-        ._bindings = bh_alloc(allocator, initial_size * sizeof(TACBinding)),
-        ._binding_count = 0
-    };
+    TACList list = TAC_list_init(initial_size, allocator);
+    list.class_list = class_list;
+    list.class_idx = class_idx;
+    list.method_idx = method_idx;
+    list.method_name = method_name;
 
     bh_str comment_start_str = bh_str_from_cstr(start_str);
 
@@ -89,10 +106,6 @@ TACList tac_list_from_class_list(ClassNodeList class_list, bh_allocator allocato
         .operation = TAC_OP_COMMENT,
         .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = comment_start_str }
     });
-
-    list.class_idx = class_idx;
-    list.method_idx = method_idx;
-    list.method_name = method_name;
 
     TAC_list_append(&list, (TACExpr){
         .operation = TAC_OP_LABEL,
@@ -117,8 +130,8 @@ TACList tac_list_from_method(ClassMethod method, bh_allocator allocator)
         .allocator = allocator,
         .capacity = capacity,
         .count = 0,
+        ._bindings = bh_alloc(allocator, 100 * sizeof(TACBinding)),
         .items = bh_alloc(allocator, capacity * sizeof(TACExpr)),
-        ._bindings = bh_alloc(allocator, capacity * sizeof(TACBinding)),
         ._binding_count = 0
     };
 
