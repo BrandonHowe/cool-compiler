@@ -1636,9 +1636,9 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             bh_str_buf_append_lit(str_buf, "d");
             break;
         case ASM_OP_DIV:
-            bh_str_buf_append_lit(str_buf, "div");
+            bh_str_buf_append_lit(str_buf, "movq $0, %rdx\nmovq");
             x86_asm_param(str_buf, class_list, instr.params[1]);
-            bh_str_buf_append_lit(str_buf, ",");
+            bh_str_buf_append_lit(str_buf, ", %rax\ncdq\nidivl %r13d\nmovq %rax,");
             x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_ALLOC:
