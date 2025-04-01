@@ -883,7 +883,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         }
         if (bh_str_equal_lit(tac_list.method_name, "out_string"))
         {
-            asm_list_append_ld(asm_list, R14, RBP, 2);
+            asm_list_append_ld(asm_list, R14, RBP, 3);
             asm_list_append_ld(asm_list, R13, R14, 3);
             asm_list_append_syscall(asm_list, io_class_idx, 6);
             asm_list_append_mov(asm_list, R13, R12);
