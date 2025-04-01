@@ -540,16 +540,31 @@ Main.main:              ## method definition
                         pushq %rbp
                         movq %rsp, %rbp
                         movq 16(%rbp), %r12
-                        ## stack room for temporaries: 2
-                        movq $16, %r14
+                        ## stack room for temporaries: 5
+                        movq $40, %r14
                         subq %r14, %rsp
                         ## return address handling
                         ## self[3] holds field x (Int)
                         ## self[4] holds field io (IO)
                         ## method body begins
-                        ## out_int(...)
-                        pushq %r12
+                        ## fp[0] holds local x (Int)
+                        ## new Int
                         pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq %r13, 0(%rbp)
+                        ## fp[-1] holds local a (Int)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq %r13, -8(%rbp)
                         ## in_int(...)
                         pushq %r12
                         pushq %rbp
@@ -562,8 +577,29 @@ Main.main:              ## method definition
                         addq $8, %rsp
                         popq %rbp
                         popq %r12
-                        movq 24(%r13), %r13
                         movq %r13, 0(%rbp)
+.globl l3
+l3:                     ## while conditional check
+                        pushq %r12
+                        pushq %rbp
+                        ## a
+                        movq -8(%rbp), %r13
+                        pushq %r13
+                        ## x
+                        movq 0(%rbp), %r13
+                        pushq %r13
+                        pushq %r12
+                        call lt_handler
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        cmpq $0, %r13
+			je l4
+                        ## a
+                        movq -8(%rbp), %r13
+                        movq 24(%r13), %r13
+                        movq %r13, -16(%rbp)
                         ## new Int
                         pushq %rbp
                         pushq %r12
@@ -571,12 +607,12 @@ Main.main:              ## method definition
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq $123, %r14
+                        movq $1, %r14
                         movq %r14, 24(%r13)
                         movq 24(%r13), %r13
-                        movq 0(%rbp), %r14
+                        movq -16(%rbp), %r14
                         addq %r14, %r13
-                        movq %r13, 0(%rbp)
+                        movq %r13, -16(%rbp)
                         ## new Int
                         pushq %rbp
                         pushq %r12
@@ -584,8 +620,14 @@ Main.main:              ## method definition
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq 0(%rbp), %r14
+                        movq -16(%rbp), %r14
                         movq %r14, 24(%r13)
+                        movq %r13, -8(%rbp)
+                        ## out_int(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## a
+                        movq -8(%rbp), %r13
                         pushq %r13
                         pushq %r12
                         ## obtain vtable for self object of type Main
@@ -596,6 +638,9 @@ Main.main:              ## method definition
                         addq $16, %rsp
                         popq %rbp
                         popq %r12
+                        jmp l3
+.globl l4
+l4:                     ## end of while loop
 .globl Main.main.end
 Main.main.end:          ## method body ends
                         ## return address handling
@@ -701,14 +746,14 @@ String.substr:          ## method definition
 			call coolsubstr
 			movq %rax, %r13
                         cmpq $0, %r13
-			jne l3
+			jne l5
                         movq $string9, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
 			call exit
-.globl l3
-l3:                     movq %r13, 24(%r15)
+.globl l5
+l5:                     movq %r13, 24(%r15)
                         movq %r15, %r13
 .globl String.substr.end
 String.substr.end:      ## method body ends
