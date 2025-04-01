@@ -410,7 +410,9 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
 
 void asm_list_append_call_method(ASMList* asm_list, const int16_t class_idx, const int16_t method_idx)
 {
-    if (class_idx == INTERNAL_CLASS && method_idx == INTERNAL_EQ_HANDLER)
+    bool is_comparison = class_idx == INTERNAL_CLASS &&
+                         (method_idx == INTERNAL_EQ_HANDLER || method_idx == INTERNAL_LE_HANDLER || method_idx == INTERNAL_LT_HANDLER);
+    if (is_comparison)
     {
         asm_list_append_push(asm_list, R12);
     }
@@ -441,8 +443,15 @@ void asm_list_append_call_method(ASMList* asm_list, const int16_t class_idx, con
         });
     }
 
-    if (class_idx == INTERNAL_CLASS && method_idx == INTERNAL_EQ_HANDLER)
+    if (is_comparison)
     {
+        asm_list_append(asm_list, (ASMInstr){
+            .op = ASM_OP_ADD,
+            .params = {
+                (ASMParam){ .type = ASM_PARAM_REGISTER, .reg = RSP },
+                (ASMParam){ .type = ASM_PARAM_IMMEDIATE, .immediate = { .val = 3, .units = ASMImmediateUnitsWord} }
+            }
+        });
         asm_list_append_pop(asm_list, RBP);
         asm_list_append_pop(asm_list, R12);
     }
