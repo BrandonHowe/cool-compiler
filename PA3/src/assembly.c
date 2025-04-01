@@ -609,6 +609,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             bh_str label_str_3 = (bh_str){ .buf = label_buf_3.buf, .len = label_buf_3.len };
 
             asm_list_append_ld(asm_list, R13, RBP, -0 - expr.rhs1.symbol);
+            asm_list_append_ld(asm_list, R13, R13, 3);
             asm_list_append_bnz(asm_list, R13, label_str_1);
 
             asm_list_append_label(asm_list, label_str_2);
