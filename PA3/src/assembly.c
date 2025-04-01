@@ -1104,8 +1104,14 @@ void display_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_l
             case -2:
                 bh_str_buf_append_lit(str_buf, "string_abort");
                 break;
-            case -3:
+            case INTERNAL_LE_HANDLER:
+                bh_str_buf_append_lit(str_buf, "le_handler");
+                break;
+            case INTERNAL_EQ_HANDLER:
                 bh_str_buf_append_lit(str_buf, "eq_handler");
+                break;
+            case INTERNAL_LT_HANDLER:
+                bh_str_buf_append_lit(str_buf, "lt_handler");
                 break;
             default:
                 assert(0 && "Unhandled internal method");
