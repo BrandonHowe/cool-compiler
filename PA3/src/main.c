@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
     // builtin_append_comp_handler(&asm_list, TAC_OP_LT);
     builtin_append_start(&asm_list);
 
-    if (false) // Write asm to file
+    if (true) // Write asm to file
     {
         bh_str_buf asm_display = bh_str_buf_init(GPA, 10000);
         display_asm_list(&asm_display, asm_list);
@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
 
     bh_allocator tac_arena = arena_init(100000);
 
-    if (false) // PA3c2 -- output first method as TAC
+    if (true) // PA3c2 -- output first method as TAC
     {
         // bh_allocator tac_arena = arena_init(500000);
         TACList tac_list = tac_list_from_class_list(class_list, GPA);

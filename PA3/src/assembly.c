@@ -640,7 +640,22 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             }
             break;
         case TAC_OP_DEFAULT:
+        {
+            int16_t class_idx = -1;
+            for (int j = 0; j < asm_list->class_list->class_count; j++)
+            {
+                if (bh_str_equal(asm_list->class_list->class_nodes[j].name, expr.rhs1.variable))
+                {
+                    class_idx = j;
+                    break;
+                }
+            }
+            assert(class_idx != -1 && "Unhandled default constructor call");
+            asm_list_append_comment(asm_list, "default constructor");
+            asm_list_append_call_method(asm_list, class_idx, -1);
+            asm_list_append_st(asm_list, RBP, -0 - expr.lhs.symbol, R13);
             break;
+        }
         case TAC_OP_ISVOID:
             break;
         case TAC_OP_IGNORE:
