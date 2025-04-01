@@ -550,18 +550,18 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             asm_list_append_st(asm_list, RBP, -0 - expr.lhs.symbol, R13);
             break;
         case TAC_OP_LT:
-            asm_from_tac_symbol(asm_list, expr.rhs1);
-            asm_from_tac_symbol(asm_list, expr.rhs2);
-            asm_list_append_ld(asm_list, R14, RBP, --asm_list->_stack_depth);
-            asm_list_append_ld(asm_list, R13, RBP, --asm_list->_stack_depth);
+            asm_list_append_ld(asm_list, R13, RBP, -0 - expr.rhs1.symbol);
+            asm_list_append_ld(asm_list, R14, RBP, -0 - expr.rhs2.symbol);
+            asm_list_append_push(asm_list, R13);
+            asm_list_append_push(asm_list, R14);
             asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_LT_HANDLER);
             asm_list_append_st(asm_list, RBP, -0 - expr.lhs.symbol, R13);
             break;
         case TAC_OP_LTE:
-            asm_from_tac_symbol(asm_list, expr.rhs1);
-            asm_from_tac_symbol(asm_list, expr.rhs2);
-            asm_list_append_ld(asm_list, R14, RBP, --asm_list->_stack_depth);
-            asm_list_append_ld(asm_list, R13, RBP, --asm_list->_stack_depth);
+            asm_list_append_ld(asm_list, R13, RBP, -0 - expr.rhs1.symbol);
+            asm_list_append_ld(asm_list, R14, RBP, -0 - expr.rhs2.symbol);
+            asm_list_append_push(asm_list, R13);
+            asm_list_append_push(asm_list, R14);
             asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_LE_HANDLER);
             asm_list_append_st(asm_list, RBP, -0 - expr.lhs.symbol, R13);
             break;
