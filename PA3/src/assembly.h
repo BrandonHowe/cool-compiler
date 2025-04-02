@@ -19,6 +19,9 @@
 #define INTERNAL_EQ_HANDLER (-3)
 #define INTERNAL_LE_HANDLER (-4)
 #define INTERNAL_LT_HANDLER (-5)
+#define INTERNAL_STRCAT_HANDLER (-6)
+#define INTERNAL_STRLEN_HANDLER (-7)
+#define INTERNAL_SUBSTR_HANDLER (-7)
 
 typedef enum ASMOpType
 {
@@ -93,9 +96,9 @@ typedef struct ASMParam
     ASMParamType type;
     union
     {
-        struct { int16_t val; ASMImmediateUnits units; } immediate;
-        struct { ASMRegister name; int16_t offset; } reg;
-        struct { int16_t class_idx; int16_t method_idx; } method;
+        struct { int64_t val; ASMImmediateUnits units; } immediate;
+        struct { ASMRegister name; int64_t offset; } reg;
+        struct { int64_t class_idx; int64_t method_idx; } method;
         bh_str label;
         bh_str comment;
         bh_str constant;
@@ -111,20 +114,20 @@ typedef struct ASMInstr
 typedef struct ASMList
 {
     ASMInstr* instructions;
-    int16_t instruction_count;
-    int16_t instruction_capacity;
+    int64_t instruction_count;
+    int64_t instruction_capacity;
     bh_allocator tac_allocator;
     bh_allocator string_allocator;
     ClassNodeList* class_list;
 
-    int16_t _stack_depth;
-    int16_t _global_label;
-    int16_t _string_counter;
+    int64_t _stack_depth;
+    int64_t _global_label;
+    int64_t _string_counter;
 } ASMList;
 
 void asm_from_vtable(ASMList* asm_list);
-void asm_list_append_call_method(ASMList* asm_list, int16_t class_idx, int16_t method_idx);
-void asm_from_constructor(ASMList* asm_list, ClassNode class_node, int16_t class_idx);
+void asm_list_append_call_method(ASMList* asm_list, int64_t class_idx, int64_t method_idx);
+void asm_from_constructor(ASMList* asm_list, ClassNode class_node, int64_t class_idx);
 void asm_from_tac_list(ASMList* asm_list, TACList tac_list);
 void asm_from_method(ASMList* asm_list, TACList tac_list);
 ASMList asm_list_init();

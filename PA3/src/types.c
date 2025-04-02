@@ -115,7 +115,7 @@ int32_t uint_from_str(const bh_str str)
     return res;
 }
 
-bh_str_buf bh_str_buf_init(bh_allocator allocator, uint32_t capacity)
+bh_str_buf bh_str_buf_init(bh_allocator allocator, uint64_t capacity)
 {
     bh_str_buf str_buf = (bh_str_buf){
         .buf = bh_alloc(allocator, capacity),
@@ -151,8 +151,11 @@ void bh_str_buf_append_format(bh_str_buf* buf, const char* format, ...)
     va_list va = { 0 };
     va_start(va, format);
 
-    uint16_t append_size = vsnprintf(NULL, 0, format, va);
-    bh_str_buf_reserve(buf, buf->len + append_size + 1);
+    uint64_t append_size = vsnprintf(NULL, 0, format, va);
+    if (buf->len + append_size + 1 >= buf->cap)
+    {
+        bh_str_buf_reserve(buf, buf->cap * 2);
+    }
 
     va_end(va);
     va_start(va, format);
@@ -169,7 +172,7 @@ void bh_str_buf_append_lit(bh_str_buf* str_buf, const char* cstr)
     bh_str_buf_append(str_buf, bh_str_from_cstr(cstr));
 }
 
-void bh_str_buf_reserve(bh_str_buf* str_buf, uint32_t capacity)
+void bh_str_buf_reserve(bh_str_buf* str_buf, uint64_t capacity)
 {
     if (capacity < str_buf->cap) return;
     str_buf->buf = bh_realloc(str_buf->allocator, str_buf->buf, capacity);

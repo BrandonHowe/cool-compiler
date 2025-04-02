@@ -13,7 +13,7 @@
 typedef struct bh_str
 {
     const char* buf;
-    uint32_t len;
+    uint64_t len;
 } bh_str;
 
 bh_str bh_str_from_cstr(const char* cstr);
@@ -32,16 +32,16 @@ int32_t uint_from_str(const bh_str str);
 typedef struct bh_str_buf
 {
     char* buf;
-    uint32_t len;
-    uint32_t cap;
+    uint64_t len;
+    uint64_t cap;
     bh_allocator allocator;
 } bh_str_buf;
 
-bh_str_buf bh_str_buf_init(bh_allocator allocator, uint32_t capacity);
+bh_str_buf bh_str_buf_init(bh_allocator allocator, uint64_t capacity);
 void bh_str_buf_append(bh_str_buf* str_buf, bh_str str);
 void bh_str_buf_append_str_buf(bh_str_buf* str_buf, bh_str_buf str_buf_2);
 void bh_str_buf_append_format(bh_str_buf* buf, const char* format, ...);
-void bh_str_buf_reserve(bh_str_buf* str_buf, uint32_t capacity);
+void bh_str_buf_reserve(bh_str_buf* str_buf, uint64_t capacity);
 void bh_str_buf_clear(bh_str_buf* str_buf);
 void bh_str_buf_deinit(bh_str_buf* str_buf);
 void bh_str_buf_append_lit(bh_str_buf* str_buf, const char* cstr);

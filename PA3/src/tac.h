@@ -24,11 +24,11 @@ typedef struct TACSymbol
     TACSymbolType type;
     union
     {
-        int16_t symbol;
-        int16_t integer;
+        int64_t symbol;
+        int64_t integer;
         bh_str string;
         bh_str variable;
-        struct { int16_t class_idx; int16_t method_idx; } method;
+        struct { int64_t class_idx; int64_t method_idx; } method;
     };
 } TACSymbol;
 
@@ -40,7 +40,7 @@ typedef struct TACBinding
 
 typedef enum TACOp
 {
-    TAC_OP_NULL = (int16_t)0,
+    TAC_OP_NULL = (int64_t)0,
     TAC_OP_ASSIGN,
     TAC_OP_PLUS,
     TAC_OP_MINUS,
@@ -73,37 +73,37 @@ typedef struct TACExpr
     TACSymbol rhs2;
     TACOp operation;
 
-    int16_t arg_count;
+    int64_t arg_count;
     TACSymbol* args;
 } TACExpr;
 
 typedef struct TACList
 {
-    int16_t count;
-    int16_t capacity;
-    int16_t class_idx;
-    int16_t method_idx;
+    int64_t count;
+    int64_t capacity;
+    int64_t class_idx;
+    int64_t method_idx;
     bh_str method_name;
     TACExpr* items;
     bh_allocator allocator;
     ClassNodeList class_list;
 
-    int16_t _curr_label;
-    int16_t _curr_symbol;
+    int64_t _curr_label;
+    int64_t _curr_symbol;
 
     TACBinding* _bindings;
-    int16_t _binding_count;
+    int64_t _binding_count;
 } TACList;
 
 // Non owning version of TACList (for CFG etc)
 typedef struct TACSlice
 {
-    int16_t count;
+    int64_t count;
     TACExpr* items;
 } TACSlice;
 
 TACExpr* TAC_list_append(TACList* list, TACExpr expr);
-TACList TAC_list_init(int16_t capacity, bh_allocator allocator);
+TACList TAC_list_init(int64_t capacity, bh_allocator allocator);
 TACSymbol TAC_request_symbol(TACList* list);
 TACSymbol get_bound_symbol_variable(const TACList* list, const TACSymbol symbol);
 TACList tac_list_from_class_list(ClassNodeList class_list, bh_allocator allocator);

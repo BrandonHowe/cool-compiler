@@ -95,7 +95,7 @@ void parse_parent_map(bh_str* str, bh_allocator allocator, ClassNodeList list)
         {
             if (bh_str_equal(list.class_nodes[j].name, child_name))
             {
-                int16_t parent_idx = 0;
+                int64_t parent_idx = 0;
                 for (int k = 0; k < list.class_count; k++)
                 {
                     if (bh_str_equal(list.class_nodes[k].name, parent_name))

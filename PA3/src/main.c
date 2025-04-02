@@ -38,16 +38,16 @@ int main(int argc, char* argv[])
     bh_str file = read_file_text(argv[1]);
     bh_str file_name = bh_str_from_cstr(argv[1]);
 
-    bh_allocator parser_arena = arena_init(100);
+    bh_allocator parser_arena = arena_init(1000000);
     ClassNodeList class_list = parse_class_map(&file, parser_arena);
     parse_implementation_map(&file, parser_arena, class_list);
     parse_parent_map(&file, parser_arena, class_list);
 
-    bh_allocator tac_allocator = arena_init(100);
+    bh_allocator tac_allocator = arena_init(1000000);
     ASMList asm_list = asm_list_init();
     asm_list.class_list = &class_list;
     asm_list.tac_allocator = tac_allocator;
-    asm_list.string_allocator = arena_init(100);
+    asm_list.string_allocator = arena_init(1000000);
     asm_from_vtable(&asm_list);
 
     for (int i = 0; i < class_list.class_count; i++)
@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
 
                 tac_list_from_expression(method.body, &list, (TACSymbol){ 0 });
 
-                int16_t strings_handled = 0;
+                int64_t strings_handled = 0;
                 for (int k = 0; k < list.count; k++)
                 {
                     if (list.items[k].operation == TAC_OP_STRING)
@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
     builtin_append_string_constants(&asm_list);
     builtin_append_start(&asm_list);
 
-    if (true) // PA3c2 -- output first method as TAC
+    if (false) // PA3c2 -- output first method as TAC
     {
         bh_allocator tac_arena = arena_init(500000);
         TACList tac_list = tac_list_from_class_list(class_list, tac_arena);

@@ -57,14 +57,14 @@ typedef enum CoolExpressionType {
 typedef struct CoolAST
 {
     CoolNodeType type;
-    uint16_t class_count;
+    uint64_t class_count;
     struct CoolClass* classes;
 } CoolAST;
 
 typedef struct CoolIdentifier
 {
     CoolNodeType type;
-    uint32_t line_num;
+    uint64_t line_num;
     bh_str name;
 } CoolIdentifier;
 
@@ -94,7 +94,7 @@ typedef struct CoolCaseElement
 typedef struct CoolExpression {
     CoolNodeType type;
     CoolExpressionType expression_type;
-    int32_t line_num;
+    int64_t line_num;
     bh_str expression_typename;
     union {
         struct { CoolIdentifier var; struct CoolExpression* rhs; } assign;
@@ -104,7 +104,7 @@ typedef struct CoolExpression {
         struct { bh_str method; } internal;
         struct { struct CoolExpression* predicate; struct CoolExpression* then_branch; struct CoolExpression* else_branch; } if_expr;
         struct { struct CoolExpression* predicate; struct CoolExpression* body; } while_expr;
-        struct { uint32_t body_length; struct CoolExpression* body; } block;
+        struct { uint64_t body_length; struct CoolExpression* body; } block;
         struct { CoolIdentifier class_name; } new_expr;
         struct { struct CoolExpression* e; } isvoid;
         struct { struct CoolExpression* x; struct CoolExpression* y; } binary;
@@ -169,7 +169,7 @@ typedef struct ClassMethodParameter
 typedef struct ClassMethod
 {
     bh_str name;
-    int16_t name_line_num;
+    int64_t name_line_num;
     bh_str inherited_from;
     bh_str return_type;
     int16_t parameter_count;

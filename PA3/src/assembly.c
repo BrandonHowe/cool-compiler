@@ -5,6 +5,7 @@
 #include "assembly.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
 
@@ -114,7 +115,7 @@ void asm_list_append_pop(ASMList* asm_list, const ASMRegister reg)
     });
 }
 
-void asm_list_append_li(ASMList* asm_list, const ASMRegister reg, const int16_t immediate, const ASMImmediateUnits units)
+void asm_list_append_li(ASMList* asm_list, const ASMRegister reg, const int64_t immediate, const ASMImmediateUnits units)
 {
     asm_list_append(asm_list, (ASMInstr){
         .op = ASM_OP_LI,
@@ -125,7 +126,7 @@ void asm_list_append_li(ASMList* asm_list, const ASMRegister reg, const int16_t 
     });
 }
 
-void asm_list_append_la(ASMList* asm_list, const ASMRegister reg, const int16_t class_idx, const int16_t method_idx)
+void asm_list_append_la(ASMList* asm_list, const ASMRegister reg, const int64_t class_idx, const int64_t method_idx)
 {
     asm_list_append(asm_list, (ASMInstr){
         .op = ASM_OP_LA,
@@ -136,7 +137,7 @@ void asm_list_append_la(ASMList* asm_list, const ASMRegister reg, const int16_t 
     });
 }
 
-void asm_list_append_ld(ASMList* asm_list, const ASMRegister dest, const ASMRegister source, const int16_t offset)
+void asm_list_append_ld(ASMList* asm_list, const ASMRegister dest, const ASMRegister source, const int64_t offset)
 {
     asm_list_append(asm_list, (ASMInstr){
         .op = ASM_OP_LD,
@@ -157,7 +158,7 @@ void asm_list_append_call(ASMList* asm_list, const ASMRegister dest)
     });
 }
 
-void asm_list_append_syscall(ASMList* asm_list, const int16_t class_idx, const int16_t method_idx)
+void asm_list_append_syscall(ASMList* asm_list, const int64_t class_idx, const int64_t method_idx)
 {
     asm_list_append(asm_list, (ASMInstr){
         .op = ASM_OP_SYSCALL,
@@ -167,7 +168,7 @@ void asm_list_append_syscall(ASMList* asm_list, const int16_t class_idx, const i
     });
 }
 
-void asm_list_append_st(ASMList* asm_list, const ASMRegister dest, const int16_t offset, const ASMRegister source)
+void asm_list_append_st(ASMList* asm_list, const ASMRegister dest, const int64_t offset, const ASMRegister source)
 {
     asm_list_append(asm_list, (ASMInstr){
         .op = ASM_OP_ST,
@@ -285,7 +286,7 @@ void asm_from_vtable(ASMList* asm_list)
         for (int j = 0; j < class_node.method_count; j++)
         {
             const ClassMethod method = class_node.methods[j];
-            const int16_t method_name_len = method.name.len + method.inherited_from.len + 1;
+            const int64_t method_name_len = method.name.len + method.inherited_from.len + 1;
             char* method_name_buf = bh_alloc(asm_list->string_allocator, method_name_len);
             strncpy(method_name_buf, method.inherited_from.buf, method.inherited_from.len);
             strncpy(method_name_buf + method.inherited_from.len, ".", 1);
@@ -295,7 +296,7 @@ void asm_from_vtable(ASMList* asm_list)
     }
 }
 
-void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const int16_t class_idx)
+void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const int64_t class_idx)
 {
     char* constructor_buf = bh_alloc(asm_list->string_allocator, class_node.name.len + 5);
     strncpy(constructor_buf, class_node.name.buf, class_node.name.len);
@@ -310,7 +311,7 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
     asm_list_append_arith(asm_list, ASM_OP_SUB, RSP, R14);
 
     // call malloc
-    int16_t attribute_count = class_node.attribute_count;
+    int64_t attribute_count = class_node.attribute_count;
     if (bh_str_equal_lit(class_node.name, "Bool") ||
         bh_str_equal_lit(class_node.name, "Int") ||
         bh_str_equal_lit(class_node.name, "String"))
@@ -328,7 +329,7 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
     });
 
     // store class tag
-    int16_t class_tag = class_idx;
+    int64_t class_tag = class_idx;
     if (bh_str_equal_lit(class_node.name, "Bool")) class_tag = -1;
     if (bh_str_equal_lit(class_node.name, "Int")) class_tag = -2;
     if (bh_str_equal_lit(class_node.name, "String")) class_tag = -3;
@@ -408,11 +409,15 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
     asm_list_append_return(asm_list);
 }
 
-void asm_list_append_call_method(ASMList* asm_list, const int16_t class_idx, const int16_t method_idx)
+void asm_list_append_call_method(ASMList* asm_list, const int64_t class_idx, const int64_t method_idx)
 {
-    bool is_comparison = class_idx == INTERNAL_CLASS &&
-                         (method_idx == INTERNAL_EQ_HANDLER || method_idx == INTERNAL_LE_HANDLER || method_idx == INTERNAL_LT_HANDLER);
-    if (is_comparison)
+    bool is_comparison = class_idx == INTERNAL_CLASS && method_idx <= INTERNAL_EQ_HANDLER;
+    bool is_str_handler = class_idx == INTERNAL_CLASS && method_idx <= INTERNAL_STRCAT_HANDLER;
+    if (is_str_handler)
+    {
+
+    }
+    else if (is_comparison)
     {
         asm_list_append_push(asm_list, R12);
     }
@@ -443,7 +448,11 @@ void asm_list_append_call_method(ASMList* asm_list, const int16_t class_idx, con
         });
     }
 
-    if (is_comparison)
+    if (is_str_handler)
+    {
+
+    }
+    else if (is_comparison)
     {
         asm_list_append(asm_list, (ASMInstr){
             .op = ASM_OP_ADD,
@@ -464,10 +473,10 @@ void asm_list_append_call_method(ASMList* asm_list, const int16_t class_idx, con
 
 void asm_from_tac_symbol(ASMList* asm_list, const TACSymbol symbol)
 {
-    int16_t bool_class_idx = -1;
-    int16_t io_class_idx = -1;
-    int16_t int_class_idx = -1;
-    int16_t string_class_idx = -1;
+    int64_t bool_class_idx = -1;
+    int64_t io_class_idx = -1;
+    int64_t int_class_idx = -1;
+    int64_t string_class_idx = -1;
     for (int i = 0; i < asm_list->class_list->class_count; i++)
     {
         ClassNode class_node = asm_list->class_list->class_nodes[i];
@@ -512,10 +521,10 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
 {
     ClassNode curr_class_node = tac_list.class_list.class_nodes[tac_list.class_idx];
     const bh_str class_name = curr_class_node.name;
-    int16_t bool_class_idx = -1;
-    int16_t io_class_idx = -1;
-    int16_t int_class_idx = -1;
-    int16_t string_class_idx = -1;
+    int64_t bool_class_idx = -1;
+    int64_t io_class_idx = -1;
+    int64_t int_class_idx = -1;
+    int64_t string_class_idx = -1;
     for (int i = 0; i < asm_list->class_list->class_count; i++)
     {
         ClassNode class_node = asm_list->class_list->class_nodes[i];
@@ -535,7 +544,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
         {
             if (expr.rhs1.type == TAC_SYMBOL_TYPE_VARIABLE)
             {
-                int16_t attribute_idx = 0;
+                int64_t attribute_idx = 0;
                 for (int j = 0; j < curr_class_node.attribute_count; j++)
                 {
                     if (bh_str_equal(curr_class_node.attributes[j].name, expr.rhs1.variable))
@@ -660,8 +669,8 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             break;
         case TAC_OP_NEW:
             {
-                int16_t class_idx = -1;
-                for (int16_t j = 0; j < asm_list->class_list->class_count; j++)
+                int64_t class_idx = -1;
+                for (int64_t j = 0; j < asm_list->class_list->class_count; j++)
                 {
                     if (bh_str_equal(asm_list->class_list->class_nodes[j].name, expr.rhs1.variable))
                     {
@@ -674,7 +683,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             break;
         case TAC_OP_DEFAULT:
         {
-            int16_t class_idx = -1;
+            int64_t class_idx = -1;
             for (int j = 0; j < asm_list->class_list->class_count; j++)
             {
                 if (bh_str_equal(asm_list->class_list->class_nodes[j].name, expr.rhs1.variable))
@@ -705,7 +714,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             break;
         case TAC_OP_CALL:
         {
-            int16_t is_self_dispatch = expr.args[expr.arg_count - 1].symbol == 0;
+            int64_t is_self_dispatch = expr.args[expr.arg_count - 1].symbol == 0;
             // Check for void if not self dispatch
             if (!is_self_dispatch)
             {
@@ -760,8 +769,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
         case TAC_OP_JMP:
         case TAC_OP_LABEL:
         {
-            int16_t digits = expr.rhs1.integer > 9 ? 2 : 1;
-            bh_str_buf str_buf = bh_str_buf_init(asm_list->string_allocator, class_name.len + tac_list.method_name.len + digits + 2);
+            bh_str_buf str_buf = bh_str_buf_init(asm_list->string_allocator, class_name.len + tac_list.method_name.len + 6);
             bh_str_buf_append(&str_buf, class_name);
             bh_str_buf_append_lit(&str_buf, "_");
             bh_str_buf_append(&str_buf, tac_list.method_name);
@@ -784,8 +792,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             break;
         case TAC_OP_BT:
         {
-            int16_t digits = expr.rhs2.integer > 9 ? 2 : 1;
-            bh_str_buf str_buf = bh_str_buf_init(asm_list->string_allocator, class_name.len + tac_list.method_name.len + digits + 2);
+            bh_str_buf str_buf = bh_str_buf_init(asm_list->string_allocator, class_name.len + tac_list.method_name.len + 6);
             bh_str_buf_append(&str_buf, class_name);
             bh_str_buf_append_lit(&str_buf, "_");
             bh_str_buf_append(&str_buf, tac_list.method_name);
@@ -797,7 +804,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
         }
         default:
             assert(0 && "Trying to convert unhandled tac expression to assembly");
-            break;
+            return;
         }
     }
 }
@@ -808,7 +815,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     ClassMethod method = tac_list.class_list.class_nodes[tac_list.class_idx].methods[tac_list.method_idx];
 
     // Construct method name
-    int16_t label_len = class_name.len + tac_list.method_name.len + 1;
+    int64_t label_len = class_name.len + tac_list.method_name.len + 1;
     char* label_buf = bh_alloc(asm_list->string_allocator, label_len + 4);
     strncpy(label_buf, class_name.buf, class_name.len);
     label_buf[class_name.len] = '.';
@@ -823,14 +830,14 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     asm_list_append_mov(asm_list, RBP, RSP);
     asm_list_append_ld(asm_list, R12, RBP, 2);
     asm_list_append_comment(asm_list, "stack room for temporaries");
-    int16_t temp_count = tac_list._curr_symbol + (tac_list._curr_symbol & 1);
+    int64_t temp_count = tac_list._curr_symbol + (tac_list._curr_symbol & 1);
     asm_list_append_li(asm_list, R14, temp_count, ASMImmediateUnitsWord);
     asm_list_append_arith(asm_list, ASM_OP_SUB, RSP, R14);
 
     asm_list_append_comment(asm_list, "method body begins");
-    int16_t io_class_idx = -1;
-    int16_t int_class_idx = -1;
-    int16_t string_class_idx = -1;
+    int64_t io_class_idx = -1;
+    int64_t int_class_idx = -1;
+    int64_t string_class_idx = -1;
     for (int i = 0; i < asm_list->class_list->class_count; i++)
     {
         ClassNode class_node = asm_list->class_list->class_nodes[i];
@@ -853,7 +860,10 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         }
         if (bh_str_equal_lit(tac_list.method_name, "type_name"))
         {
-            // implement pa3
+            asm_list_append_call_method(asm_list, string_class_idx, CONSTRUCTOR_METHOD);
+            asm_list_append_ld(asm_list, R14, R12, 2);
+            asm_list_append_ld(asm_list, R14, R14, 0);
+            asm_list_append_st(asm_list, R13, 3, R14);
         }
     }
     else if (bh_str_equal_lit(class_name, "IO"))
@@ -893,7 +903,15 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     {
         if (bh_str_equal_lit(tac_list.method_name, "length"))
         {
-            // implement pa3
+            asm_list_append_call_method(asm_list, int_class_idx, CONSTRUCTOR_METHOD);
+            asm_list_append_mov(asm_list, R14, R13);
+            asm_list_append_ld(asm_list, R13, R12, 3);
+            asm_list_append_mov(asm_list, RDI, R13);
+            asm_list_append_li(asm_list, RAX, 0, ASMImmediateUnitsBase);
+            asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_STRLEN_HANDLER);
+            asm_list_append_mov(asm_list, R13, RAX);
+            asm_list_append_st(asm_list, R14, 3, R14);
+            asm_list_append_mov(asm_list, R13, R14);
         }
         if (bh_str_equal_lit(tac_list.method_name, "substr"))
         {
@@ -956,117 +974,10 @@ void builtin_append_custom_string_constant(ASMList* asm_list, const bh_str label
 }
 
 // I used the reference compiler's output for this code
-void builtin_append_comp_handler(ASMList* asm_list, const TACOp op)
-{
-    int16_t bool_class_idx = -1;
-    for (int i = 0; i < asm_list->class_list->class_count; i++)
-    {
-        ClassNode class_node = asm_list->class_list->class_nodes[i];
-        if (bh_str_equal_lit(class_node.name, "Bool")) bool_class_idx = i;
-        if (bool_class_idx > -1) break;
-    }
-
-    const char* prefix = op == TAC_OP_EQ ? "eq_" : op == TAC_OP_LT ? "lt_" : "le_";
-
-    char* eq_handler_buf = bh_alloc(asm_list->string_allocator, 10);
-    strncpy(eq_handler_buf, prefix, 3); strncpy(eq_handler_buf + 3, "handler", 7);
-    bh_str eq_handler = (bh_str){ .buf = eq_handler_buf, .len = 10 };
-    char* eq_true_buf = bh_alloc(asm_list->string_allocator, 7);
-    strncpy(eq_true_buf, prefix, 3); strncpy(eq_true_buf + 3, "true", 4);
-    bh_str eq_true = (bh_str){ .buf = eq_true_buf, .len = 7 };
-    char* eq_false_buf = bh_alloc(asm_list->string_allocator, 8);
-    strncpy(eq_false_buf, prefix, 3); strncpy(eq_false_buf + 3, "false", 5);
-    bh_str eq_false = (bh_str){ .buf = eq_false_buf, .len = 8 };
-    char* eq_bool_buf = bh_alloc(asm_list->string_allocator, 7);
-    strncpy(eq_bool_buf, prefix, 3); strncpy(eq_bool_buf + 3, "bool", 4);
-    bh_str eq_bool = (bh_str){ .buf = eq_bool_buf, .len = 7 };
-    char* eq_int_buf = bh_alloc(asm_list->string_allocator, 6);
-    strncpy(eq_int_buf, prefix, 3); strncpy(eq_int_buf + 3, "int", 3);
-    bh_str eq_int = (bh_str){ .buf = eq_int_buf, .len = 6 };
-    char* eq_string_buf = bh_alloc(asm_list->string_allocator, 9);
-    strncpy(eq_string_buf, prefix, 3); strncpy(eq_string_buf + 3, "string", 6);
-    bh_str eq_string = (bh_str){ .buf = eq_string_buf, .len = 9 };
-    char* eq_end_buf = bh_alloc(asm_list->string_allocator, 6);
-    strncpy(eq_end_buf, prefix, 3); strncpy(eq_end_buf + 3, "end", 3);
-    bh_str eq_end = (bh_str){ .buf = eq_end_buf, .len = 6 };
-
-    asm_list_append_label(asm_list, eq_handler);
-    asm_list_append_mov(asm_list, RBP, RSP);
-    asm_list_append_pop(asm_list, R12);
-    asm_list_append_push(asm_list, RA);
-    asm_list_append_ld(asm_list, R13, RBP, 3);
-    asm_list_append_ld(asm_list, R14, RBP, 2);
-    asm_list_append_beq(asm_list, R13, R14, eq_true);
-    asm_list_append_li(asm_list, R15, 0, ASMImmediateUnitsBase);
-    asm_list_append_beq(asm_list, R13, R15, eq_false);
-    asm_list_append_beq(asm_list, R14, R15, eq_false);
-    asm_list_append_ld(asm_list, R13, R13, 0);
-    asm_list_append_ld(asm_list, R14, R14, 0);
-    asm_list_append_comment(asm_list, "place the sum of the type tags in r1");
-    asm_list_append_arith(asm_list, ASM_OP_ADD, R13, R14);
-    asm_list_append_li(asm_list, R14, -2, ASMImmediateUnitsBase);
-    asm_list_append_beq(asm_list, R13, R14, eq_bool);
-    asm_list_append_li(asm_list, R14, -4, ASMImmediateUnitsBase);
-    asm_list_append_beq(asm_list, R13, R14, eq_int);
-    asm_list_append_li(asm_list, R14, -6, ASMImmediateUnitsBase);
-    asm_list_append_beq(asm_list, R13, R14, eq_string);
-    if (op == TAC_OP_LT)
-    {
-        asm_list_append_comment(asm_list, "for non-primitive, < is always false");
-    }
-    else
-    {
-        asm_list_append_comment(asm_list, "otherwise, use pointer comparison");
-        asm_list_append_ld(asm_list, R13, RBP, 3);
-        asm_list_append_ld(asm_list, R13, RBP, 2);
-        asm_list_append_beq(asm_list, R13, R14, eq_true);
-    }
-    asm_list_append_label(asm_list, eq_false);
-    asm_list_append_comment(asm_list, "not equal");
-    asm_list_append_call_method(asm_list, bool_class_idx, -1);
-    asm_list_append_jmp(asm_list, eq_end);
-    asm_list_append_label(asm_list, eq_true);
-    asm_list_append_comment(asm_list, "equal");
-    asm_list_append_call_method(asm_list, bool_class_idx, -1);
-    asm_list_append_li(asm_list, R14, 1, ASMImmediateUnitsBase);
-    asm_list_append_st(asm_list, R13, 3, R14);
-    asm_list_append_jmp(asm_list, eq_end);
-    asm_list_append_label(asm_list, eq_bool);
-    asm_list_append_comment(asm_list, "two Bools");
-    asm_list_append_label(asm_list, eq_int);
-    asm_list_append_comment(asm_list, "two Ints");
-    asm_list_append_ld(asm_list, R13, RBP, 3);
-    asm_list_append_ld(asm_list, R14, RBP, 2);
-    asm_list_append_ld(asm_list, R13, R13, 3);
-    asm_list_append_ld(asm_list, R14, R14, 3);
-    if (op == TAC_OP_EQ) asm_list_append_beq(asm_list, R13, R14, eq_true);
-    if (op == TAC_OP_LT) asm_list_append_blt(asm_list, R13, R14, eq_true);
-    if (op == TAC_OP_LTE) asm_list_append_ble(asm_list, R13, R14, eq_true);
-    asm_list_append_jmp(asm_list, eq_false);
-    asm_list_append_label(asm_list, eq_string);
-    asm_list_append_comment(asm_list, "two Strings");
-    asm_list_append_ld(asm_list, R13, RBP, 3);
-    asm_list_append_ld(asm_list, R14, RBP, 2);
-    asm_list_append_ld(asm_list, R13, R13, 3);
-    asm_list_append_ld(asm_list, R14, R14, 3);
-    asm_list_append_ld(asm_list, R13, R13, 0);
-    asm_list_append_ld(asm_list, R14, R14, 0);
-    if (op == TAC_OP_EQ) asm_list_append_beq(asm_list, R13, R14, eq_true);
-    if (op == TAC_OP_LT) asm_list_append_blt(asm_list, R13, R14, eq_true);
-    if (op == TAC_OP_LTE) asm_list_append_ble(asm_list, R13, R14, eq_true);
-    asm_list_append_jmp(asm_list, eq_false);
-    asm_list_append_label(asm_list, eq_end);
-    asm_list_append_pop(asm_list, RA);
-    asm_list_append_li(asm_list, R14, 2, ASMImmediateUnitsBase);
-    asm_list_append_arith(asm_list, ASM_OP_ADD, RSP, R14);
-    asm_list_append_return(asm_list);
-}
-
-// I used the reference compiler's output for this code
 void builtin_append_start(ASMList* asm_list)
 {
-    int16_t main_class_idx = -1;
-    int16_t main_method_idx = -1;
+    int64_t main_class_idx = -1;
+    int64_t main_method_idx = -1;
     for (int i = 0; i < asm_list->class_list->class_count; i++)
     {
         ClassNode class_node = asm_list->class_list->class_nodes[i];
@@ -1142,7 +1053,7 @@ void display_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_l
         }
         if (param.reg.offset || force_offset)
         {
-            int16_t offset = param.reg.offset;
+            int64_t offset = param.reg.offset;
             // if (param.reg.name == RBP) offset += 1; // MAKES COOL-ASM WORK
             bh_str_buf_append_format(str_buf, "[%i]", offset);
         }
@@ -1393,7 +1304,7 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
         break;
     case ASM_PARAM_IMMEDIATE:
     {
-        int16_t num = param.immediate.val;
+        int64_t num = param.immediate.val;
         if (param.immediate.units == ASMImmediateUnitsWord) num *= 8;
         bh_str_buf_append_format(str_buf, "$%i", num);
         break;
@@ -1401,7 +1312,7 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
     case ASM_PARAM_REGISTER:
         if (param.reg.offset || force_offset)
         {
-            int16_t offset = param.reg.offset * 8;
+            int64_t offset = param.reg.offset * 8;
             bh_str_buf_append_format(str_buf, "%i(", offset);
         }
         switch (param.reg.name)
@@ -1449,6 +1360,12 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
                 break;
             case INTERNAL_LT_HANDLER:
                 bh_str_buf_append_lit(str_buf, "lt_handler");
+                break;
+            case INTERNAL_STRCAT_HANDLER:
+                bh_str_buf_append_lit(str_buf, "coolstrcat");
+                break;
+            case INTERNAL_STRLEN_HANDLER:
+                bh_str_buf_append_lit(str_buf, "coolstrlen");
                 break;
             default:
                 assert(0 && "Unhandled internal method");
@@ -1600,17 +1517,15 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
         case ASM_OP_MOV:
         case ASM_OP_LI:
         case ASM_OP_LA:
-        case ASM_OP_LD:
             bh_str_buf_append_lit(str_buf, "movq");
             x86_asm_param(str_buf, class_list, instr.params[1]);
             bh_str_buf_append_lit(str_buf, ",");
             x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
-        case ASM_OP_SYSCALL:
-            x86_asm_param(str_buf, class_list, instr.params[0]);
-            break;
-        case ASM_OP_CALL:
-            bh_str_buf_append_lit(str_buf, "call");
+        case ASM_OP_LD:
+            bh_str_buf_append_lit(str_buf, "movq");
+            x86_asm_param_internal(str_buf, class_list, instr.params[1], true);
+            bh_str_buf_append_lit(str_buf, ",");
             x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_ST:
@@ -1618,6 +1533,13 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             x86_asm_param(str_buf, class_list, instr.params[1]);
             bh_str_buf_append_lit(str_buf, ",");
             x86_asm_param_internal(str_buf, class_list, instr.params[0], true);
+            break;
+        case ASM_OP_SYSCALL:
+            x86_asm_param(str_buf, class_list, instr.params[0]);
+            break;
+        case ASM_OP_CALL:
+            bh_str_buf_append_lit(str_buf, "call");
+            x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_BEQ:
             bh_str_buf_append_lit(str_buf, "cmpq");
@@ -1700,7 +1622,7 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
 
 ASMList asm_list_init()
 {
-    int16_t base_capacity = 100;
+    int64_t base_capacity = 100;
 #ifdef WIN32
     ASMInstr* data = VirtualAlloc(NULL, 10000000, MEM_RESERVE, PAGE_NOACCESS);
     VirtualAlloc(data, base_capacity * sizeof(ASMInstr), MEM_COMMIT, PAGE_READWRITE);
