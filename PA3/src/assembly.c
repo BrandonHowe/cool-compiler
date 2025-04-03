@@ -654,6 +654,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             asm_list_append_call_method(asm_list, bool_class_idx, -1);
 
             asm_list_append_label(asm_list, label_str_3);
+            asm_list_append_st(asm_list, RBP, -0 - expr.lhs.symbol, R13);
             break;
         }
         case TAC_OP_NEG:

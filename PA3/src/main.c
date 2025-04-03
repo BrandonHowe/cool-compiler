@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
     builtin_append_string_constants(&asm_list);
     builtin_append_start(&asm_list);
 
-    if (false) // PA3c2 -- output first method as TAC
+    if (true) // PA3c2 -- output first method as TAC
     {
         bh_allocator tac_arena = arena_init(500000);
         TACList tac_list = tac_list_from_class_list(class_list, tac_arena);

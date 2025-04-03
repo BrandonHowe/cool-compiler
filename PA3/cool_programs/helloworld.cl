@@ -1,14 +1,17 @@
-class A inherits IO {
+class ZZ inherits IO {
     print(x : Int) : SELF_TYPE { out_int(x) };
 };
 
 class Main inherits IO {
     io : IO <- new IO;
+    (*
     main() : Object {{
         out_string((new Object).type_name().substr(4,1)).
         out_string((isvoid self).type_name().substr(1,3));
         out_string("\n");
     }};
+    *)
+    main() : Object {{ if not not not true then out_int(1) else out_int(2) fi; }};
     (*
     main() : Object {{
     if not not not not not not not not not not true then out_int(1) else out_int(2) fi;
