@@ -856,7 +856,37 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         }
         if (bh_str_equal_lit(tac_list.method_name, "copy"))
         {
-            // implement pa3
+            bh_str_buf label_buf_1 = bh_str_buf_init(asm_list->string_allocator, 4);
+            bh_str_buf_append_format(&label_buf_1, "l%i", ++asm_list->_global_label);
+            bh_str label_str_1 = (bh_str){ .buf = label_buf_1.buf, .len = label_buf_1.len };
+
+            bh_str_buf label_buf_2 = bh_str_buf_init(asm_list->string_allocator, 4);
+            bh_str_buf_append_format(&label_buf_2, "l%i", ++asm_list->_global_label);
+            bh_str label_str_2 = (bh_str){ .buf = label_buf_2.buf, .len = label_buf_2.len };
+
+            asm_list_append_ld(asm_list, R14, R12, 1);
+            asm_list_append(asm_list, (ASMInstr){
+                .op = ASM_OP_ALLOC,
+                .params = {
+                    (ASMParam){ .type = ASM_PARAM_REGISTER, .reg = R13 },
+                    (ASMParam){ .type = ASM_PARAM_REGISTER, .reg = R14 },
+                }
+            });
+            asm_list_append_push(asm_list, R13);
+
+            asm_list_append_label(asm_list, label_str_1);
+            asm_list_append_bnz(asm_list, R14, label_str_2);
+            asm_list_append_ld(asm_list, R15, R12, 0);
+            asm_list_append_st(asm_list, R13, 0, R15);
+            asm_list_append_li(asm_list, R15, 1, ASMImmediateUnitsWord);
+            asm_list_append_arith(asm_list, ASM_OP_ADD, R12, R15);
+            asm_list_append_arith(asm_list, ASM_OP_ADD, R13, R15);
+            asm_list_append_li(asm_list, R15, 1, ASMImmediateUnitsBase);
+            asm_list_append_arith(asm_list, ASM_OP_SUB, R14, R15);
+            asm_list_append_jmp(asm_list, label_str_1);
+
+            asm_list_append_label(asm_list, label_str_2);
+            asm_list_append_pop(asm_list, R13);
         }
         if (bh_str_equal_lit(tac_list.method_name, "type_name"))
         {
@@ -901,6 +931,20 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     }
     else if (bh_str_equal_lit(class_name, "String"))
     {
+        if (bh_str_equal_lit(tac_list.method_name, "concat"))
+        {
+            asm_list_append_call_method(asm_list, string_class_idx, CONSTRUCTOR_METHOD);
+            asm_list_append_mov(asm_list, R15, R13);
+            asm_list_append_ld(asm_list, R14, RBP, 3);
+            asm_list_append_ld(asm_list, R14, R14, 3);
+            asm_list_append_ld(asm_list, R13, R12, 3);
+            asm_list_append_mov(asm_list, RDI, R13);
+            asm_list_append_mov(asm_list, RSI, R14);
+            asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_STRCAT_HANDLER);
+            asm_list_append_mov(asm_list, R13, RAX);
+            asm_list_append_st(asm_list, R15, 3, R13);
+            asm_list_append_mov(asm_list, R13, R15);
+        }
         if (bh_str_equal_lit(tac_list.method_name, "length"))
         {
             asm_list_append_call_method(asm_list, int_class_idx, CONSTRUCTOR_METHOD);
@@ -915,7 +959,31 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         }
         if (bh_str_equal_lit(tac_list.method_name, "substr"))
         {
-            // implement pa3
+            bh_str_buf label_buf = bh_str_buf_init(asm_list->string_allocator, 4);
+            bh_str_buf_append_format(&label_buf, "l%i", ++asm_list->_global_label);
+            bh_str label_str = (bh_str){ .buf = label_buf.buf, .len = label_buf.len };
+
+            asm_list_append_call_method(asm_list, string_class_idx, CONSTRUCTOR_METHOD);
+            asm_list_append_mov(asm_list, R15, R13);
+            asm_list_append_ld(asm_list, R14, RBP, 3);
+            asm_list_append_ld(asm_list, R14, R14, 3);
+            asm_list_append_ld(asm_list, R13, RBP, 4);
+            asm_list_append_ld(asm_list, R13, R13, 3);
+            asm_list_append_ld(asm_list, R12, R12, 3);
+            asm_list_append_mov(asm_list, RDI, R12);
+            asm_list_append_mov(asm_list, RSI, R13);
+            asm_list_append_mov(asm_list, RDX, R14);
+            asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_SUBSTR_HANDLER);
+            asm_list_append_mov(asm_list, R13, RAX);
+            asm_list_append_bnz(asm_list, R13, label_str);
+            asm_list_append_la(asm_list, R13, INTERNAL_STRINGS, INTERNAL_SUBSTR_RANGE_STR);
+            asm_list_append_syscall(asm_list, io_class_idx, 6);
+            asm_list_append_li(asm_list, RDI, 0, ASMImmediateUnitsBase);
+            asm_list_append_syscall(asm_list, INTERNAL_CLASS, 0); // exit
+
+            asm_list_append_label(asm_list, label_str);
+            asm_list_append_st(asm_list, R15, 3, R13);
+            asm_list_append_mov(asm_list, R13, R15);
         }
     }
     else
@@ -954,6 +1022,8 @@ void builtin_append_string_constants(ASMList* asm_list)
     asm_list_append_string_constant(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "ERROR: "));
     asm_list_append_label(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "void_dispatch_error_end"));
     asm_list_append_string_constant(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, ": Exception: dispatch on void\\n"));
+    asm_list_append_label(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "substr_out_of_range"));
+    asm_list_append_string_constant(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "ERROR: 0: Eception: String.substr out of range\\n"));
     for (int i = 0; i < asm_list->class_list->class_count; i++)
     {
         const ClassNode class_node = asm_list->class_list->class_nodes[i];
@@ -1090,6 +1160,9 @@ void display_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_l
             case INTERNAL_ABORT_STR:
                 bh_str_buf_append_lit(str_buf, "string_abort");
                 break;
+            case INTERNAL_SUBSTR_RANGE_STR:
+                bh_str_buf_append_lit(str_buf, "substr_out_of_range");
+                break;
             case INTERNAL_VOID_DISPATCH_START_STR:
                 bh_str_buf_append_lit(str_buf, "void_dispatch_error_begin");
                 break;
@@ -1101,7 +1174,7 @@ void display_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_l
                 break;
             }
         }
-        else if (param.method.class_idx == INTERNAL_STRINGS)
+        else if (param.method.class_idx == INTERNAL_CUSTOM_STRINGS)
         {
             bh_str_buf_append_format(str_buf, "string%i", param.method.method_idx);
         }
@@ -1367,6 +1440,9 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
             case INTERNAL_STRLEN_HANDLER:
                 bh_str_buf_append_lit(str_buf, "coolstrlen");
                 break;
+            case INTERNAL_SUBSTR_HANDLER:
+                bh_str_buf_append_lit(str_buf, "coolsubstr");
+                break;
             default:
                 assert(0 && "Unhandled internal method");
                 break;
@@ -1378,6 +1454,9 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
             {
             case INTERNAL_ABORT_STR:
                 bh_str_buf_append_lit(str_buf, "string_abort");
+                break;
+            case INTERNAL_SUBSTR_RANGE_STR:
+                bh_str_buf_append_lit(str_buf, "substr_out_of_range");
                 break;
             case INTERNAL_VOID_DISPATCH_START_STR:
                 bh_str_buf_append_lit(str_buf, "void_dispatch_error_begin");

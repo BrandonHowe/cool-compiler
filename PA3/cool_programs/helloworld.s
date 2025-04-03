@@ -1,7 +1,20 @@
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl A..vtable
+A..vtable:              ## virtual function table for A
+                        .quad string1
+                        .quad A..new
+                        .quad Object.abort
+                        .quad Object.copy
+                        .quad Object.type_name
+                        .quad IO.in_int
+                        .quad IO.in_string
+                        .quad IO.out_int
+                        .quad IO.out_string
+                        .quad A.print
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Bool..vtable
 Bool..vtable:           ## virtual function table for Bool
-                        .quad string1
+                        .quad string2
                         .quad Bool..new
                         .quad Object.abort
                         .quad Object.copy
@@ -9,7 +22,7 @@ Bool..vtable:           ## virtual function table for Bool
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl IO..vtable
 IO..vtable:             ## virtual function table for IO
-                        .quad string2
+                        .quad string3
                         .quad IO..new
                         .quad Object.abort
                         .quad Object.copy
@@ -21,7 +34,7 @@ IO..vtable:             ## virtual function table for IO
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Int..vtable
 Int..vtable:            ## virtual function table for Int
-                        .quad string3
+                        .quad string4
                         .quad Int..new
                         .quad Object.abort
                         .quad Object.copy
@@ -29,7 +42,7 @@ Int..vtable:            ## virtual function table for Int
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Main..vtable
 Main..vtable:           ## virtual function table for Main
-                        .quad string4
+                        .quad string5
                         .quad Main..new
                         .quad Object.abort
                         .quad Object.copy
@@ -42,7 +55,7 @@ Main..vtable:           ## virtual function table for Main
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Object..vtable
 Object..vtable:         ## virtual function table for Object
-                        .quad string5
+                        .quad string6
                         .quad Object..new
                         .quad Object.abort
                         .quad Object.copy
@@ -50,7 +63,7 @@ Object..vtable:         ## virtual function table for Object
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl String..vtable
 String..vtable:         ## virtual function table for String
-                        .quad string6
+                        .quad string7
                         .quad String..new
                         .quad Object.abort
                         .quad Object.copy
@@ -58,6 +71,32 @@ String..vtable:         ## virtual function table for String
                         .quad String.concat
                         .quad String.length
                         .quad String.substr
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl A..new
+A..new:                 ## constructor for A
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        ## stack room for temporaries: 1
+                        movq $8, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        movq $3, %r12
+                        movq $8, %rsi
+			movq %r12, %rdi
+			call calloc
+			movq %rax, %r12
+                        ## store class tag, object size and vtable pointer
+                        movq $10, %r14
+                        movq %r14, 0(%r12)
+                        movq $3, %r14
+                        movq %r14, 8(%r12)
+                        movq $A..vtable, %r14
+                        movq %r14, 16(%r12)
+                        movq %r12, %r13
+                        ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Bool..new
 Bool..new:              ## constructor for Bool
@@ -104,7 +143,7 @@ IO..new:                ## constructor for IO
 			call calloc
 			movq %rax, %r12
                         ## store class tag, object size and vtable pointer
-                        movq $10, %r14
+                        movq $11, %r14
                         movq %r14, 0(%r12)
                         movq $3, %r14
                         movq %r14, 8(%r12)
@@ -161,7 +200,7 @@ Main..new:              ## constructor for Main
 			call calloc
 			movq %rax, %r12
                         ## store class tag, object size and vtable pointer
-                        movq $11, %r14
+                        movq $12, %r14
                         movq %r14, 0(%r12)
                         movq $4, %r14
                         movq %r14, 8(%r12)
@@ -200,7 +239,7 @@ Object..new:            ## constructor for Object
 			call calloc
 			movq %rax, %r12
                         ## store class tag, object size and vtable pointer
-                        movq $12, %r14
+                        movq $13, %r14
                         movq %r14, 0(%r12)
                         movq $3, %r14
                         movq %r14, 8(%r12)
@@ -253,7 +292,7 @@ Object.abort:           ## method definition
                         subq %r14, %rsp
                         ## return address handling
                         ## method body begins
-                        movq $string7, %r13
+                        movq $string8, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
@@ -458,6 +497,39 @@ IO.out_string.end:      ## method body ends
                         popq %rbp
                         ret
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl A.print
+A.print:                ## method definition
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        movq 16(%rbp), %r12
+                        ## stack room for temporaries: 1
+                        movq $8, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        ## fp[3] holds argument x (Int)
+                        ## method body begins
+                        ## out_int(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## x
+                        movq 24(%rbp), %r13
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type A
+                        movq 16(%r12), %r14
+                        ## look up out_int() at offset 7 in vtable
+                        movq 56(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+.globl A.print.end
+A.print.end:            ## method body ends
+                        ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Main.main
 Main.main:              ## method definition
                         pushq %rbp
@@ -469,6 +541,12 @@ Main.main:              ## method definition
                         ## return address handling
                         ## self[3] holds field io (IO)
                         ## method body begins
+                        ## out_string(...).out_string(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## isvoid self.type_name(...).substr(...)
+                        pushq %r12
+                        pushq %rbp
                         ## new Int
                         pushq %rbp
                         pushq %r12
@@ -476,8 +554,23 @@ Main.main:              ## method definition
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq $5, %r14
+                        movq $1, %r14
                         movq %r14, 24(%r13)
+                        pushq %r13
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $3, %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        ## isvoid self.type_name(...)
+                        pushq %r12
+                        pushq %rbp
+                        movq %r12, %r13
                         cmpq $0, %r13
 			je l3
 .globl l4
@@ -503,6 +596,161 @@ l3:                     ## true branch of isvoid
                         movq %r14, 24(%r13)
 .globl l5
 l5:                     ## end of isvoid
+                        cmpq $0, %r13
+			jne l6
+                        movq $string9, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l6
+l6:                     pushq %r13
+                        ## obtain vtable from object in r1 with static type Bool
+                        movq 16(%r13), %r14
+                        ## look up type_name() at offset 4 in vtable
+                        movq 32(%r14), %r14
+                        call *%r14
+                        addq $8, %rsp
+                        popq %rbp
+                        popq %r12
+                        cmpq $0, %r13
+			jne l7
+                        movq $string9, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l7
+l7:                     pushq %r13
+                        ## obtain vtable from object in r1 with static type String
+                        movq 16(%r13), %r14
+                        ## look up substr() at offset 7 in vtable
+                        movq 56(%r14), %r14
+                        call *%r14
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
+                        pushq %r13
+                        ## out_string(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## new Object.type_name(...).substr(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $4, %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        ## new Object.type_name(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## new Object
+                        pushq %rbp
+                        pushq %r12
+                        movq $Object..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        cmpq $0, %r13
+			jne l8
+                        movq $string10, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l8
+l8:                     pushq %r13
+                        ## obtain vtable from object in r1 with static type Object
+                        movq 16(%r13), %r14
+                        ## look up type_name() at offset 4 in vtable
+                        movq 32(%r14), %r14
+                        call *%r14
+                        addq $8, %rsp
+                        popq %rbp
+                        popq %r12
+                        cmpq $0, %r13
+			jne l9
+                        movq $string10, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l9
+l9:                     pushq %r13
+                        ## obtain vtable from object in r1 with static type String
+                        movq 16(%r13), %r14
+                        ## look up substr() at offset 7 in vtable
+                        movq 56(%r14), %r14
+                        call *%r14
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type Main
+                        movq 16(%r12), %r14
+                        ## look up out_string() at offset 8 in vtable
+                        movq 64(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+                        cmpq $0, %r13
+			jne l10
+                        movq $string10, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l10
+l10:                    pushq %r13
+                        ## obtain vtable from object in r1 with static type SELF_TYPE
+                        movq 16(%r13), %r14
+                        ## look up out_string() at offset 8 in vtable
+                        movq 64(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+                        ## out_string(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## new String
+                        pushq %rbp
+                        pushq %r12
+                        movq $String..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        ## string11 holds "\n"
+                        movq $string11, %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type Main
+                        movq 16(%r12), %r14
+                        ## look up out_string() at offset 8 in vtable
+                        movq 64(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
 .globl Main.main.end
 Main.main.end:          ## method body ends
                         ## return address handling
@@ -608,14 +856,14 @@ String.substr:          ## method definition
 			call coolsubstr
 			movq %rax, %r13
                         cmpq $0, %r13
-			jne l6
-                        movq $string8, %r13
+			jne l11
+                        movq $string12, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
 			call exit
-.globl l6
-l6:                     movq %r13, 24(%r15)
+.globl l11
+l11:                    movq %r13, 24(%r15)
                         movq %r15, %r13
 .globl String.substr.end
 String.substr.end:      ## method body ends
@@ -645,36 +893,41 @@ percent.ld:             # " %ld"
 .byte 0
 
 .globl string1
-string1:                # "Bool"
+string1:                # "A"
+.byte  65 # 'A'
+.byte 0
+
+.globl string2
+string2:                # "Bool"
 .byte  66 # 'B'
 .byte 111 # 'o'
 .byte 111 # 'o'
 .byte 108 # 'l'
 .byte 0
 
-.globl string2
-string2:                # "IO"
+.globl string3
+string3:                # "IO"
 .byte  73 # 'I'
 .byte  79 # 'O'
 .byte 0
 
-.globl string3
-string3:                # "Int"
+.globl string4
+string4:                # "Int"
 .byte  73 # 'I'
 .byte 110 # 'n'
 .byte 116 # 't'
 .byte 0
 
-.globl string4
-string4:                # "Main"
+.globl string5
+string5:                # "Main"
 .byte  77 # 'M'
 .byte  97 # 'a'
 .byte 105 # 'i'
 .byte 110 # 'n'
 .byte 0
 
-.globl string5
-string5:                # "Object"
+.globl string6
+string6:                # "Object"
 .byte  79 # 'O'
 .byte  98 # 'b'
 .byte 106 # 'j'
@@ -683,8 +936,8 @@ string5:                # "Object"
 .byte 116 # 't'
 .byte 0
 
-.globl string6
-string6:                # "String"
+.globl string7
+string7:                # "String"
 .byte  83 # 'S'
 .byte 116 # 't'
 .byte 114 # 'r'
@@ -693,8 +946,8 @@ string6:                # "String"
 .byte 103 # 'g'
 .byte 0
 
-.globl string7
-string7:                # "abort\\n"
+.globl string8
+string8:                # "abort\\n"
 .byte  97 # 'a'
 .byte  98 # 'b'
 .byte 111 # 'o'
@@ -704,8 +957,100 @@ string7:                # "abort\\n"
 .byte 110 # 'n'
 .byte 0
 
-.globl string8
-string8:                # "ERROR: 0: Exception: String.substr out of range\\n"
+.globl string9
+string9:                # "ERROR: 9: Exception: dispatch on void\\n"
+.byte  69 # 'E'
+.byte  82 # 'R'
+.byte  82 # 'R'
+.byte  79 # 'O'
+.byte  82 # 'R'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  57 # '9'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  69 # 'E'
+.byte 120 # 'x'
+.byte  99 # 'c'
+.byte 101 # 'e'
+.byte 112 # 'p'
+.byte 116 # 't'
+.byte 105 # 'i'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte 100 # 'd'
+.byte 105 # 'i'
+.byte 115 # 's'
+.byte 112 # 'p'
+.byte  97 # 'a'
+.byte 116 # 't'
+.byte  99 # 'c'
+.byte 104 # 'h'
+.byte  32 # ' '
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  32 # ' '
+.byte 118 # 'v'
+.byte 111 # 'o'
+.byte 105 # 'i'
+.byte 100 # 'd'
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string10
+string10:               # "ERROR: 8: Exception: dispatch on void\\n"
+.byte  69 # 'E'
+.byte  82 # 'R'
+.byte  82 # 'R'
+.byte  79 # 'O'
+.byte  82 # 'R'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  56 # '8'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  69 # 'E'
+.byte 120 # 'x'
+.byte  99 # 'c'
+.byte 101 # 'e'
+.byte 112 # 'p'
+.byte 116 # 't'
+.byte 105 # 'i'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte 100 # 'd'
+.byte 105 # 'i'
+.byte 115 # 's'
+.byte 112 # 'p'
+.byte  97 # 'a'
+.byte 116 # 't'
+.byte  99 # 'c'
+.byte 104 # 'h'
+.byte  32 # ' '
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  32 # ' '
+.byte 118 # 'v'
+.byte 111 # 'o'
+.byte 105 # 'i'
+.byte 100 # 'd'
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string11
+string11:               # "\\n"
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string12
+string12:               # "ERROR: 0: Exception: String.substr out of range\\n"
 .byte  69 # 'E'
 .byte  82 # 'R'
 .byte  82 # 'R'

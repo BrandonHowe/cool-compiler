@@ -5,6 +5,12 @@ class A inherits IO {
 class Main inherits IO {
     io : IO <- new IO;
     main() : Object {{
+        out_string((new Object).type_name().substr(4,1)).
+        out_string((isvoid self).type_name().substr(1,3));
+        out_string("\n");
+    }};
+    (*
+    main() : Object {{
     if not not not not not not not not not not true then out_int(1) else out_int(2) fi;
     if not not not not not not not not not not true then out_int(1) else out_int(2) fi;
     if not not not not not not not not not not true then out_int(1) else out_int(2) fi;
@@ -350,6 +356,7 @@ class Main inherits IO {
     if not not not not not not not not not not true then out_int(1) else out_int(2) fi;
     if not not not not not not not not not not true then out_int(1) else out_int(2) fi;
     }};
+    *)
     --main() : Object { (new A).print(5) };
     --main() : Object { let a : Int, b : Int, c : Int, d : Int in { a <- in_int(); b <- in_int(); if not a = b then { c <- in_int(); d <- in_int(); if not c = d then out_int(500) else out_int(999) fi; } else out_int(a / b) fi; } };
     --main() : Object { while x < 100 loop x <- x + 1 pool };
