@@ -147,11 +147,14 @@ TACList tac_list_from_method(ClassMethod method, bh_allocator allocator)
 
 TACSymbol get_bound_symbol_variable(const TACList* list, const TACSymbol symbol)
 {
-    for (int i = list->_binding_count - 1; i >= 0; i--)
+    if (symbol.type == TAC_SYMBOL_TYPE_VARIABLE)
     {
-        if (bh_str_equal(symbol.variable, list->_bindings[i].name))
+        for (int i = list->_binding_count - 1; i >= 0; i--)
         {
-            return list->_bindings[i].symbol;
+            if (bh_str_equal(symbol.variable, list->_bindings[i].name))
+            {
+                return list->_bindings[i].symbol;
+            }
         }
     }
     return symbol;

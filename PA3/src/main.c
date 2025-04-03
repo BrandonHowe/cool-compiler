@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
     parse_implementation_map(&file, parser_arena, class_list);
     parse_parent_map(&file, parser_arena, class_list);
 
-    bh_allocator tac_allocator = arena_init(1000000);
+    bh_allocator tac_allocator = GPA;
     ASMList asm_list = asm_list_init();
     asm_list.class_list = &class_list;
     asm_list.tac_allocator = tac_allocator;
@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
     builtin_append_string_constants(&asm_list);
     builtin_append_start(&asm_list);
 
-    if (true) // PA3c2 -- output first method as TAC
+    if (false) // PA3c2 -- output first method as TAC
     {
         bh_allocator tac_arena = arena_init(500000);
         TACList tac_list = tac_list_from_class_list(class_list, tac_arena);
