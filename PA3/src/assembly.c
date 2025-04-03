@@ -680,6 +680,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                 }
                 assert(class_idx != -1 && "TAC new expression did not match class");
                 asm_list_append_call_method(asm_list, class_idx, CONSTRUCTOR_METHOD);
+                asm_list_append_st(asm_list, RBP, -0 - expr.lhs.symbol, R13);
             }
             break;
         case TAC_OP_DEFAULT:
