@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 {
     if (argc < 2) {
         printf("Usage: %s, <input_file>\n", argv[0]);
-        return 1;
+        return 0;
     }
 
     bh_str file = read_file_text(argv[1]);
@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
                 list.method_idx = j;
                 list.method_name = method.name;
 
-                tac_list_from_expression(method.body, &list, (TACSymbol){ 0 });
+                tac_list_from_expression(&method.body, &list, (TACSymbol){ 0 });
 
                 int64_t strings_handled = 0;
                 for (int k = 0; k < list.count; k++)

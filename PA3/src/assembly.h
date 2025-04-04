@@ -14,8 +14,6 @@
 #define INTERNAL_STRINGS (-2)
 #define INTERNAL_CUSTOM_STRINGS (-3)
 #define INTERNAL_ABORT_STR (-2)
-#define INTERNAL_VOID_DISPATCH_START_STR (-3)
-#define INTERNAL_VOID_DISPATCH_END_STR (-4)
 #define INTERNAL_SUBSTR_RANGE_STR (-5)
 #define INTERNAL_EQ_HANDLER (-3)
 #define INTERNAL_LE_HANDLER (-4)
@@ -61,7 +59,7 @@ typedef enum ASMParamType
     ASM_PARAM_CONSTANT,
     ASM_PARAM_STRING_CONSTANT,
     ASM_PARAM_LABEL,
-    ASM_PARAM_COMMENT
+    ASM_PARAM_COMMENT,
 } ASMParamType;
 
 typedef enum ASMRegister
@@ -112,6 +110,12 @@ typedef struct ASMInstr
     ASMParam params[3];
 } ASMInstr;
 
+typedef struct ASMErrorStr
+{
+    bh_str label;
+    bh_str message;
+} ASMErrorStr;
+
 typedef struct ASMList
 {
     ASMInstr* instructions;
@@ -121,8 +125,13 @@ typedef struct ASMList
     bh_allocator string_allocator;
     ClassNodeList* class_list;
 
+    ASMErrorStr* error_strs;
+    int64_t error_str_count;
+    int64_t error_str_capacity;
+
     int64_t _stack_depth;
     int64_t _global_label;
+    int64_t _error_label;
     int64_t _string_counter;
 } ASMList;
 

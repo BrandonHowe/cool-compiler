@@ -32,7 +32,7 @@ CFG cfg_from_class_list(ClassNodeList class_list, bh_allocator tac_allocator)
 
             // Generate TAC for our method
             ClassMethod method = class_node.methods[j];
-            TACList tac_list = tac_list_from_method(method, tac_allocator);
+            TACList tac_list = tac_list_from_method(&method, tac_allocator);
 
             // Separate the TAC into parts based on control flow
             int block_len = 0;

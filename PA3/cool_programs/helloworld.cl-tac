@@ -1,5 +1,4 @@
 comment start
-label Main_main_0
-t$1 <- bool true
-t$0 <- not t$1
+label Main_a_0
+t$0 <- new SELF_TYPE
 return t$0

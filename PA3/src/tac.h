@@ -17,6 +17,7 @@ typedef enum TACSymbolType
     TAC_SYMBOL_TYPE_BOOL,
     TAC_SYMBOL_TYPE_STRING,
     TAC_SYMBOL_TYPE_METHOD,
+    TAC_SYMBOL_TYPE_EXPRESSION,
 } TACSymbolType;
 
 typedef struct TACSymbol
@@ -29,6 +30,7 @@ typedef struct TACSymbol
         bh_str string;
         bh_str variable;
         struct { int64_t class_idx; int64_t method_idx; } method;
+        const CoolExpression* expression;
     };
 } TACSymbol;
 
@@ -57,6 +59,7 @@ typedef enum TACOp
     TAC_OP_NEW,
     TAC_OP_DEFAULT,
     TAC_OP_ISVOID,
+    TAC_OP_CASE,
     TAC_OP_CALL,
     TAC_OP_JMP,
     TAC_OP_LABEL,
@@ -105,9 +108,9 @@ typedef struct TACSlice
 TACExpr* TAC_list_append(TACList* list, TACExpr expr);
 TACList TAC_list_init(int64_t capacity, bh_allocator allocator);
 TACSymbol TAC_request_symbol(TACList* list);
-TACSymbol get_bound_symbol_variable(const TACList* list, const TACSymbol symbol);
+TACSymbol get_bound_symbol_variable(const TACList* list, TACSymbol symbol);
 TACList tac_list_from_class_list(ClassNodeList class_list, bh_allocator allocator);
-TACSymbol tac_list_from_expression(CoolExpression expr, TACList* list, TACSymbol destination);
-TACList tac_list_from_method(ClassMethod method, bh_allocator allocator);
+TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TACSymbol destination);
+TACList tac_list_from_method(const ClassMethod* method, bh_allocator allocator);
 
 #endif //TAC_H
