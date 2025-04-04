@@ -1205,6 +1205,11 @@ void builtin_append_string_constants(ASMList* asm_list)
         asm_list_append_label(asm_list, label);
         asm_list_append_string_constant(asm_list, class_node.name);
     }
+    for (int i = 0; i < asm_list->error_str_count; i++)
+    {
+        asm_list_append_label(asm_list, asm_list->error_strs[i].label);
+        asm_list_append_string_constant(asm_list, asm_list->error_strs[i].message);
+    }
 }
 
 void builtin_append_custom_string_constant(ASMList* asm_list, const bh_str label, const bh_str data)
