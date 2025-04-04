@@ -467,6 +467,18 @@ void asm_from_vtable(ASMList* asm_list)
 
 void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const int64_t class_idx)
 {
+    int64_t bool_class_idx = -1;
+    int64_t int_class_idx = -1;
+    int64_t string_class_idx = -1;
+    for (int i = 0; i < asm_list->class_list->class_count; i++)
+    {
+        ClassNode class_node = asm_list->class_list->class_nodes[i];
+        if (bh_str_equal_lit(class_node.name, "Bool")) bool_class_idx = i;
+        if (bh_str_equal_lit(class_node.name, "Int")) int_class_idx = i;
+        if (bh_str_equal_lit(class_node.name, "String")) string_class_idx = i;
+        if (bool_class_idx > -1 && int_class_idx > -1 && string_class_idx > -1) break;
+    }
+
     char* constructor_buf = bh_alloc(asm_list->string_allocator, class_node.name.len + 5);
     strncpy(constructor_buf, class_node.name.buf, class_node.name.len);
     strncpy(constructor_buf + class_node.name.len, "..new", 5);
@@ -562,6 +574,21 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
                 asm_from_tac_list(asm_list, list);
                 asm_list_append_st(asm_list, R12, i + 3, R13);
                 // arena_free_all(asm_list->tac_allocator);
+            }
+            else if (bh_str_equal_lit(attribute.type, "Int"))
+            {
+                asm_list_append_call_method(asm_list, int_class_idx, -1);
+                asm_list_append_st(asm_list, R12, i + 3, R13);
+            }
+            else if (bh_str_equal_lit(attribute.type, "String"))
+            {
+                asm_list_append_call_method(asm_list, string_class_idx, -1);
+                asm_list_append_st(asm_list, R12, i + 3, R13);
+            }
+            else if (bh_str_equal_lit(attribute.type, "Bool"))
+            {
+                asm_list_append_call_method(asm_list, bool_class_idx, -1);
+                asm_list_append_st(asm_list, R12, i + 3, R13);
             }
         }
     }
