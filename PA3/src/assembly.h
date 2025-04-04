@@ -45,6 +45,7 @@ typedef enum ASMOpType
     ASM_OP_SUB,
     ASM_OP_MUL,
     ASM_OP_DIV,
+    ASM_OP_AND,
     ASM_OP_LABEL,
     ASM_OP_CONSTANT,
     ASM_OP_COMMENT,

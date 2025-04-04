@@ -270,6 +270,22 @@ void asm_list_append_arith(ASMList* asm_list, const ASMOpType operation, const A
     });
 }
 
+void asm_list_append_and(ASMList* asm_list, const ASMRegister dest, const int64_t input)
+{
+    asm_list_append(asm_list, (ASMInstr){
+        .op = ASM_OP_AND,
+        .params = {
+            (ASMParam){ .type = ASM_PARAM_REGISTER, .reg = dest },
+            (ASMParam){ .type = ASM_PARAM_IMMEDIATE, .immediate = { .val = input, .units = ASMImmediateUnitsBase } },
+        }
+    });
+}
+
+void asm_list_append_align_sp(ASMList* asm_list)
+{
+    asm_list_append_and(asm_list, RSP, 0xFFFFFFFFFFFFFFF0);
+}
+
 void asm_list_append_st_tac_symbol(ASMList* asm_list, const ClassNode class_node, const ClassMethod method, const TACSymbol symbol)
 {
     switch (symbol.type)
@@ -1008,7 +1024,32 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                 if (bh_str_equal_lit(class_node.name, "String")) class_tag = -3;
                 asm_list_append_li(asm_list, R14, class_tag, ASMImmediateUnitsBase);
                 // create a function that takes in a classlist, case expression, and class_node and finds the closest subclass based on the case
-                asm_list_append_beq(asm_list, R14, R13, labels[0]);
+
+                // figure out which case branch it is mapped to
+                ClassNode* branch_class = &class_node;
+                int64_t correct_branch = -1;
+                while (branch_class != NULL && correct_branch == -1)
+                {
+                    for (int k = 0; k < case_count; k++)
+                    {
+                        CoolCaseElement element = expr.rhs1.expression->data.case_expr.elements[k];
+                        if (bh_str_equal(element.type_name.name, branch_class->name))
+                        {
+                            correct_branch = k;
+                            break;
+                        }
+                    }
+
+                    branch_class = branch_class->parent;
+                }
+                if (correct_branch == -1)
+                {
+                    asm_list_append_beq(asm_list, R14, R13, error_label);
+                }
+                else
+                {
+                    asm_list_append_beq(asm_list, R14, R13, labels[correct_branch]);
+                }
             }
 
             asm_list_append_label(asm_list, error_label);
@@ -1189,6 +1230,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
             asm_list_append_ld(asm_list, R13, R12, 3);
             asm_list_append_mov(asm_list, RDI, R13);
             asm_list_append_mov(asm_list, RSI, R14);
+            asm_list_append_align_sp(asm_list);
             asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_STRCAT_HANDLER);
             asm_list_append_mov(asm_list, R13, RAX);
             asm_list_append_st(asm_list, R15, 3, R13);
@@ -1201,6 +1243,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
             asm_list_append_ld(asm_list, R13, R12, 3);
             asm_list_append_mov(asm_list, RDI, R13);
             asm_list_append_li(asm_list, RAX, 0, ASMImmediateUnitsBase);
+            asm_list_append_align_sp(asm_list);
             asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_STRLEN_HANDLER);
             asm_list_append_mov(asm_list, R13, RAX);
             asm_list_append_st(asm_list, R14, 3, R14);
@@ -1220,9 +1263,11 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
             asm_list_append_mov(asm_list, RDI, R12);
             asm_list_append_mov(asm_list, RSI, R13);
             asm_list_append_mov(asm_list, RDX, R14);
+            asm_list_append_align_sp(asm_list);
             asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_SUBSTR_HANDLER);
             asm_list_append_mov(asm_list, R13, RAX);
             asm_list_append_bnz(asm_list, R13, label_str);
+            asm_list_append_align_sp(asm_list);
             asm_list_append_la(asm_list, R13, INTERNAL_STRINGS, INTERNAL_SUBSTR_RANGE_STR);
             asm_list_append_syscall(asm_list, io_class_idx, 6);
             asm_list_append_li(asm_list, RDI, 0, ASMImmediateUnitsBase);
@@ -1345,7 +1390,7 @@ void display_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_l
     case ASM_PARAM_NULL:
         break;
     case ASM_PARAM_IMMEDIATE:
-        bh_str_buf_append_format(str_buf, "%i", param.immediate.val);
+        bh_str_buf_append_format(str_buf, "$%i", param.immediate.val);
         break;
     case ASM_PARAM_REGISTER:
         switch (param.reg.name)
@@ -1589,6 +1634,12 @@ void display_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             display_asm_param(str_buf, class_list, instr.params[0]);
             bh_str_buf_append_lit(str_buf, " <-");
             display_asm_param(str_buf, class_list, instr.params[0]);
+            display_asm_param(str_buf, class_list, instr.params[1]);
+            break;
+        case ASM_OP_AND:
+            bh_str_buf_append_lit(str_buf, "and");
+            display_asm_param(str_buf, class_list, instr.params[0]);
+            bh_str_buf_append_lit(str_buf, " <-");
             display_asm_param(str_buf, class_list, instr.params[1]);
             break;
         case ASM_OP_ALLOC:
@@ -1852,7 +1903,7 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_ST:
-            bh_str_buf_append_lit(str_buf, "mov");
+            bh_str_buf_append_lit(str_buf, "movq");
             x86_asm_param(str_buf, class_list, instr.params[1]);
             bh_str_buf_append_lit(str_buf, ",");
             x86_asm_param_internal(str_buf, class_list, instr.params[0], true);
@@ -1922,6 +1973,12 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             x86_asm_param(str_buf, class_list, instr.params[1]);
             bh_str_buf_append_lit(str_buf, "d\nmovq %rax,");
             x86_asm_param(str_buf, class_list, instr.params[0]);
+            break;
+        case ASM_OP_AND:
+            bh_str_buf_append_lit(str_buf, "andq");
+            display_asm_param(str_buf, class_list, instr.params[1]);
+            bh_str_buf_append_lit(str_buf, ",");
+            display_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_ALLOC:
             bh_str_buf_append_lit(str_buf, "## guarantee 16-byte alignment before call\nandq $0xFFFFFFFFFFFFFFF0, %rsp\n");
