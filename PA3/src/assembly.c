@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 
@@ -143,7 +144,7 @@ void asm_list_append_la_label(ASMList* asm_list, const ASMRegister reg, const bh
         .op = ASM_OP_LA,
         .params = {
             (ASMParam){ .type = ASM_PARAM_REGISTER, .reg = reg },
-            (ASMParam){ .type = ASM_PARAM_LABEL, .label = label }
+            (ASMParam){ .type = ASM_PARAM_CONSTANT, .label = label }
         }
     });
 }
@@ -337,7 +338,7 @@ void asm_list_create_error(ASMList* asm_list, bh_str error_label, const int64_t 
     asm_list_append_error_str(asm_list, error_label, message_str);
 }
 
-void asm_list_append_check_runtime_error(ASMList* asm_list, const int64_t line_num, const char* message)
+void asm_list_append_runtime_error(ASMList* asm_list, const int64_t line_num, const char* message)
 {
     int64_t io_class_idx = -1;
     for (int i = 0; i < asm_list->class_list->class_count; i++)
@@ -347,15 +348,12 @@ void asm_list_append_check_runtime_error(ASMList* asm_list, const int64_t line_n
         if (io_class_idx > -1) break;
     }
 
-    bh_str success_label = asm_list_create_label(asm_list);
     bh_str error_label = asm_list_create_error_label(asm_list);
     asm_list_create_error(asm_list, error_label, line_num, message);
 
-    asm_list_append_bnz(asm_list, R13, success_label);
     asm_list_append_la_label(asm_list, R13, error_label);
     asm_list_append_syscall(asm_list, io_class_idx, 6);
     asm_list_append_syscall(asm_list, INTERNAL_CLASS, 0);
-    asm_list_append_label(asm_list, success_label);
 }
 
 #pragma endregion
@@ -842,7 +840,10 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             // Check for void if not self dispatch
             if (!is_self_dispatch)
             {
-                asm_list_append_check_runtime_error(asm_list, expr.operation, "dispatch on void");
+                bh_str success_label = asm_list_create_label(asm_list);
+                asm_list_append_bnz(asm_list, R13, success_label);
+                asm_list_append_runtime_error(asm_list, expr.operation, "dispatch on void");
+                asm_list_append_label(asm_list, success_label);
             }
 
             // Push all the params onto the stack
@@ -914,10 +915,72 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
         case TAC_OP_CASE:
         {
             asm_list_append_comment(asm_list, "TAC CASE STATEMENT");
+            int64_t case_count = expr.rhs1.expression->data.case_expr.element_count;
+            bh_str* labels = malloc(case_count * sizeof(bh_str));
+            for (int j = 0; j < case_count; j++)
+            {
+                labels[j] = asm_list_create_label(asm_list);
+            }
+            bh_str error_label = asm_list_create_label(asm_list);
+            bh_str void_label = asm_list_create_label(asm_list);
+            bh_str end_label = asm_list_create_label(asm_list);
+
             for (int j = 0; j < asm_list->class_list->class_count; j++)
             {
                 ClassNode class_node = asm_list->class_list->class_nodes[j];
+                int64_t class_tag = j;
+                if (bh_str_equal_lit(class_node.name, "Bool")) class_tag = -1;
+                if (bh_str_equal_lit(class_node.name, "Int")) class_tag = -2;
+                if (bh_str_equal_lit(class_node.name, "String")) class_tag = -3;
+                asm_list_append_li(asm_list, R14, class_tag, ASMImmediateUnitsBase);
+                // create a function that takes in a classlist, case expression, and class_node and finds the closest subclass based on the case
+                asm_list_append_beq(asm_list, R14, R13, labels[0]);
             }
+
+            asm_list_append_label(asm_list, error_label);
+            asm_list_append_comment(asm_list, "case expression: error");
+            asm_list_append_runtime_error(asm_list, expr.rhs1.expression->line_num, "no case branch found");
+            asm_list_append_label(asm_list, void_label);
+            asm_list_append_comment(asm_list, "case expression: void");
+            asm_list_append_runtime_error(asm_list, expr.rhs1.expression->line_num, "case expression on void");
+            asm_list_append_comment(asm_list, "case expression: branches");
+
+            for (int j = 0; j < case_count; j++)
+            {
+                CoolCaseElement element = expr.rhs1.expression->data.case_expr.elements[j];
+                asm_list_append_comment_str(asm_list, element.type_name.name);
+                asm_list_append_label(asm_list, labels[j]);
+
+                TACList list = TAC_list_init(100, tac_list.allocator);
+                list.class_list = tac_list.class_list;
+                list.class_idx = tac_list.class_idx;
+                list.method_idx = tac_list.method_idx;
+                list.method_name = tac_list.method_name;
+                list._curr_label = tac_list._curr_label;
+                list._curr_symbol = tac_list._curr_symbol;
+
+                tac_list_from_expression(element.body, &list, expr.lhs);
+
+                int64_t strings_handled = 0;
+                for (int k = 0; k < list.count; k++)
+                {
+                    if (list.items[k].operation == TAC_OP_STRING)
+                    {
+                        bh_str_buf label_buf_1 = bh_str_buf_init(asm_list->string_allocator, 10);
+                        bh_str_buf_append_format(&label_buf_1, "string%i", asm_list->_string_counter + strings_handled++);
+                        bh_str label_str_1 = (bh_str){ .buf = label_buf_1.buf, .len = label_buf_1.len };
+
+                        builtin_append_custom_string_constant(asm_list, label_str_1, list.items[k].rhs1.string);
+                    }
+                }
+
+                asm_from_tac_list(asm_list, list);
+
+                asm_list_append_jmp(asm_list, end_label);
+            }
+
+            asm_list_append_label(asm_list, end_label);
+            asm_list_append_comment(asm_list, "TAC CASE STATEMENT");
             break;
         }
         default:

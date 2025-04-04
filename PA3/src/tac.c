@@ -44,6 +44,12 @@ TACList TAC_list_init(const int64_t capacity, bh_allocator allocator)
     return list;
 }
 
+void TAC_list_deinit(TACList list)
+{
+    munmap(list.items, 10000000);
+    bh_free(list.allocator, list._bindings);
+}
+
 TACSymbol TAC_request_symbol(TACList* list)
 {
     const int64_t res = list->_curr_symbol;
@@ -441,7 +447,8 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
         {
             const TACExpr tac = (TACExpr){
                 .operation = TAC_OP_CASE,
-                .lhs = (TACSymbol){ .type = TAC_SYMBOL_TYPE_EXPRESSION, .expression = expr },
+                .lhs = destination,
+                .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_EXPRESSION, .expression = expr },
             };
             TAC_list_append(list, tac);
             return tac.lhs;

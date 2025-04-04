@@ -38,6 +38,7 @@ Main..vtable:           ## virtual function table for Main
                         .quad IO.in_string
                         .quad IO.out_int
                         .quad IO.out_string
+                        .quad Main.a
                         .quad Main.main
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Object..vtable
@@ -168,7 +169,10 @@ Main..new:              ## constructor for Main
                         movq $Main..vtable, %r14
                         movq %r14, 16(%r12)
                         ## initialize attributes
-                        ## self[3] holds field x (Int)
+                        ## self[3] holds field x (Object)
+                        movq $0, %r13
+                        movq %r13, 24(%r12)
+                        ## self[3] x initializer <- 5
                         ## new Int
                         pushq %rbp
                         pushq %r12
@@ -176,9 +180,8 @@ Main..new:              ## constructor for Main
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq %r13, 24(%r12)
-                        ## self[3] x initializer <- 5
-                        movq $int5, %r13
+                        movq $5, %r14
+                        movq %r14, 24(%r13)
                         movq %r13, 24(%r12)
                         movq %r12, %r13
                         ## return address handling
@@ -458,6 +461,51 @@ IO.out_string.end:      ## method body ends
                         popq %rbp
                         ret
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl Main.a
+Main.a:                 ## method definition
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        movq 16(%rbp), %r12
+                        ## stack room for temporaries: 2
+                        movq $16, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        ## self[3] holds field x (Object)
+                        ## method body begins
+.globl l3
+l3:                     ## while conditional check
+                        ## new Bool
+                        pushq %rbp
+                        pushq %r12
+                        movq $Bool..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+                        movq 24(%r13), %r13
+                        cmpq $0, %r13
+			je l4
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $5, %r14
+                        movq %r14, 24(%r13)
+                        jmp l3
+.globl l4
+l4:                     ## end of while loop
+                        movq %r13, 24(%r12)
+.globl Main.a.end
+Main.a.end:             ## method body ends
+                        ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Main.main
 Main.main:              ## method definition
                         pushq %rbp
@@ -467,7 +515,7 @@ Main.main:              ## method definition
                         movq $16, %r14
                         subq %r14, %rsp
                         ## return address handling
-                        ## self[3] holds field x (Int)
+                        ## self[3] holds field x (Object)
                         ## method body begins
                         ## out_int(...)
                         pushq %r12
@@ -476,60 +524,84 @@ Main.main:              ## method definition
                         ## x
                         movq 24(%r12), %r13
                         cmpq $0, %r13
-			je l3
+			je l5
                         movq %r13, 0(%rbp)
                         movq 0(%r13), %r13
-                        ## case Object will jump to l4
-                        ## case Int will jump to l5
-                        ## case String will jump to l6
+                        ## case Object will jump to l6
+                        ## case Int will jump to l7
+                        ## case String will jump to l8
                         ## case expression: compare type tags
                         movq $0, %r14
                         cmpq %r14, %r13
-			je l4
+			je l6
                         movq $10, %r14
                         cmpq %r14, %r13
-			je l4
+			je l6
                         movq $1, %r14
                         cmpq %r14, %r13
-			je l5
+			je l7
                         movq $11, %r14
                         cmpq %r14, %r13
-			je l4
+			je l6
                         movq $12, %r14
                         cmpq %r14, %r13
-			je l4
+			je l6
                         movq $3, %r14
                         cmpq %r14, %r13
-			je l6
-.globl l7
-l7:                     ## case expression: error case
+			je l8
+.globl l9
+l9:                     ## case expression: error case
                         movq $string8, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
 			call exit
-.globl l3
-l3:                     ## case expression: void case
+.globl l5
+l5:                     ## case expression: void case
                         movq $string9, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
 			call exit
                         ## case expression: branches
-.globl l4
-l4:                     ## fp[0] holds case c (Object)
-                        movq $int13, %r13
-                        jmp l8
-.globl l5
-l5:                     ## fp[0] holds case a (Int)
-                        movq $int9, %r13
-                        jmp l8
 .globl l6
-l6:                     ## fp[0] holds case b (String)
-                        movq $int11, %r13
-                        jmp l8
+l6:                     ## fp[0] holds case c (Object)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $13, %r14
+                        movq %r14, 24(%r13)
+                        jmp l10
+.globl l7
+l7:                     ## fp[0] holds case a (Int)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $9, %r14
+                        movq %r14, 24(%r13)
+                        jmp l10
 .globl l8
-l8:                     ## case expression ends
+l8:                     ## fp[0] holds case b (String)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $11, %r14
+                        movq %r14, 24(%r13)
+                        jmp l10
+.globl l10
+l10:                    ## case expression ends
                         pushq %r13
                         pushq %r12
                         ## obtain vtable for self object of type Main
@@ -645,14 +717,14 @@ String.substr:          ## method definition
 			call coolsubstr
 			movq %rax, %r13
                         cmpq $0, %r13
-			jne l9
+			jne l11
                         movq $string10, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
 			call exit
-.globl l9
-l9:                     movq %r13, 24(%r15)
+.globl l11
+l11:                    movq %r13, 24(%r15)
                         movq %r15, %r13
 .globl String.substr.end
 String.substr.end:      ## method body ends
@@ -742,7 +814,7 @@ string7:                # "abort\\n"
 .byte 0
 
 .globl string8
-string8:                # "ERROR: 4: Exception: case without matching branch\\n"
+string8:                # "ERROR: 5: Exception: case without matching branch\\n"
 .byte  69 # 'E'
 .byte  82 # 'R'
 .byte  82 # 'R'
@@ -750,7 +822,7 @@ string8:                # "ERROR: 4: Exception: case without matching branch\\n"
 .byte  82 # 'R'
 .byte  58 # ':'
 .byte  32 # ' '
-.byte  52 # '4'
+.byte  53 # '5'
 .byte  58 # ':'
 .byte  32 # ' '
 .byte  69 # 'E'
@@ -797,7 +869,7 @@ string8:                # "ERROR: 4: Exception: case without matching branch\\n"
 .byte 0
 
 .globl string9
-string9:                # "ERROR: 4: Exception: case on void\\n"
+string9:                # "ERROR: 5: Exception: case on void\\n"
 .byte  69 # 'E'
 .byte  82 # 'R'
 .byte  82 # 'R'
@@ -805,7 +877,7 @@ string9:                # "ERROR: 4: Exception: case on void\\n"
 .byte  82 # 'R'
 .byte  58 # ':'
 .byte  32 # ' '
-.byte  52 # '4'
+.byte  53 # '5'
 .byte  58 # ':'
 .byte  32 # ' '
 .byte  69 # 'E'
@@ -924,11 +996,25 @@ eq_handler:             ## helper function for =
 			je eq_true
 .globl eq_false
 eq_false:               ## not equal
-                        movq $false, %r13
+                        ## new Bool
+                        pushq %rbp
+                        pushq %r12
+                        movq $Bool..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
                         jmp eq_end
 .globl eq_true
 eq_true:                ## equal
-                        movq $true, %r13
+                        ## new Bool
+                        pushq %rbp
+                        pushq %r12
+                        movq $Bool..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
                         jmp eq_end
 .globl eq_bool
 eq_bool:                ## two Bools
@@ -995,11 +1081,25 @@ le_handler:             ## helper function for <=
 			je le_true
 .globl le_false
 le_false:               ## not less-than-or-equal
-                        movq $false, %r13
+                        ## new Bool
+                        pushq %rbp
+                        pushq %r12
+                        movq $Bool..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
                         jmp le_end
 .globl le_true
 le_true:                ## less-than-or-equal
-                        movq $true, %r13
+                        ## new Bool
+                        pushq %rbp
+                        pushq %r12
+                        movq $Bool..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
                         jmp le_end
 .globl le_bool
 le_bool:                ## two Bools
@@ -1060,11 +1160,25 @@ lt_handler:             ## helper function for <
                         ## for non-primitives, < is always false
 .globl lt_false
 lt_false:               ## not less than
-                        movq $false, %r13
+                        ## new Bool
+                        pushq %rbp
+                        pushq %r12
+                        movq $Bool..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
                         jmp lt_end
 .globl lt_true
 lt_true:                ## less than
-                        movq $true, %r13
+                        ## new Bool
+                        pushq %rbp
+                        pushq %r12
+                        movq $Bool..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
                         jmp lt_end
 .globl lt_bool
 lt_bool:                ## two Bools
@@ -1095,36 +1209,6 @@ lt_end:                 ## return address handling
                         movq %rbp, %rsp
                         popq %rbp
                         ret
-.globl int5
-int5:                   .quad 1
-                        .quad 4
-                        .quad Int..vtable
-                        .quad 5
-.globl int13
-int13:                  .quad 1
-                        .quad 4
-                        .quad Int..vtable
-                        .quad 13
-.globl int11
-int11:                  .quad 1
-                        .quad 4
-                        .quad Int..vtable
-                        .quad 11
-.globl int9
-int9:                   .quad 1
-                        .quad 4
-                        .quad Int..vtable
-                        .quad 9
-.globl true
-true:                   .quad 0
-                        .quad 4
-                        .quad Bool..vtable
-                        .quad 1
-.globl false
-false:                  .quad 0
-                        .quad 4
-                        .quad Bool..vtable
-                        .quad 0
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl start
 start:                  ## program begins here
