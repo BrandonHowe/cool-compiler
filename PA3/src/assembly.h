@@ -60,6 +60,7 @@ typedef enum ASMParamType
     ASM_PARAM_STRING_CONSTANT,
     ASM_PARAM_LABEL,
     ASM_PARAM_COMMENT,
+    ASM_PARAM_STRING_LABEL,
 } ASMParamType;
 
 typedef enum ASMRegister

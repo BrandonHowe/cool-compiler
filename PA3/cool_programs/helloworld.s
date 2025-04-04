@@ -7,9 +7,29 @@ Bool..vtable:           ## virtual function table for Bool
                         .quad Object.copy
                         .quad Object.type_name
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl CellularAutomaton..vtable
+CellularAutomaton..vtable:## virtual function table for CellularAutomaton
+                        .quad string2
+                        .quad CellularAutomaton..new
+                        .quad Object.abort
+                        .quad Object.copy
+                        .quad Object.type_name
+                        .quad IO.in_int
+                        .quad IO.in_string
+                        .quad IO.out_int
+                        .quad IO.out_string
+                        .quad CellularAutomaton.init
+                        .quad CellularAutomaton.print
+                        .quad CellularAutomaton.num_cells
+                        .quad CellularAutomaton.cell
+                        .quad CellularAutomaton.cell_left_neighbor
+                        .quad CellularAutomaton.cell_right_neighbor
+                        .quad CellularAutomaton.cell_at_next_evolution
+                        .quad CellularAutomaton.evolve
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl IO..vtable
 IO..vtable:             ## virtual function table for IO
-                        .quad string2
+                        .quad string3
                         .quad IO..new
                         .quad Object.abort
                         .quad Object.copy
@@ -21,7 +41,7 @@ IO..vtable:             ## virtual function table for IO
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Int..vtable
 Int..vtable:            ## virtual function table for Int
-                        .quad string3
+                        .quad string4
                         .quad Int..new
                         .quad Object.abort
                         .quad Object.copy
@@ -29,21 +49,16 @@ Int..vtable:            ## virtual function table for Int
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Main..vtable
 Main..vtable:           ## virtual function table for Main
-                        .quad string4
+                        .quad string5
                         .quad Main..new
                         .quad Object.abort
                         .quad Object.copy
                         .quad Object.type_name
-                        .quad IO.in_int
-                        .quad IO.in_string
-                        .quad IO.out_int
-                        .quad IO.out_string
-                        .quad Main.a
                         .quad Main.main
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Object..vtable
 Object..vtable:         ## virtual function table for Object
-                        .quad string5
+                        .quad string6
                         .quad Object..new
                         .quad Object.abort
                         .quad Object.copy
@@ -51,7 +66,7 @@ Object..vtable:         ## virtual function table for Object
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl String..vtable
 String..vtable:         ## virtual function table for String
-                        .quad string6
+                        .quad string7
                         .quad String..new
                         .quad Object.abort
                         .quad Object.copy
@@ -91,6 +106,43 @@ Bool..new:              ## constructor for Bool
                         popq %rbp
                         ret
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl CellularAutomaton..new
+CellularAutomaton..new: ## constructor for CellularAutomaton
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        ## stack room for temporaries: 1
+                        movq $8, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        movq $4, %r12
+                        movq $8, %rsi
+			movq %r12, %rdi
+			call calloc
+			movq %rax, %r12
+                        ## store class tag, object size and vtable pointer
+                        movq $10, %r14
+                        movq %r14, 0(%r12)
+                        movq $4, %r14
+                        movq %r14, 8(%r12)
+                        movq $CellularAutomaton..vtable, %r14
+                        movq %r14, 16(%r12)
+                        ## initialize attributes
+                        ## self[3] holds field population_map (String)
+                        ## new String
+                        pushq %rbp
+                        pushq %r12
+                        movq $String..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq %r13, 24(%r12)
+                        ## self[3] population_map initializer -- none 
+                        movq %r12, %r13
+                        ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl IO..new
 IO..new:                ## constructor for IO
                         pushq %rbp
@@ -105,7 +157,7 @@ IO..new:                ## constructor for IO
 			call calloc
 			movq %rax, %r12
                         ## store class tag, object size and vtable pointer
-                        movq $10, %r14
+                        movq $11, %r14
                         movq %r14, 0(%r12)
                         movq $3, %r14
                         movq %r14, 8(%r12)
@@ -162,27 +214,17 @@ Main..new:              ## constructor for Main
 			call calloc
 			movq %rax, %r12
                         ## store class tag, object size and vtable pointer
-                        movq $11, %r14
+                        movq $12, %r14
                         movq %r14, 0(%r12)
                         movq $4, %r14
                         movq %r14, 8(%r12)
                         movq $Main..vtable, %r14
                         movq %r14, 16(%r12)
                         ## initialize attributes
-                        ## self[3] holds field x (Object)
+                        ## self[3] holds field cells (CellularAutomaton)
                         movq $0, %r13
                         movq %r13, 24(%r12)
-                        ## self[3] x initializer <- 5
-                        ## new Int
-                        pushq %rbp
-                        pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq $5, %r14
-                        movq %r14, 24(%r13)
-                        movq %r13, 24(%r12)
+                        ## self[3] cells initializer -- none 
                         movq %r12, %r13
                         ## return address handling
                         movq %rbp, %rsp
@@ -203,7 +245,7 @@ Object..new:            ## constructor for Object
 			call calloc
 			movq %rax, %r12
                         ## store class tag, object size and vtable pointer
-                        movq $12, %r14
+                        movq $13, %r14
                         movq %r14, 0(%r12)
                         movq $3, %r14
                         movq %r14, 8(%r12)
@@ -256,7 +298,7 @@ Object.abort:           ## method definition
                         subq %r14, %rsp
                         ## return address handling
                         ## method body begins
-                        movq $string7, %r13
+                        movq $string8, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
@@ -343,6 +385,7 @@ IO.in_int:              ## method definition
                         movq $8, %r14
                         subq %r14, %rsp
                         ## return address handling
+                        ## self[3] holds field population_map (String)
                         ## method body begins
                         ## new Int
                         pushq %rbp
@@ -391,6 +434,7 @@ IO.in_string:           ## method definition
                         movq $8, %r14
                         subq %r14, %rsp
                         ## return address handling
+                        ## self[3] holds field population_map (String)
                         ## method body begins
                         ## new String
                         pushq %rbp
@@ -420,6 +464,7 @@ IO.out_int:             ## method definition
                         movq $8, %r14
                         subq %r14, %rsp
                         ## return address handling
+                        ## self[3] holds field population_map (String)
                         ## fp[3] holds argument x (Int)
                         ## method body begins
                         movq 24(%rbp), %r14
@@ -447,6 +492,7 @@ IO.out_string:          ## method definition
                         movq $8, %r14
                         subq %r14, %rsp
                         ## return address handling
+                        ## self[3] holds field population_map (String)
                         ## fp[3] holds argument x (String)
                         ## method body begins
                         movq 24(%rbp), %r14
@@ -461,31 +507,152 @@ IO.out_string.end:      ## method body ends
                         popq %rbp
                         ret
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.globl Main.a
-Main.a:                 ## method definition
+.globl CellularAutomaton.init
+CellularAutomaton.init: ## method definition
                         pushq %rbp
                         movq %rsp, %rbp
                         movq 16(%rbp), %r12
-                        ## stack room for temporaries: 2
-                        movq $16, %r14
+                        ## stack room for temporaries: 1
+                        movq $8, %r14
                         subq %r14, %rsp
                         ## return address handling
-                        ## self[3] holds field x (Object)
+                        ## self[3] holds field population_map (String)
+                        ## fp[3] holds argument map (String)
                         ## method body begins
-.globl l3
-l3:                     ## while conditional check
-                        ## new Bool
+                        ## map
+                        movq 24(%rbp), %r13
+                        movq %r13, 24(%r12)
+                        movq %r12, %r13
+.globl CellularAutomaton.init.end
+CellularAutomaton.init.end:## method body ends
+                        ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl CellularAutomaton.print
+CellularAutomaton.print:## method definition
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        movq 16(%rbp), %r12
+                        ## stack room for temporaries: 1
+                        movq $8, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        ## self[3] holds field population_map (String)
+                        ## method body begins
+                        ## out_string(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## population_map.concat(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## new String
                         pushq %rbp
                         pushq %r12
-                        movq $Bool..new, %r14
+                        movq $String..new, %r14
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq $1, %r14
+                        ## string9 holds "\n"
+                        movq $string9, %r14
                         movq %r14, 24(%r13)
-                        movq 24(%r13), %r13
+                        pushq %r13
+                        ## population_map
+                        movq 24(%r12), %r13
                         cmpq $0, %r13
-			je l4
+			jne l3
+                        movq $string10, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l3
+l3:                     pushq %r13
+                        ## obtain vtable from object in r1 with static type String
+                        movq 16(%r13), %r14
+                        ## look up concat() at offset 5 in vtable
+                        movq 40(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type CellularAutomaton
+                        movq 16(%r12), %r14
+                        ## look up out_string() at offset 8 in vtable
+                        movq 64(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq %r12, %r13
+.globl CellularAutomaton.print.end
+CellularAutomaton.print.end:## method body ends
+                        ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl CellularAutomaton.num_cells
+CellularAutomaton.num_cells:## method definition
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        movq 16(%rbp), %r12
+                        ## stack room for temporaries: 1
+                        movq $8, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        ## self[3] holds field population_map (String)
+                        ## method body begins
+                        ## population_map.length(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## population_map
+                        movq 24(%r12), %r13
+                        cmpq $0, %r13
+			jne l4
+                        movq $string11, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l4
+l4:                     pushq %r13
+                        ## obtain vtable from object in r1 with static type String
+                        movq 16(%r13), %r14
+                        ## look up length() at offset 6 in vtable
+                        movq 48(%r14), %r14
+                        call *%r14
+                        addq $8, %rsp
+                        popq %rbp
+                        popq %r12
+.globl CellularAutomaton.num_cells.end
+CellularAutomaton.num_cells.end:## method body ends
+                        ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl CellularAutomaton.cell
+CellularAutomaton.cell: ## method definition
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        movq 16(%rbp), %r12
+                        ## stack room for temporaries: 1
+                        movq $8, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        ## self[3] holds field population_map (String)
+                        ## fp[3] holds argument position (Int)
+                        ## method body begins
+                        ## population_map.substr(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## position
+                        movq 24(%rbp), %r13
+                        pushq %r13
                         ## new Int
                         pushq %rbp
                         pushq %r12
@@ -493,14 +660,736 @@ l3:                     ## while conditional check
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq $5, %r14
+                        movq $1, %r14
                         movq %r14, 24(%r13)
-                        jmp l3
-.globl l4
-l4:                     ## end of while loop
+                        pushq %r13
+                        ## population_map
+                        movq 24(%r12), %r13
+                        cmpq $0, %r13
+			jne l5
+                        movq $string12, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l5
+l5:                     pushq %r13
+                        ## obtain vtable from object in r1 with static type String
+                        movq 16(%r13), %r14
+                        ## look up substr() at offset 7 in vtable
+                        movq 56(%r14), %r14
+                        call *%r14
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
+.globl CellularAutomaton.cell.end
+CellularAutomaton.cell.end:## method body ends
+                        ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl CellularAutomaton.cell_left_neighbor
+CellularAutomaton.cell_left_neighbor:## method definition
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        movq 16(%rbp), %r12
+                        ## stack room for temporaries: 2
+                        movq $16, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        ## self[3] holds field population_map (String)
+                        ## fp[3] holds argument position (Int)
+                        ## method body begins
+                        pushq %r12
+                        pushq %rbp
+                        ## position
+                        movq 24(%rbp), %r13
+                        pushq %r13
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $0, %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        call eq_handler
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        cmpq $0, %r13
+			jne l6
+.globl l7
+l7:                     ## false branch
+                        ## cell(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## position
+                        movq 24(%rbp), %r13
+                        movq 24(%r13), %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+                        movq 24(%r13), %r13
+                        movq 0(%rbp), %r14
+                        movq %r14, %rax
+			subq %r13, %rax
+			movq %rax, %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq 0(%rbp), %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type CellularAutomaton
+                        movq 16(%r12), %r14
+                        ## look up cell() at offset 12 in vtable
+                        movq 96(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+                        jmp l8
+.globl l6
+l6:                     ## true branch
+                        ## cell(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## num_cells(...)
+                        pushq %r12
+                        pushq %rbp
+                        pushq %r12
+                        ## obtain vtable for self object of type CellularAutomaton
+                        movq 16(%r12), %r14
+                        ## look up num_cells() at offset 11 in vtable
+                        movq 88(%r14), %r14
+                        call *%r14
+                        addq $8, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+                        movq 24(%r13), %r13
+                        movq 0(%rbp), %r14
+                        movq %r14, %rax
+			subq %r13, %rax
+			movq %rax, %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq 0(%rbp), %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type CellularAutomaton
+                        movq 16(%r12), %r14
+                        ## look up cell() at offset 12 in vtable
+                        movq 96(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+.globl l8
+l8:                     ## end of if conditional
+.globl CellularAutomaton.cell_left_neighbor.end
+CellularAutomaton.cell_left_neighbor.end:## method body ends
+                        ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl CellularAutomaton.cell_right_neighbor
+CellularAutomaton.cell_right_neighbor:## method definition
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        movq 16(%rbp), %r12
+                        ## stack room for temporaries: 3
+                        movq $24, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        ## self[3] holds field population_map (String)
+                        ## fp[3] holds argument position (Int)
+                        ## method body begins
+                        pushq %r12
+                        pushq %rbp
+                        ## position
+                        movq 24(%rbp), %r13
+                        pushq %r13
+                        ## num_cells(...)
+                        pushq %r12
+                        pushq %rbp
+                        pushq %r12
+                        ## obtain vtable for self object of type CellularAutomaton
+                        movq 16(%r12), %r14
+                        ## look up num_cells() at offset 11 in vtable
+                        movq 88(%r14), %r14
+                        call *%r14
+                        addq $8, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+                        movq 24(%r13), %r13
+                        movq 0(%rbp), %r14
+                        movq %r14, %rax
+			subq %r13, %rax
+			movq %rax, %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq 0(%rbp), %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        call eq_handler
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        cmpq $0, %r13
+			jne l9
+.globl l10
+l10:                    ## false branch
+                        ## cell(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## position
+                        movq 24(%rbp), %r13
+                        movq 24(%r13), %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+                        movq 24(%r13), %r13
+                        movq 0(%rbp), %r14
+                        addq %r14, %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq 0(%rbp), %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type CellularAutomaton
+                        movq 16(%r12), %r14
+                        ## look up cell() at offset 12 in vtable
+                        movq 96(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+                        jmp l11
+.globl l9
+l9:                     ## true branch
+                        ## cell(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $0, %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type CellularAutomaton
+                        movq 16(%r12), %r14
+                        ## look up cell() at offset 12 in vtable
+                        movq 96(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+.globl l11
+l11:                    ## end of if conditional
+.globl CellularAutomaton.cell_right_neighbor.end
+CellularAutomaton.cell_right_neighbor.end:## method body ends
+                        ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl CellularAutomaton.cell_at_next_evolution
+CellularAutomaton.cell_at_next_evolution:## method definition
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        movq 16(%rbp), %r12
+                        ## stack room for temporaries: 3
+                        movq $24, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        ## self[3] holds field population_map (String)
+                        ## fp[3] holds argument position (Int)
+                        ## method body begins
+                        pushq %r12
+                        pushq %rbp
+                        pushq %r12
+                        pushq %rbp
+                        ## cell(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## position
+                        movq 24(%rbp), %r13
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type CellularAutomaton
+                        movq 16(%r12), %r14
+                        ## look up cell() at offset 12 in vtable
+                        movq 96(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+                        pushq %r13
+                        ## new String
+                        pushq %rbp
+                        pushq %r12
+                        movq $String..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        ## string13 holds "X"
+                        movq $string13, %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        call eq_handler
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        cmpq $0, %r13
+			jne l12
+.globl l13
+l13:                    ## false branch
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $0, %r14
+                        movq %r14, 24(%r13)
+                        jmp l14
+.globl l12
+l12:                    ## true branch
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+.globl l14
+l14:                    ## end of if conditional
+                        movq 24(%r13), %r13
+                        movq %r13, 0(%rbp)
+                        pushq %r12
+                        pushq %rbp
+                        ## cell_left_neighbor(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## position
+                        movq 24(%rbp), %r13
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type CellularAutomaton
+                        movq 16(%r12), %r14
+                        ## look up cell_left_neighbor() at offset 13 in vtable
+                        movq 104(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+                        pushq %r13
+                        ## new String
+                        pushq %rbp
+                        pushq %r12
+                        movq $String..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        ## string13 holds "X"
+                        movq $string13, %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        call eq_handler
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        cmpq $0, %r13
+			jne l15
+.globl l16
+l16:                    ## false branch
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $0, %r14
+                        movq %r14, 24(%r13)
+                        jmp l17
+.globl l15
+l15:                    ## true branch
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+.globl l17
+l17:                    ## end of if conditional
+                        movq 24(%r13), %r13
+                        movq 0(%rbp), %r14
+                        addq %r14, %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq 0(%rbp), %r14
+                        movq %r14, 24(%r13)
+                        movq 24(%r13), %r13
+                        movq %r13, 0(%rbp)
+                        pushq %r12
+                        pushq %rbp
+                        ## cell_right_neighbor(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## position
+                        movq 24(%rbp), %r13
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type CellularAutomaton
+                        movq 16(%r12), %r14
+                        ## look up cell_right_neighbor() at offset 14 in vtable
+                        movq 112(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+                        pushq %r13
+                        ## new String
+                        pushq %rbp
+                        pushq %r12
+                        movq $String..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        ## string13 holds "X"
+                        movq $string13, %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        call eq_handler
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        cmpq $0, %r13
+			jne l18
+.globl l19
+l19:                    ## false branch
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $0, %r14
+                        movq %r14, 24(%r13)
+                        jmp l20
+.globl l18
+l18:                    ## true branch
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+.globl l20
+l20:                    ## end of if conditional
+                        movq 24(%r13), %r13
+                        movq 0(%rbp), %r14
+                        addq %r14, %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq 0(%rbp), %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        call eq_handler
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        cmpq $0, %r13
+			jne l21
+.globl l22
+l22:                    ## false branch
+                        ## new String
+                        pushq %rbp
+                        pushq %r12
+                        movq $String..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        ## string14 holds "."
+                        movq $string14, %r14
+                        movq %r14, 24(%r13)
+                        jmp l23
+.globl l21
+l21:                    ## true branch
+                        ## new String
+                        pushq %rbp
+                        pushq %r12
+                        movq $String..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        ## string13 holds "X"
+                        movq $string13, %r14
+                        movq %r14, 24(%r13)
+.globl l23
+l23:                    ## end of if conditional
+.globl CellularAutomaton.cell_at_next_evolution.end
+CellularAutomaton.cell_at_next_evolution.end:## method body ends
+                        ## return address handling
+                        movq %rbp, %rsp
+                        popq %rbp
+                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl CellularAutomaton.evolve
+CellularAutomaton.evolve:## method definition
+                        pushq %rbp
+                        movq %rsp, %rbp
+                        movq 16(%rbp), %r12
+                        ## stack room for temporaries: 6
+                        movq $48, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        ## self[3] holds field population_map (String)
+                        ## method body begins
+                        ## fp[0] holds local position (Int)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq %r13, 0(%rbp)
+                        ## fp[-1] holds local num (Int)
+                        ## num_cells(...)
+                        pushq %r12
+                        pushq %rbp
+                        pushq %r12
+                        ## obtain vtable for self object of type CellularAutomaton
+                        movq 16(%r12), %r14
+                        ## look up num_cells() at offset 11 in vtable
+                        movq 88(%r14), %r14
+                        call *%r14
+                        addq $8, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq %r13, -8(%rbp)
+                        ## fp[-2] holds local temp (String)
+                        ## new String
+                        pushq %rbp
+                        pushq %r12
+                        movq $String..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $the.empty.string, %r15
+                        movq %r15, 24(%r13)
+                        movq %r13, -16(%rbp)
+.globl l24
+l24:                    ## while conditional check
+                        pushq %r12
+                        pushq %rbp
+                        ## position
+                        movq 0(%rbp), %r13
+                        pushq %r13
+                        ## num
+                        movq -8(%rbp), %r13
+                        pushq %r13
+                        pushq %r12
+                        call lt_handler
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        cmpq $0, %r13
+			je l25
+                        ## temp.concat(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## cell_at_next_evolution(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## position
+                        movq 0(%rbp), %r13
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type CellularAutomaton
+                        movq 16(%r12), %r14
+                        ## look up cell_at_next_evolution() at offset 15 in vtable
+                        movq 120(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+                        pushq %r13
+                        ## temp
+                        movq -16(%rbp), %r13
+                        cmpq $0, %r13
+			jne l26
+                        movq $string15, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l26
+l26:                    pushq %r13
+                        ## obtain vtable from object in r1 with static type String
+                        movq 16(%r13), %r14
+                        ## look up concat() at offset 5 in vtable
+                        movq 40(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq %r13, -16(%rbp)
+                        ## position
+                        movq 0(%rbp), %r13
+                        movq 24(%r13), %r13
+                        movq %r13, -24(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+                        movq 24(%r13), %r13
+                        movq -24(%rbp), %r14
+                        addq %r14, %r13
+                        movq %r13, -24(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq -24(%rbp), %r14
+                        movq %r14, 24(%r13)
+                        movq %r13, 0(%rbp)
+                        jmp l24
+.globl l25
+l25:                    ## end of while loop
+                        ## temp
+                        movq -16(%rbp), %r13
                         movq %r13, 24(%r12)
-.globl Main.a.end
-Main.a.end:             ## method body ends
+                        movq %r12, %r13
+.globl CellularAutomaton.evolve.end
+CellularAutomaton.evolve.end:## method body ends
                         ## return address handling
                         movq %rbp, %rsp
                         popq %rbp
@@ -511,107 +1400,186 @@ Main.main:              ## method definition
                         pushq %rbp
                         movq %rsp, %rbp
                         movq 16(%rbp), %r12
-                        ## stack room for temporaries: 2
-                        movq $16, %r14
+                        ## stack room for temporaries: 4
+                        movq $32, %r14
                         subq %r14, %rsp
                         ## return address handling
-                        ## self[3] holds field x (Object)
+                        ## self[3] holds field cells (CellularAutomaton)
                         ## method body begins
-                        ## out_int(...)
+                        ## new CellularAutomaton.init(...)
                         pushq %r12
                         pushq %rbp
-                        ## case expression begins
-                        ## x
-                        movq 24(%r12), %r13
-                        cmpq $0, %r13
-			je l5
-                        movq %r13, 0(%rbp)
-                        movq 0(%r13), %r13
-                        ## case Object will jump to l6
-                        ## case Int will jump to l7
-                        ## case String will jump to l8
-                        ## case expression: compare type tags
-                        movq $0, %r14
-                        cmpq %r14, %r13
-			je l6
-                        movq $10, %r14
-                        cmpq %r14, %r13
-			je l6
-                        movq $1, %r14
-                        cmpq %r14, %r13
-			je l7
-                        movq $11, %r14
-                        cmpq %r14, %r13
-			je l6
-                        movq $12, %r14
-                        cmpq %r14, %r13
-			je l6
-                        movq $3, %r14
-                        cmpq %r14, %r13
-			je l8
-.globl l9
-l9:                     ## case expression: error case
-                        movq $string8, %r13
-                        movq %r13, %rdi
-			call cooloutstr
-                        movl $0, %edi
-			call exit
-.globl l5
-l5:                     ## case expression: void case
-                        movq $string9, %r13
-                        movq %r13, %rdi
-			call cooloutstr
-                        movl $0, %edi
-			call exit
-                        ## case expression: branches
-.globl l6
-l6:                     ## fp[0] holds case c (Object)
-                        ## new Int
+                        ## new String
                         pushq %rbp
                         pushq %r12
-                        movq $Int..new, %r14
+                        movq $String..new, %r14
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq $13, %r14
+                        ## string16 holds "         X         "
+                        movq $string16, %r14
                         movq %r14, 24(%r13)
-                        jmp l10
-.globl l7
-l7:                     ## fp[0] holds case a (Int)
-                        ## new Int
-                        pushq %rbp
-                        pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq $9, %r14
-                        movq %r14, 24(%r13)
-                        jmp l10
-.globl l8
-l8:                     ## fp[0] holds case b (String)
-                        ## new Int
-                        pushq %rbp
-                        pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq $11, %r14
-                        movq %r14, 24(%r13)
-                        jmp l10
-.globl l10
-l10:                    ## case expression ends
                         pushq %r13
+                        ## new CellularAutomaton
+                        pushq %rbp
                         pushq %r12
-                        ## obtain vtable for self object of type Main
-                        movq 16(%r12), %r14
-                        ## look up out_int() at offset 7 in vtable
-                        movq 56(%r14), %r14
+                        movq $CellularAutomaton..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        cmpq $0, %r13
+			jne l27
+                        movq $string17, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l27
+l27:                    pushq %r13
+                        ## obtain vtable from object in r1 with static type CellularAutomaton
+                        movq 16(%r13), %r14
+                        ## look up init() at offset 9 in vtable
+                        movq 72(%r14), %r14
                         call *%r14
                         addq $16, %rsp
                         popq %rbp
                         popq %r12
+                        movq %r13, 24(%r12)
+                        ## cells.print(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## cells
+                        movq 24(%r12), %r13
+                        cmpq $0, %r13
+			jne l28
+                        movq $string18, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l28
+l28:                    pushq %r13
+                        ## obtain vtable from object in r1 with static type CellularAutomaton
+                        movq 16(%r13), %r14
+                        ## look up print() at offset 10 in vtable
+                        movq 80(%r14), %r14
+                        call *%r14
+                        addq $8, %rsp
+                        popq %rbp
+                        popq %r12
+                        ## fp[0] holds local countdown (Int)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $20, %r14
+                        movq %r14, 24(%r13)
+                        movq %r13, 0(%rbp)
+.globl l29
+l29:                    ## while conditional check
+                        pushq %r12
+                        pushq %rbp
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $0, %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        ## countdown
+                        movq 0(%rbp), %r13
+                        pushq %r13
+                        pushq %r12
+                        call lt_handler
+                        addq $24, %rsp
+                        popq %rbp
+                        popq %r12
+                        movq 24(%r13), %r13
+                        cmpq $0, %r13
+			je l30
+                        ## cells.evolve(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## cells
+                        movq 24(%r12), %r13
+                        cmpq $0, %r13
+			jne l31
+                        movq $string19, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l31
+l31:                    pushq %r13
+                        ## obtain vtable from object in r1 with static type CellularAutomaton
+                        movq 16(%r13), %r14
+                        ## look up evolve() at offset 16 in vtable
+                        movq 128(%r14), %r14
+                        call *%r14
+                        addq $8, %rsp
+                        popq %rbp
+                        popq %r12
+                        ## cells.print(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## cells
+                        movq 24(%r12), %r13
+                        cmpq $0, %r13
+			jne l32
+                        movq $string20, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l32
+l32:                    pushq %r13
+                        ## obtain vtable from object in r1 with static type CellularAutomaton
+                        movq 16(%r13), %r14
+                        ## look up print() at offset 10 in vtable
+                        movq 80(%r14), %r14
+                        call *%r14
+                        addq $8, %rsp
+                        popq %rbp
+                        popq %r12
+                        ## countdown
+                        movq 0(%rbp), %r13
+                        movq 24(%r13), %r13
+                        movq %r13, -8(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $1, %r14
+                        movq %r14, 24(%r13)
+                        movq 24(%r13), %r13
+                        movq -8(%rbp), %r14
+                        movq %r14, %rax
+			subq %r13, %rax
+			movq %rax, %r13
+                        movq %r13, -8(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq -8(%rbp), %r14
+                        movq %r14, 24(%r13)
+                        movq %r13, 0(%rbp)
+                        jmp l29
+.globl l30
+l30:                    ## end of while loop
+                        movq %r12, %r13
 .globl Main.main.end
 Main.main.end:          ## method body ends
                         ## return address handling
@@ -717,14 +1685,14 @@ String.substr:          ## method definition
 			call coolsubstr
 			movq %rax, %r13
                         cmpq $0, %r13
-			jne l11
-                        movq $string10, %r13
+			jne l33
+                        movq $string21, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
 			call exit
-.globl l11
-l11:                    movq %r13, 24(%r15)
+.globl l33
+l33:                    movq %r13, 24(%r15)
                         movq %r15, %r13
 .globl String.substr.end
 String.substr.end:      ## method body ends
@@ -762,28 +1730,49 @@ string1:                # "Bool"
 .byte 0
 
 .globl string2
-string2:                # "IO"
+string2:                # "CellularAutomaton"
+.byte  67 # 'C'
+.byte 101 # 'e'
+.byte 108 # 'l'
+.byte 108 # 'l'
+.byte 117 # 'u'
+.byte 108 # 'l'
+.byte  97 # 'a'
+.byte 114 # 'r'
+.byte  65 # 'A'
+.byte 117 # 'u'
+.byte 116 # 't'
+.byte 111 # 'o'
+.byte 109 # 'm'
+.byte  97 # 'a'
+.byte 116 # 't'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte 0
+
+.globl string3
+string3:                # "IO"
 .byte  73 # 'I'
 .byte  79 # 'O'
 .byte 0
 
-.globl string3
-string3:                # "Int"
+.globl string4
+string4:                # "Int"
 .byte  73 # 'I'
 .byte 110 # 'n'
 .byte 116 # 't'
 .byte 0
 
-.globl string4
-string4:                # "Main"
+.globl string5
+string5:                # "Main"
 .byte  77 # 'M'
 .byte  97 # 'a'
 .byte 105 # 'i'
 .byte 110 # 'n'
 .byte 0
 
-.globl string5
-string5:                # "Object"
+.globl string6
+string6:                # "Object"
 .byte  79 # 'O'
 .byte  98 # 'b'
 .byte 106 # 'j'
@@ -792,8 +1781,8 @@ string5:                # "Object"
 .byte 116 # 't'
 .byte 0
 
-.globl string6
-string6:                # "String"
+.globl string7
+string7:                # "String"
 .byte  83 # 'S'
 .byte 116 # 't'
 .byte 114 # 'r'
@@ -802,74 +1791,25 @@ string6:                # "String"
 .byte 103 # 'g'
 .byte 0
 
-.globl string7
-string7:                # "abort\\n"
-.byte  97 # 'a'
-.byte  98 # 'b'
-.byte 111 # 'o'
-.byte 114 # 'r'
-.byte 116 # 't'
-.byte  92 # '\\'
-.byte 110 # 'n'
-.byte 0
-
 .globl string8
-string8:                # "ERROR: 5: Exception: case without matching branch\\n"
-.byte  69 # 'E'
-.byte  82 # 'R'
-.byte  82 # 'R'
-.byte  79 # 'O'
-.byte  82 # 'R'
-.byte  58 # ':'
-.byte  32 # ' '
-.byte  53 # '5'
-.byte  58 # ':'
-.byte  32 # ' '
-.byte  69 # 'E'
-.byte 120 # 'x'
-.byte  99 # 'c'
-.byte 101 # 'e'
-.byte 112 # 'p'
-.byte 116 # 't'
-.byte 105 # 'i'
-.byte 111 # 'o'
-.byte 110 # 'n'
-.byte  58 # ':'
-.byte  32 # ' '
-.byte  99 # 'c'
+string8:                # "abort\\n"
 .byte  97 # 'a'
-.byte 115 # 's'
-.byte 101 # 'e'
-.byte  32 # ' '
-.byte 119 # 'w'
-.byte 105 # 'i'
-.byte 116 # 't'
-.byte 104 # 'h'
-.byte 111 # 'o'
-.byte 117 # 'u'
-.byte 116 # 't'
-.byte  32 # ' '
-.byte 109 # 'm'
-.byte  97 # 'a'
-.byte 116 # 't'
-.byte  99 # 'c'
-.byte 104 # 'h'
-.byte 105 # 'i'
-.byte 110 # 'n'
-.byte 103 # 'g'
-.byte  32 # ' '
 .byte  98 # 'b'
+.byte 111 # 'o'
 .byte 114 # 'r'
-.byte  97 # 'a'
-.byte 110 # 'n'
-.byte  99 # 'c'
-.byte 104 # 'h'
+.byte 116 # 't'
 .byte  92 # '\\'
 .byte 110 # 'n'
 .byte 0
 
 .globl string9
-string9:                # "ERROR: 5: Exception: case on void\\n"
+string9:                # "\\n"
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string10
+string10:               # "ERROR: 17: Exception: dispatch on void\\n"
 .byte  69 # 'E'
 .byte  82 # 'R'
 .byte  82 # 'R'
@@ -877,7 +1817,8 @@ string9:                # "ERROR: 5: Exception: case on void\\n"
 .byte  82 # 'R'
 .byte  58 # ':'
 .byte  32 # ' '
-.byte  53 # '5'
+.byte  49 # '1'
+.byte  55 # '7'
 .byte  58 # ':'
 .byte  32 # ' '
 .byte  69 # 'E'
@@ -891,10 +1832,14 @@ string9:                # "ERROR: 5: Exception: case on void\\n"
 .byte 110 # 'n'
 .byte  58 # ':'
 .byte  32 # ' '
-.byte  99 # 'c'
-.byte  97 # 'a'
+.byte 100 # 'd'
+.byte 105 # 'i'
 .byte 115 # 's'
-.byte 101 # 'e'
+.byte 112 # 'p'
+.byte  97 # 'a'
+.byte 116 # 't'
+.byte  99 # 'c'
+.byte 104 # 'h'
 .byte  32 # ' '
 .byte 111 # 'o'
 .byte 110 # 'n'
@@ -907,8 +1852,349 @@ string9:                # "ERROR: 5: Exception: case on void\\n"
 .byte 110 # 'n'
 .byte 0
 
-.globl string10
-string10:               # "ERROR: 0: Exception: String.substr out of range\\n"
+.globl string11
+string11:               # "ERROR: 23: Exception: dispatch on void\\n"
+.byte  69 # 'E'
+.byte  82 # 'R'
+.byte  82 # 'R'
+.byte  79 # 'O'
+.byte  82 # 'R'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  50 # '2'
+.byte  51 # '3'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  69 # 'E'
+.byte 120 # 'x'
+.byte  99 # 'c'
+.byte 101 # 'e'
+.byte 112 # 'p'
+.byte 116 # 't'
+.byte 105 # 'i'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte 100 # 'd'
+.byte 105 # 'i'
+.byte 115 # 's'
+.byte 112 # 'p'
+.byte  97 # 'a'
+.byte 116 # 't'
+.byte  99 # 'c'
+.byte 104 # 'h'
+.byte  32 # ' '
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  32 # ' '
+.byte 118 # 'v'
+.byte 111 # 'o'
+.byte 105 # 'i'
+.byte 100 # 'd'
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string12
+string12:               # "ERROR: 27: Exception: dispatch on void\\n"
+.byte  69 # 'E'
+.byte  82 # 'R'
+.byte  82 # 'R'
+.byte  79 # 'O'
+.byte  82 # 'R'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  50 # '2'
+.byte  55 # '7'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  69 # 'E'
+.byte 120 # 'x'
+.byte  99 # 'c'
+.byte 101 # 'e'
+.byte 112 # 'p'
+.byte 116 # 't'
+.byte 105 # 'i'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte 100 # 'd'
+.byte 105 # 'i'
+.byte 115 # 's'
+.byte 112 # 'p'
+.byte  97 # 'a'
+.byte 116 # 't'
+.byte  99 # 'c'
+.byte 104 # 'h'
+.byte  32 # ' '
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  32 # ' '
+.byte 118 # 'v'
+.byte 111 # 'o'
+.byte 105 # 'i'
+.byte 100 # 'd'
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string13
+string13:               # "X"
+.byte  88 # 'X'
+.byte 0
+
+.globl string14
+string14:               # "."
+.byte  46 # '.'
+.byte 0
+
+.globl string15
+string15:               # "ERROR: 67: Exception: dispatch on void\\n"
+.byte  69 # 'E'
+.byte  82 # 'R'
+.byte  82 # 'R'
+.byte  79 # 'O'
+.byte  82 # 'R'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  54 # '6'
+.byte  55 # '7'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  69 # 'E'
+.byte 120 # 'x'
+.byte  99 # 'c'
+.byte 101 # 'e'
+.byte 112 # 'p'
+.byte 116 # 't'
+.byte 105 # 'i'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte 100 # 'd'
+.byte 105 # 'i'
+.byte 115 # 's'
+.byte 112 # 'p'
+.byte  97 # 'a'
+.byte 116 # 't'
+.byte  99 # 'c'
+.byte 104 # 'h'
+.byte  32 # ' '
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  32 # ' '
+.byte 118 # 'v'
+.byte 111 # 'o'
+.byte 105 # 'i'
+.byte 100 # 'd'
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string16
+string16:               # "         X         "
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  88 # 'X'
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte  32 # ' '
+.byte 0
+
+.globl string17
+string17:               # "ERROR: 83: Exception: dispatch on void\\n"
+.byte  69 # 'E'
+.byte  82 # 'R'
+.byte  82 # 'R'
+.byte  79 # 'O'
+.byte  82 # 'R'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  56 # '8'
+.byte  51 # '3'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  69 # 'E'
+.byte 120 # 'x'
+.byte  99 # 'c'
+.byte 101 # 'e'
+.byte 112 # 'p'
+.byte 116 # 't'
+.byte 105 # 'i'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte 100 # 'd'
+.byte 105 # 'i'
+.byte 115 # 's'
+.byte 112 # 'p'
+.byte  97 # 'a'
+.byte 116 # 't'
+.byte  99 # 'c'
+.byte 104 # 'h'
+.byte  32 # ' '
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  32 # ' '
+.byte 118 # 'v'
+.byte 111 # 'o'
+.byte 105 # 'i'
+.byte 100 # 'd'
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string18
+string18:               # "ERROR: 84: Exception: dispatch on void\\n"
+.byte  69 # 'E'
+.byte  82 # 'R'
+.byte  82 # 'R'
+.byte  79 # 'O'
+.byte  82 # 'R'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  56 # '8'
+.byte  52 # '4'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  69 # 'E'
+.byte 120 # 'x'
+.byte  99 # 'c'
+.byte 101 # 'e'
+.byte 112 # 'p'
+.byte 116 # 't'
+.byte 105 # 'i'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte 100 # 'd'
+.byte 105 # 'i'
+.byte 115 # 's'
+.byte 112 # 'p'
+.byte  97 # 'a'
+.byte 116 # 't'
+.byte  99 # 'c'
+.byte 104 # 'h'
+.byte  32 # ' '
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  32 # ' '
+.byte 118 # 'v'
+.byte 111 # 'o'
+.byte 105 # 'i'
+.byte 100 # 'd'
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string19
+string19:               # "ERROR: 88: Exception: dispatch on void\\n"
+.byte  69 # 'E'
+.byte  82 # 'R'
+.byte  82 # 'R'
+.byte  79 # 'O'
+.byte  82 # 'R'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  56 # '8'
+.byte  56 # '8'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  69 # 'E'
+.byte 120 # 'x'
+.byte  99 # 'c'
+.byte 101 # 'e'
+.byte 112 # 'p'
+.byte 116 # 't'
+.byte 105 # 'i'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte 100 # 'd'
+.byte 105 # 'i'
+.byte 115 # 's'
+.byte 112 # 'p'
+.byte  97 # 'a'
+.byte 116 # 't'
+.byte  99 # 'c'
+.byte 104 # 'h'
+.byte  32 # ' '
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  32 # ' '
+.byte 118 # 'v'
+.byte 111 # 'o'
+.byte 105 # 'i'
+.byte 100 # 'd'
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string20
+string20:               # "ERROR: 89: Exception: dispatch on void\\n"
+.byte  69 # 'E'
+.byte  82 # 'R'
+.byte  82 # 'R'
+.byte  79 # 'O'
+.byte  82 # 'R'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  56 # '8'
+.byte  57 # '9'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  69 # 'E'
+.byte 120 # 'x'
+.byte  99 # 'c'
+.byte 101 # 'e'
+.byte 112 # 'p'
+.byte 116 # 't'
+.byte 105 # 'i'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte 100 # 'd'
+.byte 105 # 'i'
+.byte 115 # 's'
+.byte 112 # 'p'
+.byte  97 # 'a'
+.byte 116 # 't'
+.byte  99 # 'c'
+.byte 104 # 'h'
+.byte  32 # ' '
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  32 # ' '
+.byte 118 # 'v'
+.byte 111 # 'o'
+.byte 105 # 'i'
+.byte 100 # 'd'
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string21
+string21:               # "ERROR: 0: Exception: String.substr out of range\\n"
 .byte  69 # 'E'
 .byte  82 # 'R'
 .byte  82 # 'R'

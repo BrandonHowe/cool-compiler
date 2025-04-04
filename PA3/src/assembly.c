@@ -144,7 +144,7 @@ void asm_list_append_la_label(ASMList* asm_list, const ASMRegister reg, const bh
         .op = ASM_OP_LA,
         .params = {
             (ASMParam){ .type = ASM_PARAM_REGISTER, .reg = reg },
-            (ASMParam){ .type = ASM_PARAM_CONSTANT, .label = label }
+            (ASMParam){ .type = ASM_PARAM_STRING_LABEL, .label = label }
         }
     });
 }
@@ -993,7 +993,6 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
 void asm_from_method(ASMList* asm_list, const TACList tac_list)
 {
     const bh_str class_name = tac_list.class_list.class_nodes[tac_list.class_idx].name;
-    ClassMethod method = tac_list.class_list.class_nodes[tac_list.class_idx].methods[tac_list.method_idx];
 
     // Construct method name
     int64_t label_len = class_name.len + tac_list.method_name.len + 1;
@@ -1376,6 +1375,10 @@ void display_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_l
     case ASM_PARAM_CONSTANT:
         bh_str_buf_append(str_buf, param.constant);
         break;
+    case ASM_PARAM_STRING_LABEL:
+        bh_str_buf_append_lit(str_buf, "$");
+        bh_str_buf_append(str_buf, param.constant);
+        break;
     case ASM_PARAM_STRING_CONSTANT:
         bh_str_buf_append_lit(str_buf, "\"");
         bh_str_buf_append(str_buf, param.constant);
@@ -1688,6 +1691,10 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
         bh_str_buf_append(str_buf, param.comment);
         break;
     case ASM_PARAM_CONSTANT:
+        bh_str_buf_append(str_buf, param.constant);
+        break;
+    case ASM_PARAM_STRING_LABEL:
+        bh_str_buf_append_lit(str_buf, "$");
         bh_str_buf_append(str_buf, param.constant);
         break;
     case ASM_PARAM_STRING_CONSTANT:
