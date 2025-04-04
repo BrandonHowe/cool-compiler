@@ -326,6 +326,11 @@ void asm_list_append_ld_tac_symbol(ASMList* asm_list, const ClassNode class_node
         break;
     case TAC_SYMBOL_TYPE_VARIABLE:
         {
+            if (bh_str_equal_lit(symbol.variable, "self"))
+            {
+                asm_list_append_mov(asm_list, dest, R12);
+                break;
+            }
             // Look up the variable name from parameters
             int64_t attribute_idx = -1;
             for (int j = 0; j < method.parameter_count; j++)
