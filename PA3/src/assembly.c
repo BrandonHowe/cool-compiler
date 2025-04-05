@@ -432,7 +432,7 @@ void asm_list_append_error_str(ASMList* asm_list, const bh_str label, const bh_s
     if (asm_list->error_str_count + 1 >= asm_list->error_str_capacity)
     {
         asm_list->error_str_capacity *= 2;
-        mprotect(asm_list->instructions, asm_list->error_str_capacity * sizeof(ASMInstr), PROT_READ | PROT_WRITE);
+        mprotect(asm_list->error_strs, asm_list->error_str_capacity * sizeof(ASMInstr), PROT_READ | PROT_WRITE);
     }
     asm_list->error_strs[asm_list->error_str_count].label = label;
     asm_list->error_strs[asm_list->error_str_count].message = message;
@@ -461,7 +461,7 @@ void asm_list_append_runtime_error(ASMList* asm_list, const int64_t line_num, co
 
 void asm_list_push_case_binding(ASMList* asm_list, const bh_str label, const int64_t symbol)
 {
-    if (asm_list->case_binding_count >= asm_list->case_binding_capacity)
+    if (asm_list->case_binding_count + 1 >= asm_list->case_binding_capacity)
     {
         asm_list->case_binding_capacity *= 2;
         mprotect(asm_list->case_bindings, asm_list->case_binding_capacity * sizeof(ASMCaseBinding), PROT_READ | PROT_WRITE);
