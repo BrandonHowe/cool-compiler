@@ -860,16 +860,29 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             break;
         case TAC_OP_NEW:
             {
-                int64_t class_idx = -1;
-                for (int64_t j = 0; j < asm_list->class_list->class_count; j++)
+                if (bh_str_equal_lit(expr.rhs1.variable, "SELF_TYPE"))
                 {
-                    if (bh_str_equal(asm_list->class_list->class_nodes[j].name, expr.rhs1.variable))
-                    {
-                        class_idx = j;
-                    }
+                    asm_list_append_push(asm_list, RBP);
+                    asm_list_append_push(asm_list, R12);
+                    asm_list_append_ld(asm_list, R14, R12, 2);
+                    asm_list_append_ld(asm_list, R14, R14, 1);
+                    asm_list_append_call(asm_list, R14);
+                    asm_list_append_pop(asm_list, R12);
+                    asm_list_append_pop(asm_list, RBP);
                 }
-                assert(class_idx != -1 && "TAC new expression did not match class");
-                asm_list_append_call_method(asm_list, class_idx, CONSTRUCTOR_METHOD);
+                else
+                {
+                    int64_t class_idx = -1;
+                    for (int64_t j = 0; j < asm_list->class_list->class_count; j++)
+                    {
+                        if (bh_str_equal(asm_list->class_list->class_nodes[j].name, expr.rhs1.variable))
+                        {
+                            class_idx = j;
+                        }
+                    }
+                    assert(class_idx != -1 && "TAC new expression did not match class");
+                    asm_list_append_call_method(asm_list, class_idx, CONSTRUCTOR_METHOD);
+                }
                 asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
             }
             break;
@@ -1718,10 +1731,10 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
             switch (param.method.method_idx)
             {
             case 0:
-                bh_str_buf_append_lit(str_buf, "call exit");
+                bh_str_buf_append_lit(str_buf, "movl $0, %edi\ncall exit");
                 break;
             case -2:
-                bh_str_buf_append_lit(str_buf, "string_abort");
+                bh_str_buf_append_lit(str_buf, "$string_abort");
                 break;
             case INTERNAL_EQ_HANDLER:
                 bh_str_buf_append_lit(str_buf, "eq_handler");
