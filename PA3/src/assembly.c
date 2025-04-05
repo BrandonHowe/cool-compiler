@@ -1197,7 +1197,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
             asm_list_append_align_sp(asm_list);
             asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_STRLEN_HANDLER);
             asm_list_append_mov(asm_list, R13, RAX);
-            asm_list_append_st(asm_list, R14, 3, R14);
+            asm_list_append_st(asm_list, R14, 3, R13);
             asm_list_append_mov(asm_list, R13, R14);
         }
         if (bh_str_equal_lit(tac_list.method_name, "substr"))
