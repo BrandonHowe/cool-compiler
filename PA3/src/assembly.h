@@ -125,7 +125,12 @@ typedef struct ASMList
     int64_t instruction_capacity;
     bh_allocator tac_allocator;
     bh_allocator string_allocator;
+
     ClassNodeList* class_list;
+    int64_t bool_class_idx;
+    int64_t int_class_idx;
+    int64_t io_class_idx;
+    int64_t string_class_idx;
 
     ASMErrorStr* error_strs;
     int64_t error_str_count;

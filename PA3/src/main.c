@@ -44,8 +44,7 @@ int main(int argc, char* argv[])
     parse_parent_map(&file, parser_arena, class_list);
 
     bh_allocator tac_allocator = GPA;
-    ASMList asm_list = asm_list_init();
-    asm_list.class_list = &class_list;
+    ASMList asm_list = asm_list_init(&class_list);
     asm_list.tac_allocator = tac_allocator;
     asm_list.string_allocator = arena_init(1000000);
     asm_from_vtable(&asm_list);

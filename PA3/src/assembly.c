@@ -427,19 +427,11 @@ void asm_list_create_error(ASMList* asm_list, bh_str error_label, const int64_t 
 
 void asm_list_append_runtime_error(ASMList* asm_list, const int64_t line_num, const char* message)
 {
-    int64_t io_class_idx = -1;
-    for (int i = 0; i < asm_list->class_list->class_count; i++)
-    {
-        ClassNode class_node = asm_list->class_list->class_nodes[i];
-        if (bh_str_equal_lit(class_node.name, "IO")) io_class_idx = i;
-        if (io_class_idx > -1) break;
-    }
-
     bh_str error_label = asm_list_create_error_label(asm_list);
     asm_list_create_error(asm_list, error_label, line_num, message);
 
     asm_list_append_la_label(asm_list, R13, error_label);
-    asm_list_append_syscall(asm_list, io_class_idx, 6);
+    asm_list_append_syscall(asm_list, asm_list->io_class_idx, 6);
     asm_list_append_syscall(asm_list, INTERNAL_CLASS, 0);
 }
 
@@ -483,18 +475,6 @@ void asm_from_vtable(ASMList* asm_list)
 
 void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const int64_t class_idx)
 {
-    int64_t bool_class_idx = -1;
-    int64_t int_class_idx = -1;
-    int64_t string_class_idx = -1;
-    for (int i = 0; i < asm_list->class_list->class_count; i++)
-    {
-        ClassNode class_node = asm_list->class_list->class_nodes[i];
-        if (bh_str_equal_lit(class_node.name, "Bool")) bool_class_idx = i;
-        if (bh_str_equal_lit(class_node.name, "Int")) int_class_idx = i;
-        if (bh_str_equal_lit(class_node.name, "String")) string_class_idx = i;
-        if (bool_class_idx > -1 && int_class_idx > -1 && string_class_idx > -1) break;
-    }
-
     char* constructor_buf = bh_alloc(asm_list->string_allocator, class_node.name.len + 5);
     strncpy(constructor_buf, class_node.name.buf, class_node.name.len);
     strncpy(constructor_buf + class_node.name.len, "..new", 5);
@@ -593,17 +573,17 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
             }
             else if (bh_str_equal_lit(attribute.type, "Int"))
             {
-                asm_list_append_call_method(asm_list, int_class_idx, -1);
+                asm_list_append_call_method(asm_list, asm_list->int_class_idx, -1);
                 asm_list_append_st(asm_list, R12, i + 3, R13);
             }
             else if (bh_str_equal_lit(attribute.type, "String"))
             {
-                asm_list_append_call_method(asm_list, string_class_idx, -1);
+                asm_list_append_call_method(asm_list, asm_list->string_class_idx, -1);
                 asm_list_append_st(asm_list, R12, i + 3, R13);
             }
             else if (bh_str_equal_lit(attribute.type, "Bool"))
             {
-                asm_list_append_call_method(asm_list, bool_class_idx, -1);
+                asm_list_append_call_method(asm_list, asm_list->bool_class_idx, -1);
                 asm_list_append_st(asm_list, R12, i + 3, R13);
             }
         }
@@ -685,29 +665,15 @@ void asm_list_append_call_method(ASMList* asm_list, const int64_t class_idx, con
 
 void asm_from_tac_symbol(ASMList* asm_list, const TACSymbol symbol)
 {
-    int64_t bool_class_idx = -1;
-    int64_t io_class_idx = -1;
-    int64_t int_class_idx = -1;
-    int64_t string_class_idx = -1;
-    for (int i = 0; i < asm_list->class_list->class_count; i++)
-    {
-        ClassNode class_node = asm_list->class_list->class_nodes[i];
-        if (bh_str_equal_lit(class_node.name, "Bool")) bool_class_idx = i;
-        if (bh_str_equal_lit(class_node.name, "IO")) io_class_idx = i;
-        if (bh_str_equal_lit(class_node.name, "Int")) int_class_idx = i;
-        if (bh_str_equal_lit(class_node.name, "String")) string_class_idx = i;
-        if (bool_class_idx > -1 && io_class_idx > -1 && int_class_idx > -1 && string_class_idx > -1) break;
-    }
-
     switch (symbol.type)
     {
     case TAC_SYMBOL_TYPE_INTEGER:
-        asm_list_append_call_method(asm_list, int_class_idx, CONSTRUCTOR_METHOD);
+        asm_list_append_call_method(asm_list, asm_list->int_class_idx, CONSTRUCTOR_METHOD);
         asm_list_append_li(asm_list, R14, symbol.integer, ASMImmediateUnitsBase);
         asm_list_append_st(asm_list, R13, 3, R14);
         break;
     case TAC_SYMBOL_TYPE_BOOL:
-        asm_list_append_call_method(asm_list, bool_class_idx, CONSTRUCTOR_METHOD);
+        asm_list_append_call_method(asm_list, asm_list->bool_class_idx, CONSTRUCTOR_METHOD);
         if (symbol.integer > 0)
         {
             asm_list_append_li(asm_list, R14, symbol.integer, ASMImmediateUnitsBase);
@@ -715,7 +681,7 @@ void asm_from_tac_symbol(ASMList* asm_list, const TACSymbol symbol)
         }
         break;
     case TAC_SYMBOL_TYPE_STRING:
-        asm_list_append_call_method(asm_list, string_class_idx, CONSTRUCTOR_METHOD);
+        asm_list_append_call_method(asm_list, asm_list->string_class_idx, CONSTRUCTOR_METHOD);
         asm_list_append_la(asm_list, R14, INTERNAL_CUSTOM_STRINGS, asm_list->_string_counter++);
         asm_list_append_st(asm_list, R13, 3, R14);
         break;
@@ -734,19 +700,6 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
     ClassNode curr_class_node = tac_list.class_list.class_nodes[tac_list.class_idx];
     ClassMethod curr_method = curr_class_node.methods[tac_list.method_idx];
     const bh_str class_name = curr_class_node.name;
-    int64_t bool_class_idx = -1;
-    int64_t io_class_idx = -1;
-    int64_t int_class_idx = -1;
-    int64_t string_class_idx = -1;
-    for (int i = 0; i < asm_list->class_list->class_count; i++)
-    {
-        ClassNode class_node = asm_list->class_list->class_nodes[i];
-        if (bh_str_equal_lit(class_node.name, "Bool")) bool_class_idx = i;
-        if (bh_str_equal_lit(class_node.name, "IO")) io_class_idx = i;
-        if (bh_str_equal_lit(class_node.name, "Int")) int_class_idx = i;
-        if (bh_str_equal_lit(class_node.name, "String")) string_class_idx = i;
-        if (bool_class_idx > -1 && io_class_idx > -1 && int_class_idx > -1 && string_class_idx > -1) break;
-    }
     for (int i = 0; i < tac_list.count; i++)
     {
         const TACExpr expr = tac_list.items[i];
@@ -776,33 +729,21 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                 }
             });
             asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
-            asm_list_append_call_method(asm_list, int_class_idx, -1);
+            asm_list_append_call_method(asm_list, asm_list->int_class_idx, -1);
             asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R14, expr.lhs);
             asm_list_append_st(asm_list, R13, 3, R14);
             asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
             break;
         case TAC_OP_LT:
+        case TAC_OP_LTE:
+        case TAC_OP_EQ:
             asm_list_append_ld(asm_list, R13, RBP, -0 - expr.rhs1.symbol);
             asm_list_append_ld(asm_list, R14, RBP, -0 - expr.rhs2.symbol);
             asm_list_append_push(asm_list, R13);
             asm_list_append_push(asm_list, R14);
-            asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_LT_HANDLER);
-            asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
-            break;
-        case TAC_OP_LTE:
-            asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R13, expr.rhs1);
-            asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R14, expr.rhs2);
-            asm_list_append_push(asm_list, R13);
-            asm_list_append_push(asm_list, R14);
-            asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_LE_HANDLER);
-            asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
-            break;
-        case TAC_OP_EQ:
-            asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R13, expr.rhs1);
-            asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R14, expr.rhs2);
-            asm_list_append_push(asm_list, R13);
-            asm_list_append_push(asm_list, R14);
-            asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_EQ_HANDLER);
+            if (expr.operation == TAC_OP_LTE) asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_LE_HANDLER);
+            if (expr.operation == TAC_OP_LT) asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_LT_HANDLER);
+            if (expr.operation == TAC_OP_EQ) asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_EQ_HANDLER);
             asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
             break;
         case TAC_OP_INT:
@@ -832,21 +773,21 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
 
             asm_list_append_label(asm_list, label_str_2);
             asm_list_append_comment(asm_list, "false branch");
-            asm_list_append_call_method(asm_list, bool_class_idx, -1);
+            asm_list_append_call_method(asm_list, asm_list->bool_class_idx, -1);
             asm_list_append_li(asm_list, R14, 1, ASMImmediateUnitsBase);
             asm_list_append_st(asm_list, R13, 3, R14);
             asm_list_append_jmp(asm_list, label_str_3);
 
             asm_list_append_label(asm_list, label_str_1);
             asm_list_append_comment(asm_list, "true branch");
-            asm_list_append_call_method(asm_list, bool_class_idx, -1);
+            asm_list_append_call_method(asm_list, asm_list->bool_class_idx, -1);
 
             asm_list_append_label(asm_list, label_str_3);
             asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
             break;
         }
         case TAC_OP_NEG:
-            asm_list_append_call_method(asm_list, int_class_idx, -1);
+            asm_list_append_call_method(asm_list, asm_list->int_class_idx, -1);
             asm_list_append_push(asm_list, R13);
             asm_list_append_ld(asm_list, R14, R13, 3);
             asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R13, expr.rhs1);
@@ -899,12 +840,12 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
 
             asm_list_append_label(asm_list, label_str_2);
             asm_list_append_comment(asm_list, "false branch");
-            asm_list_append_call_method(asm_list, bool_class_idx, -1);
+            asm_list_append_call_method(asm_list, asm_list->bool_class_idx, -1);
             asm_list_append_jmp(asm_list, label_str_3);
 
             asm_list_append_label(asm_list, label_str_1);
             asm_list_append_comment(asm_list, "true branch");
-            asm_list_append_call_method(asm_list, bool_class_idx, -1);
+            asm_list_append_call_method(asm_list, asm_list->bool_class_idx, -1);
             asm_list_append_li(asm_list, R14, 1, ASMImmediateUnitsBase);
             asm_list_append_st(asm_list, R13, 3, R14);
 
@@ -1014,6 +955,8 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             bh_str error_label = asm_list_create_label(asm_list);
             bh_str void_label = asm_list_create_label(asm_list);
             bh_str end_label = asm_list_create_label(asm_list);
+
+                // asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R13, );
 
             for (int j = 0; j < asm_list->class_list->class_count; j++)
             {
@@ -1130,23 +1073,12 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     asm_list_append_arith(asm_list, ASM_OP_SUB, RSP, R14);
 
     asm_list_append_comment(asm_list, "method body begins");
-    int64_t io_class_idx = -1;
-    int64_t int_class_idx = -1;
-    int64_t string_class_idx = -1;
-    for (int i = 0; i < asm_list->class_list->class_count; i++)
-    {
-        ClassNode class_node = asm_list->class_list->class_nodes[i];
-        if (bh_str_equal_lit(class_node.name, "IO")) io_class_idx = i;
-        if (bh_str_equal_lit(class_node.name, "Int")) int_class_idx = i;
-        if (bh_str_equal_lit(class_node.name, "String")) string_class_idx = i;
-        if (io_class_idx > -1 && int_class_idx > -1 && string_class_idx > -1) break;
-    }
     if (bh_str_equal_lit(class_name, "Object"))
     {
         if (bh_str_equal_lit(tac_list.method_name, "abort"))
         {
             asm_list_append_la(asm_list, R13, INTERNAL_CLASS, INTERNAL_ABORT_STR); // Fix this jawn
-            asm_list_append_syscall(asm_list, io_class_idx, 6);
+            asm_list_append_syscall(asm_list, asm_list->io_class_idx, 6);
             asm_list_append_syscall(asm_list, -1, 0); // Exit
         }
         if (bh_str_equal_lit(tac_list.method_name, "copy"))
@@ -1180,7 +1112,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         }
         if (bh_str_equal_lit(tac_list.method_name, "type_name"))
         {
-            asm_list_append_call_method(asm_list, string_class_idx, CONSTRUCTOR_METHOD);
+            asm_list_append_call_method(asm_list, asm_list->string_class_idx, CONSTRUCTOR_METHOD);
             asm_list_append_ld(asm_list, R14, R12, 2);
             asm_list_append_ld(asm_list, R14, R14, 0);
             asm_list_append_st(asm_list, R13, 3, R14);
@@ -1190,17 +1122,17 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     {
         if (bh_str_equal_lit(tac_list.method_name, "in_int"))
         {
-            asm_list_append_call_method(asm_list, int_class_idx, CONSTRUCTOR_METHOD);
+            asm_list_append_call_method(asm_list, asm_list->int_class_idx, CONSTRUCTOR_METHOD);
             asm_list_append_mov(asm_list, R14, R13);
-            asm_list_append_syscall(asm_list, io_class_idx, 3);
+            asm_list_append_syscall(asm_list, asm_list->io_class_idx, 3);
             asm_list_append_st(asm_list, R14, 3, R13);
             asm_list_append_mov(asm_list, R13, R14);
         }
         if (bh_str_equal_lit(tac_list.method_name, "in_string"))
         {
-            asm_list_append_call_method(asm_list, string_class_idx, CONSTRUCTOR_METHOD);
+            asm_list_append_call_method(asm_list, asm_list->string_class_idx, CONSTRUCTOR_METHOD);
             asm_list_append_mov(asm_list, R14, R13);
-            asm_list_append_syscall(asm_list, io_class_idx, 4);
+            asm_list_append_syscall(asm_list, asm_list->io_class_idx, 4);
             asm_list_append_st(asm_list, R14, 3, R13);
             asm_list_append_mov(asm_list, R13, R14);
         }
@@ -1208,14 +1140,14 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         {
             asm_list_append_ld(asm_list, R14, RBP, 3);
             asm_list_append_ld(asm_list, R13, R14, 3);
-            asm_list_append_syscall(asm_list, io_class_idx, 5);
+            asm_list_append_syscall(asm_list, asm_list->io_class_idx, 5);
             asm_list_append_mov(asm_list, R13, R12);
         }
         if (bh_str_equal_lit(tac_list.method_name, "out_string"))
         {
             asm_list_append_ld(asm_list, R14, RBP, 3);
             asm_list_append_ld(asm_list, R13, R14, 3);
-            asm_list_append_syscall(asm_list, io_class_idx, 6);
+            asm_list_append_syscall(asm_list, asm_list->io_class_idx, 6);
             asm_list_append_mov(asm_list, R13, R12);
         }
     }
@@ -1223,7 +1155,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     {
         if (bh_str_equal_lit(tac_list.method_name, "concat"))
         {
-            asm_list_append_call_method(asm_list, string_class_idx, CONSTRUCTOR_METHOD);
+            asm_list_append_call_method(asm_list, asm_list->string_class_idx, CONSTRUCTOR_METHOD);
             asm_list_append_mov(asm_list, R15, R13);
             asm_list_append_ld(asm_list, R14, RBP, 3);
             asm_list_append_ld(asm_list, R14, R14, 3);
@@ -1238,7 +1170,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         }
         if (bh_str_equal_lit(tac_list.method_name, "length"))
         {
-            asm_list_append_call_method(asm_list, int_class_idx, CONSTRUCTOR_METHOD);
+            asm_list_append_call_method(asm_list, asm_list->int_class_idx, CONSTRUCTOR_METHOD);
             asm_list_append_mov(asm_list, R14, R13);
             asm_list_append_ld(asm_list, R13, R12, 3);
             asm_list_append_mov(asm_list, RDI, R13);
@@ -1253,7 +1185,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         {
             bh_str label_str = asm_list_create_label(asm_list);
 
-            asm_list_append_call_method(asm_list, string_class_idx, CONSTRUCTOR_METHOD);
+            asm_list_append_call_method(asm_list, asm_list->string_class_idx, CONSTRUCTOR_METHOD);
             asm_list_append_mov(asm_list, R15, R13);
             asm_list_append_ld(asm_list, R14, RBP, 3);
             asm_list_append_ld(asm_list, R14, R14, 3);
@@ -1269,7 +1201,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
             asm_list_append_bnz(asm_list, R13, label_str);
             asm_list_append_align_sp(asm_list);
             asm_list_append_la(asm_list, R13, INTERNAL_STRINGS, INTERNAL_SUBSTR_RANGE_STR);
-            asm_list_append_syscall(asm_list, io_class_idx, 6);
+            asm_list_append_syscall(asm_list, asm_list->io_class_idx, 6);
             asm_list_append_li(asm_list, RDI, 0, ASMImmediateUnitsBase);
             asm_list_append_syscall(asm_list, INTERNAL_CLASS, 0); // exit
 
@@ -2000,7 +1932,7 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
 
 #pragma endregion
 
-ASMList asm_list_init()
+ASMList asm_list_init(ClassNodeList* class_list)
 {
     int64_t base_capacity = 100;
 #ifdef WIN32
@@ -2014,12 +1946,34 @@ ASMList asm_list_init()
     ASMErrorStr* error_strs = mmap(NULL, 1000 * sizeof(ASMErrorStr), PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     mprotect(error_strs, base_capacity * sizeof(ASMErrorStr), PROT_READ | PROT_WRITE);
 #endif
-    return (ASMList){
+    ASMList list = (ASMList){
         .instruction_capacity = base_capacity,
         .instructions = data,
         .instruction_count = 0,
         .error_strs = error_strs,
         .error_str_count = 0,
-        .error_str_capacity = base_capacity
+        .error_str_capacity = base_capacity,
+        .class_list = class_list
     };
+
+    int64_t bool_class_idx = -1;
+    int64_t io_class_idx = -1;
+    int64_t int_class_idx = -1;
+    int64_t string_class_idx = -1;
+    for (int i = 0; i < class_list->class_count; i++)
+    {
+        const ClassNode class_node = class_list->class_nodes[i];
+        if (bh_str_equal_lit(class_node.name, "Bool")) bool_class_idx = i;
+        if (bh_str_equal_lit(class_node.name, "IO")) io_class_idx = i;
+        if (bh_str_equal_lit(class_node.name, "Int")) int_class_idx = i;
+        if (bh_str_equal_lit(class_node.name, "String")) string_class_idx = i;
+        if (bool_class_idx > -1 && io_class_idx > -1 && int_class_idx > -1 && string_class_idx > -1) break;
+    }
+
+    list.bool_class_idx = bool_class_idx;
+    list.io_class_idx = io_class_idx;
+    list.int_class_idx = int_class_idx;
+    list.string_class_idx = string_class_idx;
+
+    return list;
 }
