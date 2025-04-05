@@ -1186,7 +1186,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
             asm_list_append_push(asm_list, R13);
 
             asm_list_append_label(asm_list, label_str_1);
-            asm_list_append_bnz(asm_list, R14, label_str_2);
+            asm_list_append_bz(asm_list, R14, label_str_2);
             asm_list_append_ld(asm_list, R15, R12, 0);
             asm_list_append_st(asm_list, R13, 0, R15);
             asm_list_append_li(asm_list, R15, 1, ASMImmediateUnitsWord);
