@@ -200,13 +200,24 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             }
 
             int64_t class_idx = list->class_idx;
-            if (expr->expression_type != COOL_EXPR_TYPE_SELF_DISPATCH)
+            if (expr->expression_type == COOL_EXPR_TYPE_DYNAMIC_DISPATCH)
             {
                 for (int i = 0; i < list->class_list.class_count; i++)
                 {
                     if (bh_str_equal(list->class_list.class_nodes[i].name, expr->data.dynamic_dispatch.e->expression_typename))
                     {
                         class_idx = i;
+                        break;
+                    }
+                }
+            }
+            else if (expr->expression_type == COOL_EXPR_TYPE_STATIC_DISPATCH)
+            {
+                for (int i = 0; i < list->class_list.class_count; i++)
+                {
+                    if (bh_str_equal(list->class_list.class_nodes[i].name, expr->data.static_dispatch.type_name.name))
+                    {
+                        class_idx = -i;
                         break;
                     }
                 }
@@ -219,7 +230,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             }
 
             int64_t method_idx = 0;
-            ClassNode class_node = list->class_list.class_nodes[class_idx];
+            ClassNode class_node = list->class_list.class_nodes[class_idx < 0 ? -class_idx : class_idx];
             for (int i = 0; i < class_node.method_count; i++)
             {
                 if (bh_str_equal(class_node.methods[i].name, expr->data.dynamic_dispatch.method.name))

@@ -945,7 +945,18 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             }
 
             // Perform the call
-            asm_list_append_ld(asm_list, R14, is_self_dispatch ? R12 : R13, 2);
+            if (is_self_dispatch)
+            {
+                asm_list_append_ld(asm_list, R14, R12, 2);
+            }
+            else if (expr.rhs1.method.class_idx < 0) // Static dispatch
+            {
+                asm_list_append_la(asm_list, R14, -expr.rhs1.method.class_idx, -2);
+            }
+            else
+            {
+                asm_list_append_ld(asm_list, R14, R13, 2);
+            }
             asm_list_append_ld(asm_list, R14, R14, expr.rhs1.method.method_idx + 2);
             asm_list_append_call(asm_list, R14);
             asm_list_append(asm_list, (ASMInstr){
