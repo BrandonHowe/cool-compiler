@@ -1207,7 +1207,6 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
             asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_SUBSTR_HANDLER);
             asm_list_append_mov(asm_list, R13, RAX);
             asm_list_append_bnz(asm_list, R13, label_str);
-            asm_list_append_align_sp(asm_list);
             asm_list_append_la(asm_list, R13, INTERNAL_STRINGS, INTERNAL_SUBSTR_RANGE_STR);
             asm_list_append_align_sp(asm_list);
             asm_list_append_syscall(asm_list, asm_list->io_class_idx, 6);
@@ -1692,10 +1691,10 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
             switch (param.method.method_idx)
             {
             case INTERNAL_ABORT_STR:
-                bh_str_buf_append_lit(str_buf, "string_abort");
+                bh_str_buf_append_lit(str_buf, "$string_abort");
                 break;
             case INTERNAL_SUBSTR_RANGE_STR:
-                bh_str_buf_append_lit(str_buf, "substr_out_of_range");
+                bh_str_buf_append_lit(str_buf, "$substr_out_of_range");
                 break;
             default:
                 assert(0 && "Unhandled internal string");
