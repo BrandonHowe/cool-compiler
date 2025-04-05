@@ -1699,7 +1699,7 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
             switch (param.method.method_idx)
             {
             case INTERNAL_EMPTY_STR:
-                bh_str_buf_append_lit(str_buf, "$the.empty.string");
+                bh_str_buf_append_lit(str_buf, "$the_empty_string");
                 break;
             case INTERNAL_ABORT_STR:
                 bh_str_buf_append_lit(str_buf, "$string_abort");
