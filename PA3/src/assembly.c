@@ -1353,6 +1353,7 @@ void builtin_append_string_constants(ASMList* asm_list)
 // I used the reference compiler's output for this code
 void builtin_append_start(ASMList* asm_list)
 {
+    int64_t main_ctor_idx = -1;
     int64_t main_class_idx = -1;
     int64_t main_method_idx = -1;
     for (int i = 0; i < asm_list->class_list->class_count; i++)
@@ -1360,11 +1361,19 @@ void builtin_append_start(ASMList* asm_list)
         ClassNode class_node = asm_list->class_list->class_nodes[i];
         if (bh_str_equal_lit(class_node.name, "Main"))
         {
-            main_class_idx = i;
+            main_ctor_idx = i;
             for (int j = 0; j < class_node.method_count; j++)
             {
                 if (bh_str_equal_lit(class_node.methods[j].name, "main"))
                 {
+                    for (int k = 0; k < asm_list->class_list->class_count; k++)
+                    {
+                        if (bh_str_equal(asm_list->class_list->class_nodes[k].name, class_node.methods[j].inherited_from))
+                        {
+                            main_class_idx = k;
+                            break;
+                        }
+                    }
                     main_method_idx = j;
                     break;
                 }
@@ -1379,7 +1388,7 @@ void builtin_append_start(ASMList* asm_list)
 
     asm_list_append_comment(asm_list, "program begins here");
     asm_list_append_label(asm_list, start_str);
-    asm_list_append_la(asm_list, R14, main_class_idx, -1);
+    asm_list_append_la(asm_list, R14, main_ctor_idx, -1);
     asm_list_append_push(asm_list, RBP);
     asm_list_append_call(asm_list, R14);
     asm_list_append_push(asm_list, RBP);

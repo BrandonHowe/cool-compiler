@@ -1,3 +1,5 @@
-class Main inherits IO {
-    main() : Object { new SELF_TYPE };
+class A {
+    main() : Object { 123 };
 };
+
+class Main inherits A {};
