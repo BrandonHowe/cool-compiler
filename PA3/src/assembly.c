@@ -1031,19 +1031,6 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
 
                 tac_list_from_expression(element.body, &list, expr.lhs);
 
-                int64_t strings_handled = 0;
-                for (int k = 0; k < list.count; k++)
-                {
-                    if (list.items[k].operation == TAC_OP_STRING)
-                    {
-                        bh_str_buf label_buf_1 = bh_str_buf_init(asm_list->string_allocator, 10);
-                        bh_str_buf_append_format(&label_buf_1, "string%i", asm_list->_string_counter + strings_handled++);
-                        bh_str label_str_1 = (bh_str){ .buf = label_buf_1.buf, .len = label_buf_1.len };
-
-                        builtin_append_custom_string_constant(asm_list, label_str_1, list.items[k].rhs1.string);
-                    }
-                }
-
                 asm_from_tac_list(asm_list, list);
 
                 asm_list_append_jmp(asm_list, end_label);
@@ -1282,12 +1269,6 @@ void builtin_append_string_constants(ASMList* asm_list)
         asm_list_append_label(asm_list, asm_list->error_strs[i].label);
         asm_list_append_string_constant(asm_list, asm_list->error_strs[i].message);
     }
-}
-
-void builtin_append_custom_string_constant(ASMList* asm_list, const bh_str label, const bh_str data)
-{
-    asm_list_append_label(asm_list, label);
-    asm_list_append_string_constant(asm_list, data);
 }
 
 // I used the reference compiler's output for this code

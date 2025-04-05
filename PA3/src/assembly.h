@@ -148,7 +148,7 @@ void asm_list_append_call_method(ASMList* asm_list, int64_t class_idx, int64_t m
 void asm_from_constructor(ASMList* asm_list, ClassNode class_node, int64_t class_idx);
 void asm_from_tac_list(ASMList* asm_list, TACList tac_list);
 void asm_from_method(ASMList* asm_list, TACList tac_list);
-ASMList asm_list_init();
+ASMList asm_list_init(ClassNodeList* class_list);
 
 void display_asm_list(bh_str_buf* str_buf, ASMList asm_list);
 void x86_asm_list(bh_str_buf* str_buf, ASMList asm_list);
@@ -157,6 +157,5 @@ void builtin_append_string_helpers(bh_str_buf* buf);
 void builtin_append_string_constants(ASMList* asm_list);
 void builtin_append_comp_handler(ASMList* asm_list, TACOp op);
 void builtin_append_start(ASMList* asm_list);
-void builtin_append_custom_string_constant(ASMList* asm_list, bh_str label, bh_str data);
 
 #endif //ASSEMBLY_H

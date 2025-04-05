@@ -72,19 +72,6 @@ int main(int argc, char* argv[])
 
                 tac_list_from_expression(&method.body, &list, (TACSymbol){ 0 });
 
-                int64_t strings_handled = 0;
-                for (int k = 0; k < list.count; k++)
-                {
-                    if (list.items[k].operation == TAC_OP_STRING)
-                    {
-                        bh_str_buf label_buf_1 = bh_str_buf_init(asm_list.string_allocator, 10);
-                        bh_str_buf_append_format(&label_buf_1, "string%i", asm_list._string_counter + strings_handled++);
-                        bh_str label_str_1 = (bh_str){ .buf = label_buf_1.buf, .len = label_buf_1.len };
-
-                        builtin_append_custom_string_constant(&asm_list, label_str_1, list.items[k].rhs1.string);
-                    }
-                }
-
                 asm_from_method(&asm_list, list);
             }
         }
