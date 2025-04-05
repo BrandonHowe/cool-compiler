@@ -19,13 +19,13 @@ eq_handler:             ## helper function for =
                         movq 0(%r14), %r14
                         ## place the sum of the type tags in r1
                         addq %r14, %r13
-                        movq $0, %r14
+                        movq $-2, %r14
                         cmpq %r14, %r13
 			je eq_bool
-                        movq $2, %r14
+                        movq $-4, %r14
                         cmpq %r14, %r13
 			je eq_int
-                        movq $6, %r14
+                        movq $-6, %r14
                         cmpq %r14, %r13
 			je eq_string
                         ## otherwise, use pointer comparison
@@ -105,13 +105,13 @@ le_handler:             ## helper function for <=
                         movq 0(%r14), %r14
                         ## place the sum of the type tags in r1
                         addq %r14, %r13
-                        movq $0, %r14
+                        movq $-2, %r14
                         cmpq %r14, %r13
 			je le_bool
-                        movq $2, %r14
+                        movq $-4, %r14
                         cmpq %r14, %r13
 			je le_int
-                        movq $6, %r14
+                        movq $-6, %r14
                         cmpq %r14, %r13
 			je le_string
                         ## for non-primitives, equality is our only hope
@@ -189,13 +189,13 @@ lt_handler:             ## helper function for <
                         movq 0(%r14), %r14
                         ## place the sum of the type tags in r1
                         addq %r14, %r13
-                        movq $0, %r14
+                        movq $-2, %r14
                         cmpq %r14, %r13
 			je lt_bool
-                        movq $2, %r14
+                        movq $-4, %r14
                         cmpq %r14, %r13
 			je lt_int
-                        movq $6, %r14
+                        movq $-6, %r14
                         cmpq %r14, %r13
 			je lt_string
                         ## for non-primitives, < is always false
