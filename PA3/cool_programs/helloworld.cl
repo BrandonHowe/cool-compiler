@@ -1,5 +1,3 @@
-class A {
-    main() : Object { 123 };
+class Main {
+    main() : Object { 5 / 0 };
 };
-
-class Main inherits A {};
