@@ -1908,9 +1908,9 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             break;
         case ASM_OP_AND:
             bh_str_buf_append_lit(str_buf, "andq");
-            display_asm_param(str_buf, class_list, instr.params[1]);
+            x86_asm_param(str_buf, class_list, instr.params[1]);
             bh_str_buf_append_lit(str_buf, ",");
-            display_asm_param(str_buf, class_list, instr.params[0]);
+            x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_ALLOC:
             bh_str_buf_append_lit(str_buf, "## guarantee 16-byte alignment before call\nandq $0xFFFFFFFFFFFFFFF0, %rsp\n");
