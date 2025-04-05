@@ -537,6 +537,12 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
         asm_list_append_li(asm_list, R13, 0, ASMImmediateUnitsBase);
         asm_list_append_st(asm_list, R12, 3, R13);
     }
+    else if (bh_str_equal_lit(class_node.name, "String"))
+    {
+        asm_list_append_comment(asm_list, "define built-in attributes");
+        asm_list_append_la(asm_list, R13, INTERNAL_STRINGS, INTERNAL_EMPTY_STR);
+        asm_list_append_st(asm_list, R12, 3, R13);
+    }
     else
     {
         asm_list_append_comment(asm_list, "define attributes");
@@ -1245,6 +1251,8 @@ void builtin_append_string_helpers(bh_str_buf* buf)
 void builtin_append_string_constants(ASMList* asm_list)
 {
     asm_list_append_comment(asm_list, "global string constants");
+    asm_list_append_label(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "the_empty_string"));
+    asm_list_append_string_constant(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, ""));
     asm_list_append_label(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "string_abort"));
     asm_list_append_string_constant(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "abort\\n"));
     asm_list_append_label(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "percent.d"));
@@ -1252,7 +1260,7 @@ void builtin_append_string_constants(ASMList* asm_list)
     asm_list_append_label(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "percent.ld"));
     asm_list_append_string_constant(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, " %ld"));
     asm_list_append_label(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "substr_out_of_range"));
-    asm_list_append_string_constant(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "ERROR: 0: Eception: String.substr out of range\\n"));
+    asm_list_append_string_constant(asm_list, bh_str_alloc_cstr(asm_list->string_allocator, "ERROR: 0: Exception: String.substr out of range\\n"));
     for (int i = 0; i < asm_list->class_list->class_count; i++)
     {
         const ClassNode class_node = asm_list->class_list->class_nodes[i];
@@ -1690,6 +1698,9 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
         {
             switch (param.method.method_idx)
             {
+            case INTERNAL_EMPTY_STR:
+                bh_str_buf_append_lit(str_buf, "$the.empty.string");
+                break;
             case INTERNAL_ABORT_STR:
                 bh_str_buf_append_lit(str_buf, "$string_abort");
                 break;
