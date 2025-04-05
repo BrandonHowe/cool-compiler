@@ -361,7 +361,7 @@ void asm_list_append_ld_tac_symbol(ASMList* asm_list, const ClassNode class_node
             }
             // Check if the variable is bound from a case expression
             int64_t attribute_idx = -1;
-            for (int j = asm_list->case_binding_count - 1; j >= 0; j++)
+            for (int j = asm_list->case_binding_count - 1; j >= 0; j--)
             {
                 if (bh_str_equal(asm_list->case_bindings[j].name, symbol.variable))
                 {
