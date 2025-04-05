@@ -1126,7 +1126,6 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         {
             asm_list_append_call_method(asm_list, asm_list->int_class_idx, CONSTRUCTOR_METHOD);
             asm_list_append_mov(asm_list, R14, R13);
-            asm_list_append_align_sp(asm_list);
             asm_list_append_syscall(asm_list, asm_list->io_class_idx, 3);
             asm_list_append_st(asm_list, R14, 3, R13);
             asm_list_append_mov(asm_list, R13, R14);
