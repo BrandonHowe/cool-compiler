@@ -592,7 +592,15 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
             const ClassAttribute attribute = class_node.attributes[i];
             if (bh_str_equal_lit(attribute.type, "Int"))
             {
-                asm_list_append_call_method(asm_list, 2, CONSTRUCTOR_METHOD);
+                asm_list_append_call_method(asm_list, asm_list->int_class_idx, CONSTRUCTOR_METHOD);
+            }
+            else if (bh_str_equal_lit(attribute.type, "String"))
+            {
+                asm_list_append_call_method(asm_list, asm_list->string_class_idx, CONSTRUCTOR_METHOD);
+            }
+            else if (bh_str_equal_lit(attribute.type, "Bool"))
+            {
+                asm_list_append_call_method(asm_list, asm_list->bool_class_idx, CONSTRUCTOR_METHOD);
             }
             else
             {
