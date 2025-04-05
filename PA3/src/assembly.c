@@ -497,6 +497,7 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
     }
     int object_size = 3 + attribute_count;
     asm_list_append_li(asm_list, R12, object_size, ASMImmediateUnitsBase);
+    asm_list_append_align_sp(asm_list);
     asm_list_append(asm_list, (ASMInstr){
         .op = ASM_OP_ALLOC,
         .params = {
@@ -1078,7 +1079,9 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         if (bh_str_equal_lit(tac_list.method_name, "abort"))
         {
             asm_list_append_la(asm_list, R13, INTERNAL_CLASS, INTERNAL_ABORT_STR); // Fix this jawn
+            asm_list_append_align_sp(asm_list);
             asm_list_append_syscall(asm_list, asm_list->io_class_idx, 6);
+            asm_list_append_align_sp(asm_list);
             asm_list_append_syscall(asm_list, -1, 0); // Exit
         }
         if (bh_str_equal_lit(tac_list.method_name, "copy"))
@@ -1087,6 +1090,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
             bh_str label_str_2 = asm_list_create_label(asm_list);
 
             asm_list_append_ld(asm_list, R14, R12, 1);
+            asm_list_append_align_sp(asm_list);
             asm_list_append(asm_list, (ASMInstr){
                 .op = ASM_OP_ALLOC,
                 .params = {
@@ -1124,6 +1128,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         {
             asm_list_append_call_method(asm_list, asm_list->int_class_idx, CONSTRUCTOR_METHOD);
             asm_list_append_mov(asm_list, R14, R13);
+            asm_list_append_align_sp(asm_list);
             asm_list_append_syscall(asm_list, asm_list->io_class_idx, 3);
             asm_list_append_st(asm_list, R14, 3, R13);
             asm_list_append_mov(asm_list, R13, R14);
@@ -1132,6 +1137,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         {
             asm_list_append_call_method(asm_list, asm_list->string_class_idx, CONSTRUCTOR_METHOD);
             asm_list_append_mov(asm_list, R14, R13);
+            asm_list_append_align_sp(asm_list);
             asm_list_append_syscall(asm_list, asm_list->io_class_idx, 4);
             asm_list_append_st(asm_list, R14, 3, R13);
             asm_list_append_mov(asm_list, R13, R14);
@@ -1140,6 +1146,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         {
             asm_list_append_ld(asm_list, R14, RBP, 3);
             asm_list_append_ld(asm_list, R13, R14, 3);
+            asm_list_append_align_sp(asm_list);
             asm_list_append_syscall(asm_list, asm_list->io_class_idx, 5);
             asm_list_append_mov(asm_list, R13, R12);
         }
@@ -1147,6 +1154,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         {
             asm_list_append_ld(asm_list, R14, RBP, 3);
             asm_list_append_ld(asm_list, R13, R14, 3);
+            asm_list_append_align_sp(asm_list);
             asm_list_append_syscall(asm_list, asm_list->io_class_idx, 6);
             asm_list_append_mov(asm_list, R13, R12);
         }
@@ -1201,8 +1209,10 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
             asm_list_append_bnz(asm_list, R13, label_str);
             asm_list_append_align_sp(asm_list);
             asm_list_append_la(asm_list, R13, INTERNAL_STRINGS, INTERNAL_SUBSTR_RANGE_STR);
+            asm_list_append_align_sp(asm_list);
             asm_list_append_syscall(asm_list, asm_list->io_class_idx, 6);
             asm_list_append_li(asm_list, RDI, 0, ASMImmediateUnitsBase);
+            asm_list_append_align_sp(asm_list);
             asm_list_append_syscall(asm_list, INTERNAL_CLASS, 0); // exit
 
             asm_list_append_label(asm_list, label_str);
