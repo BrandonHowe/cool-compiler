@@ -227,6 +227,18 @@ void asm_list_append_ble(ASMList* asm_list, const ASMRegister arg1, const ASMReg
     });
 }
 
+void asm_list_append_bz(ASMList* asm_list, const ASMRegister arg1, const bh_str label)
+{
+    asm_list_append(asm_list, (ASMInstr){
+        .op = ASM_OP_BEQ,
+        .params = {
+            (ASMParam){ .type = ASM_PARAM_IMMEDIATE, .immediate = 0 },
+            (ASMParam){ .type = ASM_PARAM_REGISTER, .reg = arg1 },
+            (ASMParam){ .type = ASM_PARAM_LABEL, .label = label },
+        }
+    });
+}
+
 void asm_list_append_bnz(ASMList* asm_list, const ASMRegister arg1, const bh_str label)
 {
     asm_list_append(asm_list, (ASMInstr){
@@ -347,8 +359,23 @@ void asm_list_append_ld_tac_symbol(ASMList* asm_list, const ClassNode class_node
                 asm_list_append_mov(asm_list, dest, R12);
                 break;
             }
-            // Look up the variable name from parameters
+            // Check if the variable is bound from a case expression
             int64_t attribute_idx = -1;
+            for (int j = asm_list->case_binding_count - 1; j >= 0; j++)
+            {
+                if (bh_str_equal(asm_list->case_bindings[j].name, symbol.variable))
+                {
+                    attribute_idx = asm_list->case_bindings[j].symbol;
+                    break;
+                }
+            }
+            if (attribute_idx > -1)
+            {
+                asm_list_append_ld(asm_list, dest, RBP, -attribute_idx);
+                break;
+            }
+
+            // Look up the variable name from parameters
             for (int j = 0; j < method.parameter_count; j++)
             {
                 if (bh_str_equal(method.parameters[j].name, symbol.variable))
@@ -361,23 +388,20 @@ void asm_list_append_ld_tac_symbol(ASMList* asm_list, const ClassNode class_node
             {
                 int64_t offset = method.parameter_count - attribute_idx + 2;
                 asm_list_append_ld(asm_list, dest, RBP, offset);
-                // asm_list_append_st(asm_list, RBP, offset, R13);
+                break;
             }
-            else
+
+            // Look up the variable name from attributes
+            for (int j = 0; j < class_node.attribute_count; j++)
             {
-                // Look up the variable name from attributes
-                for (int j = 0; j < class_node.attribute_count; j++)
+                if (bh_str_equal(class_node.attributes[j].name, symbol.variable))
                 {
-                    if (bh_str_equal(class_node.attributes[j].name, symbol.variable))
-                    {
-                        attribute_idx = j;
-                        break;
-                    }
+                    attribute_idx = j;
+                    break;
                 }
-                assert(attribute_idx != -1 && "Could not find attribute for LHS");
-                asm_list_append_ld(asm_list, dest, R12, attribute_idx + 3);
-                // asm_list_append_st(asm_list, R12, attribute_idx + 3, R13);
             }
+            assert(attribute_idx != -1 && "Could not find attribute for LHS");
+            asm_list_append_ld(asm_list, dest, R12, attribute_idx + 3);
             break;
         }
     default:
@@ -433,6 +457,18 @@ void asm_list_append_runtime_error(ASMList* asm_list, const int64_t line_num, co
     asm_list_append_la_label(asm_list, R13, error_label);
     asm_list_append_syscall(asm_list, asm_list->io_class_idx, 6);
     asm_list_append_syscall(asm_list, INTERNAL_CLASS, 0);
+}
+
+void asm_list_push_case_binding(ASMList* asm_list, const bh_str label, const int64_t symbol)
+{
+    asm_list->case_bindings[asm_list->case_binding_count].name = label;
+    asm_list->case_bindings[asm_list->case_binding_count].symbol = symbol;
+    asm_list->case_binding_count++;
+}
+
+void asm_list_pop_case_binding(ASMList* asm_list)
+{
+    asm_list->case_binding_count--;
 }
 
 #pragma endregion
@@ -958,7 +994,8 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
         case TAC_OP_CASE:
         {
             asm_list_append_comment(asm_list, "TAC CASE STATEMENT");
-            int64_t case_count = expr.rhs1.expression->data.case_expr.element_count;
+
+            int64_t case_count = expr.rhs2.expression->data.case_expr.element_count;
             bh_str* labels = malloc(case_count * sizeof(bh_str));
             for (int j = 0; j < case_count; j++)
             {
@@ -968,7 +1005,9 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             bh_str void_label = asm_list_create_label(asm_list);
             bh_str end_label = asm_list_create_label(asm_list);
 
-                // asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R13, );
+            asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R13, expr.rhs1);
+            asm_list_append_bz(asm_list, R13, void_label);
+            asm_list_append_ld(asm_list, R13, R13, 0);
 
             for (int j = 0; j < asm_list->class_list->class_count; j++)
             {
@@ -987,7 +1026,7 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                 {
                     for (int k = 0; k < case_count; k++)
                     {
-                        CoolCaseElement element = expr.rhs1.expression->data.case_expr.elements[k];
+                        CoolCaseElement element = expr.rhs2.expression->data.case_expr.elements[k];
                         if (bh_str_equal(element.type_name.name, branch_class->name))
                         {
                             correct_branch = k;
@@ -1009,17 +1048,19 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
 
             asm_list_append_label(asm_list, error_label);
             asm_list_append_comment(asm_list, "case expression: error");
-            asm_list_append_runtime_error(asm_list, expr.rhs1.expression->line_num, "no case branch found");
+            asm_list_append_runtime_error(asm_list, expr.rhs2.expression->line_num, "no case branch found");
             asm_list_append_label(asm_list, void_label);
             asm_list_append_comment(asm_list, "case expression: void");
-            asm_list_append_runtime_error(asm_list, expr.rhs1.expression->line_num, "case expression on void");
+            asm_list_append_runtime_error(asm_list, expr.rhs2.expression->line_num, "case expression on void");
             asm_list_append_comment(asm_list, "case expression: branches");
 
             for (int j = 0; j < case_count; j++)
             {
-                CoolCaseElement element = expr.rhs1.expression->data.case_expr.elements[j];
+                CoolCaseElement element = expr.rhs2.expression->data.case_expr.elements[j];
                 asm_list_append_comment_str(asm_list, element.type_name.name);
                 asm_list_append_label(asm_list, labels[j]);
+
+                asm_list_push_case_binding(asm_list, element.variable.name, expr.rhs1.symbol);
 
                 TACList list = TAC_list_init(100, tac_list.allocator);
                 list.class_list = tac_list.class_list;
@@ -1034,6 +1075,8 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                 asm_from_tac_list(asm_list, list);
 
                 asm_list_append_jmp(asm_list, end_label);
+
+                asm_list_pop_case_binding(asm_list);
             }
 
             asm_list_append_label(asm_list, end_label);
@@ -1945,11 +1988,15 @@ ASMList asm_list_init(ClassNodeList* class_list)
     VirtualAlloc(data, base_capacity * sizeof(ASMInstr), MEM_COMMIT, PAGE_READWRITE);
     ASMErrorStr* error_strs = VirtualAlloc(NULL, 1000 * sizeof(ASMErrorStr), MEM_RESERVE, PAGE_NOACCESS);
     VirtualAlloc(error_strs, base_capacity * sizeof(ASMErrorStr), MEM_COMMIT, PAGE_READWRITE);
+    ASMCaseBinding* case_bindings = VirtualAlloc(NULL, 80 * sizeof(ASMCaseBinding), MEM_RESERVE, PAGE_NOACCESS);
+    VirtualAlloc(case_bindings, 10 * sizeof(ASMCaseBinding), MEM_COMMIT, PAGE_READWRITE);
 #else
     ASMInstr* data = mmap(NULL, 10000000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     mprotect(data, base_capacity * sizeof(ASMInstr), PROT_READ | PROT_WRITE);
     ASMErrorStr* error_strs = mmap(NULL, 1000 * sizeof(ASMErrorStr), PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     mprotect(error_strs, base_capacity * sizeof(ASMErrorStr), PROT_READ | PROT_WRITE);
+    ASMCaseBinding* case_bindings = mmap(NULL, 80 * sizeof(ASMCaseBinding), PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    mprotect(case_bindings, 10 * sizeof(ASMCaseBinding), PROT_READ | PROT_WRITE);
 #endif
     ASMList list = (ASMList){
         .instruction_capacity = base_capacity,
@@ -1958,7 +2005,10 @@ ASMList asm_list_init(ClassNodeList* class_list)
         .error_strs = error_strs,
         .error_str_count = 0,
         .error_str_capacity = base_capacity,
-        .class_list = class_list
+        .class_list = class_list,
+        .case_bindings = case_bindings,
+        .case_binding_count = 0,
+        .case_binding_capacity = 10
     };
 
     int64_t bool_class_idx = -1;

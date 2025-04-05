@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
     builtin_append_string_constants(&asm_list);
     builtin_append_start(&asm_list);
 
-    if (false) // PA3c2 -- output first method as TAC
+    if (true) // PA3c2 -- output first method as TAC
     {
         bh_allocator tac_arena = arena_init(500000);
         TACList tac_list = tac_list_from_class_list(class_list, tac_arena);
@@ -135,6 +135,9 @@ int main(int argc, char* argv[])
                 bh_str_buf_append_lit(&str_buf, "_");
                 bh_str_buf_append(&str_buf, tac_list.method_name);
                 bh_str_buf_append_lit(&str_buf, "_");
+                break;
+            case TAC_OP_CASE:
+                bh_str_buf_append_lit(&str_buf, "case ");
                 break;
             case TAC_OP_RETURN: bh_str_buf_append_lit(&str_buf, "return "); break;
             case TAC_OP_COMMENT: bh_str_buf_append_lit(&str_buf, "comment "); break;

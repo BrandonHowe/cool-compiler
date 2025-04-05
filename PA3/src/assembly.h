@@ -119,6 +119,12 @@ typedef struct ASMErrorStr
     bh_str message;
 } ASMErrorStr;
 
+typedef struct ASMCaseBinding
+{
+    bh_str name;
+    int64_t symbol;
+} ASMCaseBinding;
+
 typedef struct ASMList
 {
     ASMInstr* instructions;
@@ -136,6 +142,10 @@ typedef struct ASMList
     ASMErrorStr* error_strs;
     int64_t error_str_count;
     int64_t error_str_capacity;
+
+    ASMCaseBinding* case_bindings;
+    int64_t case_binding_count;
+    int64_t case_binding_capacity;
 
     int64_t _stack_depth;
     int64_t _global_label;

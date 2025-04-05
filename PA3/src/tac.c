@@ -445,10 +445,13 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
         }
     case COOL_EXPR_TYPE_CASE:
         {
+            TACSymbol dest1 = TAC_request_symbol(list);
+            tac_list_from_expression(expr->data.case_expr.expr, list, dest1);
             const TACExpr tac = (TACExpr){
                 .operation = TAC_OP_CASE,
                 .lhs = destination,
-                .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_EXPRESSION, .expression = expr },
+                .rhs1 = dest1,
+                .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_EXPRESSION, .expression = expr },
             };
             TAC_list_append(list, tac);
             return tac.lhs;

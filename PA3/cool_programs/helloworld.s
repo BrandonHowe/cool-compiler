@@ -38,7 +38,6 @@ Main..vtable:           ## virtual function table for Main
                         .quad IO.in_string
                         .quad IO.out_int
                         .quad IO.out_string
-                        .quad Main.len
                         .quad Main.main
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Object..vtable
@@ -156,7 +155,7 @@ Main..new:              ## constructor for Main
                         movq $8, %r14
                         subq %r14, %rsp
                         ## return address handling
-                        movq $4, %r12
+                        movq $3, %r12
                         movq $8, %rsi
 			movq %r12, %rdi
 			call calloc
@@ -164,32 +163,10 @@ Main..new:              ## constructor for Main
                         ## store class tag, object size and vtable pointer
                         movq $11, %r14
                         movq %r14, 0(%r12)
-                        movq $4, %r14
+                        movq $3, %r14
                         movq %r14, 8(%r12)
                         movq $Main..vtable, %r14
                         movq %r14, 16(%r12)
-                        ## initialize attributes
-                        ## self[3] holds field str (String)
-                        ## new String
-                        pushq %rbp
-                        pushq %r12
-                        movq $String..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq %r13, 24(%r12)
-                        ## self[3] str initializer <- "asdf"
-                        ## new String
-                        pushq %rbp
-                        pushq %r12
-                        movq $String..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        ## string7 holds "asdf"
-                        movq $string7, %r14
-                        movq %r14, 24(%r13)
-                        movq %r13, 24(%r12)
                         movq %r12, %r13
                         ## return address handling
                         movq %rbp, %rsp
@@ -263,7 +240,7 @@ Object.abort:           ## method definition
                         subq %r14, %rsp
                         ## return address handling
                         ## method body begins
-                        movq $string8, %r13
+                        movq $string7, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
@@ -468,117 +445,109 @@ IO.out_string.end:      ## method body ends
                         popq %rbp
                         ret
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.globl Main.len
-Main.len:               ## method definition
-                        pushq %rbp
-                        movq %rsp, %rbp
-                        movq 16(%rbp), %r12
-                        ## stack room for temporaries: 1
-                        movq $8, %r14
-                        subq %r14, %rsp
-                        ## return address handling
-                        ## self[3] holds field str (String)
-                        ## method body begins
-                        ## str.length(...)
-                        pushq %r12
-                        pushq %rbp
-                        ## str
-                        movq 24(%r12), %r13
-                        cmpq $0, %r13
-			jne l3
-                        movq $string9, %r13
-                        movq %r13, %rdi
-			call cooloutstr
-                        movl $0, %edi
-			call exit
-.globl l3
-l3:                     pushq %r13
-                        ## obtain vtable from object in r1 with static type String
-                        movq 16(%r13), %r14
-                        ## look up length() at offset 6 in vtable
-                        movq 48(%r14), %r14
-                        call *%r14
-                        addq $8, %rsp
-                        popq %rbp
-                        popq %r12
-.globl Main.len.end
-Main.len.end:           ## method body ends
-                        ## return address handling
-                        movq %rbp, %rsp
-                        popq %rbp
-                        ret
-                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Main.main
 Main.main:              ## method definition
                         pushq %rbp
                         movq %rsp, %rbp
                         movq 16(%rbp), %r12
-                        ## stack room for temporaries: 1
-                        movq $8, %r14
+                        ## stack room for temporaries: 3
+                        movq $24, %r14
                         subq %r14, %rsp
                         ## return address handling
-                        ## self[3] holds field str (String)
                         ## method body begins
-                        ## out_int(...)
-                        pushq %r12
+                        ## fp[0] holds local val (Int)
+                        ## new Int
                         pushq %rbp
-                        ## str.length(...)
                         pushq %r12
-                        pushq %rbp
-                        ## str
-                        movq 24(%r12), %r13
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $5, %r14
+                        movq %r14, 24(%r13)
+                        movq %r13, 0(%rbp)
+                        ## case expression begins
+                        ## val
+                        movq 0(%rbp), %r13
                         cmpq $0, %r13
-			jne l4
-                        movq $string10, %r13
+			je l3
+                        movq %r13, -8(%rbp)
+                        movq 0(%r13), %r13
+                        ## case Object will jump to l4
+                        ## case Int will jump to l5
+                        ## case String will jump to l6
+                        ## case expression: compare type tags
+                        movq $0, %r14
+                        cmpq %r14, %r13
+			je l4
+                        movq $10, %r14
+                        cmpq %r14, %r13
+			je l4
+                        movq $1, %r14
+                        cmpq %r14, %r13
+			je l5
+                        movq $11, %r14
+                        cmpq %r14, %r13
+			je l4
+                        movq $12, %r14
+                        cmpq %r14, %r13
+			je l4
+                        movq $3, %r14
+                        cmpq %r14, %r13
+			je l6
+.globl l7
+l7:                     ## case expression: error case
+                        movq $string8, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
 			call exit
+.globl l3
+l3:                     ## case expression: void case
+                        movq $string9, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+                        ## case expression: branches
 .globl l4
-l4:                     pushq %r13
-                        ## obtain vtable from object in r1 with static type String
-                        movq 16(%r13), %r14
-                        ## look up length() at offset 6 in vtable
-                        movq 48(%r14), %r14
-                        call *%r14
-                        addq $8, %rsp
-                        popq %rbp
-                        popq %r12
-                        pushq %r13
-                        pushq %r12
-                        ## obtain vtable for self object of type Main
-                        movq 16(%r12), %r14
-                        ## look up out_int() at offset 7 in vtable
-                        movq 56(%r14), %r14
-                        call *%r14
-                        addq $16, %rsp
-                        popq %rbp
-                        popq %r12
-                        ## out_int(...)
-                        pushq %r12
-                        pushq %rbp
-                        ## len(...)
-                        pushq %r12
+l4:                     ## fp[-1] holds case a (Object)
+                        ## new Int
                         pushq %rbp
                         pushq %r12
-                        ## obtain vtable for self object of type Main
-                        movq 16(%r12), %r14
-                        ## look up len() at offset 9 in vtable
-                        movq 72(%r14), %r14
+                        movq $Int..new, %r14
                         call *%r14
-                        addq $8, %rsp
-                        popq %rbp
                         popq %r12
-                        pushq %r13
+                        popq %rbp
+                        movq $123, %r14
+                        movq %r14, 24(%r13)
+                        jmp l8
+.globl l5
+l5:                     ## fp[-1] holds case b (Int)
+                        ## new Int
+                        pushq %rbp
                         pushq %r12
-                        ## obtain vtable for self object of type Main
-                        movq 16(%r12), %r14
-                        ## look up out_int() at offset 7 in vtable
-                        movq 56(%r14), %r14
+                        movq $Int..new, %r14
                         call *%r14
-                        addq $16, %rsp
-                        popq %rbp
                         popq %r12
+                        popq %rbp
+                        movq $456, %r14
+                        movq %r14, 24(%r13)
+                        jmp l8
+.globl l6
+l6:                     ## fp[-1] holds case c (String)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $789, %r14
+                        movq %r14, 24(%r13)
+                        jmp l8
+.globl l8
+l8:                     ## case expression ends
 .globl Main.main.end
 Main.main.end:          ## method body ends
                         ## return address handling
@@ -684,14 +653,14 @@ String.substr:          ## method definition
 			call coolsubstr
 			movq %rax, %r13
                         cmpq $0, %r13
-			jne l5
-                        movq $string11, %r13
+			jne l9
+                        movq $string10, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
 			call exit
-.globl l5
-l5:                     movq %r13, 24(%r15)
+.globl l9
+l9:                     movq %r13, 24(%r15)
                         movq %r15, %r13
 .globl String.substr.end
 String.substr.end:      ## method body ends
@@ -770,15 +739,7 @@ string6:                # "String"
 .byte 0
 
 .globl string7
-string7:                # "asdf"
-.byte  97 # 'a'
-.byte 115 # 's'
-.byte 100 # 'd'
-.byte 102 # 'f'
-.byte 0
-
-.globl string8
-string8:                # "abort\\n"
+string7:                # "abort\\n"
 .byte  97 # 'a'
 .byte  98 # 'b'
 .byte 111 # 'o'
@@ -788,8 +749,8 @@ string8:                # "abort\\n"
 .byte 110 # 'n'
 .byte 0
 
-.globl string9
-string9:                # "ERROR: 4: Exception: dispatch on void\\n"
+.globl string8
+string8:                # "ERROR: 4: Exception: case without matching branch\\n"
 .byte  69 # 'E'
 .byte  82 # 'R'
 .byte  82 # 'R'
@@ -811,28 +772,40 @@ string9:                # "ERROR: 4: Exception: dispatch on void\\n"
 .byte 110 # 'n'
 .byte  58 # ':'
 .byte  32 # ' '
-.byte 100 # 'd'
-.byte 105 # 'i'
+.byte  99 # 'c'
+.byte  97 # 'a'
 .byte 115 # 's'
-.byte 112 # 'p'
+.byte 101 # 'e'
+.byte  32 # ' '
+.byte 119 # 'w'
+.byte 105 # 'i'
+.byte 116 # 't'
+.byte 104 # 'h'
+.byte 111 # 'o'
+.byte 117 # 'u'
+.byte 116 # 't'
+.byte  32 # ' '
+.byte 109 # 'm'
 .byte  97 # 'a'
 .byte 116 # 't'
 .byte  99 # 'c'
 .byte 104 # 'h'
-.byte  32 # ' '
-.byte 111 # 'o'
-.byte 110 # 'n'
-.byte  32 # ' '
-.byte 118 # 'v'
-.byte 111 # 'o'
 .byte 105 # 'i'
-.byte 100 # 'd'
+.byte 110 # 'n'
+.byte 103 # 'g'
+.byte  32 # ' '
+.byte  98 # 'b'
+.byte 114 # 'r'
+.byte  97 # 'a'
+.byte 110 # 'n'
+.byte  99 # 'c'
+.byte 104 # 'h'
 .byte  92 # '\\'
 .byte 110 # 'n'
 .byte 0
 
-.globl string10
-string10:               # "ERROR: 6: Exception: dispatch on void\\n"
+.globl string9
+string9:                # "ERROR: 4: Exception: case on void\\n"
 .byte  69 # 'E'
 .byte  82 # 'R'
 .byte  82 # 'R'
@@ -840,7 +813,7 @@ string10:               # "ERROR: 6: Exception: dispatch on void\\n"
 .byte  82 # 'R'
 .byte  58 # ':'
 .byte  32 # ' '
-.byte  54 # '6'
+.byte  52 # '4'
 .byte  58 # ':'
 .byte  32 # ' '
 .byte  69 # 'E'
@@ -854,14 +827,10 @@ string10:               # "ERROR: 6: Exception: dispatch on void\\n"
 .byte 110 # 'n'
 .byte  58 # ':'
 .byte  32 # ' '
-.byte 100 # 'd'
-.byte 105 # 'i'
-.byte 115 # 's'
-.byte 112 # 'p'
-.byte  97 # 'a'
-.byte 116 # 't'
 .byte  99 # 'c'
-.byte 104 # 'h'
+.byte  97 # 'a'
+.byte 115 # 's'
+.byte 101 # 'e'
 .byte  32 # ' '
 .byte 111 # 'o'
 .byte 110 # 'n'
@@ -874,8 +843,8 @@ string10:               # "ERROR: 6: Exception: dispatch on void\\n"
 .byte 110 # 'n'
 .byte 0
 
-.globl string11
-string11:               # "ERROR: 0: Exception: String.substr out of range\\n"
+.globl string10
+string10:               # "ERROR: 0: Exception: String.substr out of range\\n"
 .byte  69 # 'E'
 .byte  82 # 'R'
 .byte  82 # 'R'
