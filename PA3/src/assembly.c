@@ -689,7 +689,12 @@ void asm_from_tac_symbol(ASMList* asm_list, const TACSymbol symbol)
         break;
     case TAC_SYMBOL_TYPE_STRING:
         asm_list_append_call_method(asm_list, asm_list->string_class_idx, CONSTRUCTOR_METHOD);
-        asm_list_append_la(asm_list, R14, INTERNAL_CUSTOM_STRINGS, asm_list->_string_counter++);
+        bh_str_buf label_buf = bh_str_buf_init(asm_list->string_allocator, 8);
+        bh_str_buf_append_format(&label_buf, "string%i", asm_list->_string_counter++);
+        bh_str label = (bh_str){ .buf = label_buf.buf, .len = label_buf.len };
+        asm_list_append_error_str(asm_list, label, symbol.string);
+        asm_list_append_la_label(asm_list, R14, label);
+        // asm_list_append_la(asm_list, R14, INTERNAL_CUSTOM_STRINGS, asm_list->_string_counter++);
         asm_list_append_st(asm_list, R13, 3, R14);
         break;
     case TAC_SYMBOL_TYPE_SYMBOL:
