@@ -156,7 +156,7 @@ typedef struct ASMList
 void asm_from_vtable(ASMList* asm_list);
 void asm_list_append_call_method(ASMList* asm_list, int64_t class_idx, int64_t method_idx);
 void asm_from_constructor(ASMList* asm_list, ClassNode class_node, int64_t class_idx);
-void asm_from_tac_list(ASMList* asm_list, TACList tac_list);
+int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list);
 void asm_from_method(ASMList* asm_list, TACList tac_list);
 ASMList asm_list_init(ClassNodeList* class_list);
 

@@ -12,7 +12,7 @@
 
 #pragma region Assembly operations
 
-void asm_list_append(ASMList* asm_list, const ASMInstr instr)
+ASMInstr* asm_list_append(ASMList* asm_list, const ASMInstr instr)
 {
     if (asm_list->instruction_count + 1 >= asm_list->instruction_capacity)
     {
@@ -21,6 +21,7 @@ void asm_list_append(ASMList* asm_list, const ASMInstr instr)
     }
     asm_list->instructions[asm_list->instruction_count] = instr;
     asm_list->instruction_count += 1;
+    return &asm_list->instructions[asm_list->instruction_count - 1];
 }
 
 void asm_list_append_return(ASMList* asm_list)
@@ -116,9 +117,9 @@ void asm_list_append_pop(ASMList* asm_list, const ASMRegister reg)
     });
 }
 
-void asm_list_append_li(ASMList* asm_list, const ASMRegister reg, const int64_t immediate, const ASMImmediateUnits units)
+ASMInstr* asm_list_append_li(ASMList* asm_list, const ASMRegister reg, const int64_t immediate, const ASMImmediateUnits units)
 {
-    asm_list_append(asm_list, (ASMInstr){
+    return asm_list_append(asm_list, (ASMInstr){
         .op = ASM_OP_LI,
         .params = {
             (ASMParam){ .type = ASM_PARAM_REGISTER, .reg = reg },
@@ -756,8 +757,9 @@ void asm_from_tac_symbol(ASMList* asm_list, const TACSymbol symbol)
     }
 }
 
-void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
+int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
 {
+    int64_t extra_symbols = 0;
     ClassNode curr_class_node = tac_list.class_list.class_nodes[tac_list.class_idx];
     ClassMethod curr_method = curr_class_node.methods[tac_list.method_idx];
     const bh_str class_name = curr_class_node.name;
@@ -1121,6 +1123,9 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                 asm_list_append_jmp(asm_list, end_label);
 
                 asm_list_pop_case_binding(asm_list);
+
+                int64_t added_symbols = list._curr_symbol - tac_list._curr_symbol;
+                if (added_symbols > extra_symbols) extra_symbols = added_symbols;
             }
 
             asm_list_append_label(asm_list, end_label);
@@ -1129,9 +1134,11 @@ void asm_from_tac_list(ASMList* asm_list, TACList tac_list)
         }
         default:
             assert(0 && "Trying to convert unhandled tac expression to assembly");
-            return;
+            return 0;
         }
     }
+
+    return extra_symbols;
 }
 
 void asm_from_method(ASMList* asm_list, const TACList tac_list)
@@ -1155,7 +1162,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     asm_list_append_ld(asm_list, R12, RBP, 2);
     asm_list_append_comment(asm_list, "stack room for temporaries");
     int64_t temp_count = tac_list._curr_symbol + (tac_list._curr_symbol & 1);
-    asm_list_append_li(asm_list, R14, temp_count, ASMImmediateUnitsWord);
+    ASMInstr* temp_space_instr = asm_list_append_li(asm_list, R14, temp_count, ASMImmediateUnitsWord);
     asm_list_append_arith(asm_list, ASM_OP_SUB, RSP, R14);
 
     asm_list_append_comment(asm_list, "method body begins");
@@ -1305,7 +1312,12 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     }
     else
     {
-        asm_from_tac_list(asm_list, tac_list);
+        int64_t extra_symbols = asm_from_tac_list(asm_list, tac_list);
+        if (extra_symbols > 0)
+        {
+            temp_count = extra_symbols + (extra_symbols & 1);
+        }
+        temp_space_instr->params[1].immediate.val = temp_count;
     }
 
     asm_list_append_label(asm_list, (bh_str){ .buf = label_buf, .len = label_len + 4 });
