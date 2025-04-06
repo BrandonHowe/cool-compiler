@@ -1,19 +1,14 @@
-class Main inherits IO
-{
-  main() : Object
-  {
-    {
-      let var : String <- "bad" in
-	let var : String <- "good" in
-	  out_string(var);
+class X inherits IO {
+    x : Int <- 1;
+    print() : Int {{ out_int(x); 0; }};
 
-	  case "bad" of
-      	var : String =>
-      	  let var : String <- "good" in
-      	    out_string( var );
-            esac;
+    blah : Int <- (let a : Int <- x in { x <- x + 2; a; });
 
-      out_string( "\n" );
-    }
-  };
+    i : Object <- print();
+};
+
+class Main {
+    x : X <- new X;
+
+    main() : Object { 123 };
 };

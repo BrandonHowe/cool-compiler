@@ -526,7 +526,9 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
     asm_list_append_push(asm_list, RBP);
     asm_list_append_mov(asm_list, RBP, RSP);
     asm_list_append_comment(asm_list, "stack room for temporaries");
-    asm_list_append_li(asm_list, R14, 2, ASMImmediateUnitsWord);
+    int64_t temp_count = 2;
+    int64_t extra_temps = 0;
+    ASMInstr* li_instr = asm_list_append_li(asm_list, R14, temp_count, ASMImmediateUnitsWord);
     asm_list_append_arith(asm_list, ASM_OP_SUB, RSP, R14);
 
     // call malloc
@@ -627,6 +629,11 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
                 asm_from_tac_list(asm_list, list);
                 asm_list_append_st(asm_list, R12, i + 3, R13);
                 // arena_free_all(asm_list->tac_allocator);
+
+                if (list._curr_symbol > extra_temps)
+                {
+                    extra_temps = list._curr_symbol;
+                }
             }
             else if (bh_str_equal_lit(attribute.type, "Int"))
             {
@@ -644,6 +651,8 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
                 asm_list_append_st(asm_list, R12, i + 3, R13);
             }
         }
+
+        li_instr->params[1].immediate.val = extra_temps + (extra_temps & 1);
     }
 
     asm_list_append_comment(asm_list, "return from constructor");
