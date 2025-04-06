@@ -1315,7 +1315,8 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         int64_t extra_symbols = asm_from_tac_list(asm_list, tac_list);
         if (extra_symbols > 0)
         {
-            temp_count = extra_symbols + (extra_symbols & 1);
+            temp_count += extra_symbols;
+            temp_count = temp_count + (temp_count & 1);
         }
         temp_space_instr->params[1].immediate.val = temp_count;
     }
