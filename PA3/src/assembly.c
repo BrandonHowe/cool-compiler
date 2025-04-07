@@ -928,6 +928,8 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             else
             {
                 asm_list_append_comment(asm_list, "default constructor is void");
+                asm_list_append_li(asm_list, R13, 0, ASMImmediateUnitsBase);
+                asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
             }
             break;
         }
@@ -938,7 +940,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             bh_str label_str_3 = asm_list_create_label(asm_list);
 
             asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R13, expr.rhs1);
-            asm_list_append_bnz(asm_list, R13, label_str_1);
+            asm_list_append_bz(asm_list, R13, label_str_1);
 
             asm_list_append_label(asm_list, label_str_2);
             asm_list_append_comment(asm_list, "false branch");
