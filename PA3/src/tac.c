@@ -232,7 +232,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             }
 
             int64_t method_idx = 0;
-            ClassNode class_node = list->class_list.class_nodes[class_idx < 0 ? -class_idx : class_idx];
+            ClassNode class_node = list->class_list.class_nodes[class_idx < 0 ? -class_idx - 1 : class_idx];
             for (int i = 0; i < class_node.method_count; i++)
             {
                 if (bh_str_equal(class_node.methods[i].name, expr->data.dynamic_dispatch.method.name))
