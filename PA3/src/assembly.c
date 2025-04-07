@@ -907,19 +907,28 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             break;
         case TAC_OP_DEFAULT:
         {
-            int64_t class_idx = -1;
-            for (int j = 0; j < asm_list->class_list->class_count; j++)
+            if (bh_str_equal_lit(expr.rhs1.variable, "Int"))
             {
-                if (bh_str_equal(asm_list->class_list->class_nodes[j].name, expr.rhs1.variable))
-                {
-                    class_idx = j;
-                    break;
-                }
+                asm_list_append_comment(asm_list, "default constructor");
+                asm_list_append_call_method(asm_list, asm_list->int_class_idx, -1);
+                asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
             }
-            assert(class_idx != -1 && "Unhandled default constructor call");
-            asm_list_append_comment(asm_list, "default constructor");
-            asm_list_append_call_method(asm_list, class_idx, -1);
-            asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
+            else if (bh_str_equal_lit(expr.rhs1.variable, "String"))
+            {
+                asm_list_append_comment(asm_list, "default constructor");
+                asm_list_append_call_method(asm_list, asm_list->string_class_idx, -1);
+                asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
+            }
+            else if (bh_str_equal_lit(expr.rhs1.variable, "Bool"))
+            {
+                asm_list_append_comment(asm_list, "default constructor");
+                asm_list_append_call_method(asm_list, asm_list->bool_class_idx, -1);
+                asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
+            }
+            else
+            {
+                asm_list_append_comment(asm_list, "default constructor is void");
+            }
             break;
         }
         case TAC_OP_ISVOID:
