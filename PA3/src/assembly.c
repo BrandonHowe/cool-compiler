@@ -796,7 +796,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             {
                 bh_str label = asm_list_create_label(asm_list);
                 asm_list_append_bnz(asm_list, R14, label);
-                asm_list_append_runtime_error(asm_list, expr.operation, "division by 0");
+                asm_list_append_runtime_error(asm_list, expr.line_num, "division by 0");
                 asm_list_append_label(asm_list, label);
             }
             asm_list_append(asm_list, (ASMInstr){
@@ -965,7 +965,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             {
                 bh_str success_label = asm_list_create_label(asm_list);
                 asm_list_append_bnz(asm_list, R13, success_label);
-                asm_list_append_runtime_error(asm_list, expr.operation, "dispatch on void");
+                asm_list_append_runtime_error(asm_list, expr.line_num, "dispatch on void");
                 asm_list_append_label(asm_list, success_label);
             }
 

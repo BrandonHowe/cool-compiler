@@ -175,6 +175,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
         {
             const TACExpr tac = (TACExpr){
                 .operation = TAC_OP_ASSIGN,
+                .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = tac_list_from_expression(expr->data.assign.rhs, list, (TACSymbol){ .type = TAC_SYMBOL_TYPE_VARIABLE, .variable = expr->data.assign.var.name })
             };
@@ -188,6 +189,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_IGNORE, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = -1 } });
             TACExpr tac = (TACExpr){
                 .operation = TAC_OP_CALL,
+                .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_METHOD, .method = { .class_idx = 0, .method_idx = 0 } }
             };
@@ -250,6 +252,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
         {
             const TACExpr tac = (TACExpr){
                 .operation = TAC_OP_CALL,
+                .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = expr->data.internal.method }
             };
@@ -264,6 +267,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             TACSymbol cond = tac_list_from_expression(expr->data.if_expr.predicate, list, (TACSymbol){ 0 });
             const TACExpr bt_true = (TACExpr){
                 .operation = TAC_OP_BT,
+                .line_num = expr->line_num,
                 .lhs = TAC_request_symbol(list),
                 .rhs1 = cond,
                 .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_then }
@@ -293,6 +297,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             TAC_list_append(list, not_cond);
             const TACExpr bt_false = (TACExpr){
                 .operation = TAC_OP_BT,
+                .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = not_cond.lhs,
                 .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }
@@ -323,6 +328,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
         {
             const TACExpr tac = (TACExpr){
                 .operation = TAC_OP_NEW,
+                .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_VARIABLE, .variable = expr->data.new_expr.class_name.name }
             };
@@ -334,6 +340,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             TACSymbol ta1 = tac_list_from_expression(expr->data.isvoid.e, list, (TACSymbol){ 0 });
             TACExpr tac = (TACExpr) {
                 .operation = TAC_OP_ISVOID,
+                .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = ta1,
             };
@@ -360,6 +367,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             TACSymbol ta2 = tac_list_from_expression(expr->data.binary.y, list, dest2);
             TACExpr tac = (TACExpr) {
                 .operation = expr->expression_type - (COOL_EXPR_TYPE_PLUS - TAC_OP_PLUS),
+                .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = ta1,
                 .rhs2 = ta2
@@ -373,6 +381,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             TACSymbol ta1 = tac_list_from_expression(expr->data.unary.x, list, (TACSymbol){ 0 });
             TACExpr tac = (TACExpr) {
                 .operation = expr->expression_type - (COOL_EXPR_TYPE_NOT - TAC_OP_NOT),
+                .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = ta1,
             };
@@ -383,6 +392,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
         {
             const TACExpr tac = (TACExpr){
                 .operation = TAC_OP_INT,
+                .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = expr->data.integer.value }
             };
@@ -393,6 +403,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
         {
             const TACExpr tac = (TACExpr){
                 .operation = TAC_OP_STRING,
+                .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = expr->data.string.value }
             };
@@ -407,6 +418,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             };
             const TACExpr tac = (TACExpr){
                 .operation = TAC_OP_ASSIGN,
+                .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = rhs
             };
@@ -418,6 +430,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
         {
             const TACExpr tac = (TACExpr){
                 .operation = TAC_OP_BOOL,
+                .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_BOOL, .integer = expr->expression_type == COOL_EXPR_TYPE_TRUE }
             };
@@ -460,6 +473,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             tac_list_from_expression(expr->data.case_expr.expr, list, dest1);
             const TACExpr tac = (TACExpr){
                 .operation = TAC_OP_CASE,
+                .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = dest1,
                 .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_EXPRESSION, .expression = expr },

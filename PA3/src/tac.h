@@ -76,6 +76,8 @@ typedef struct TACExpr
     TACSymbol rhs2;
     TACOp operation;
 
+    int64_t line_num;
+
     int64_t arg_count;
     TACSymbol* args;
 } TACExpr;
