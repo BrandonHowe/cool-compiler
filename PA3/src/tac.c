@@ -219,7 +219,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 {
                     if (bh_str_equal(list->class_list.class_nodes[i].name, expr->data.static_dispatch.type_name.name))
                     {
-                        class_idx = -i;
+                        class_idx = -i - 1;
                         break;
                     }
                 }
@@ -310,7 +310,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
 
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(while_join_str) }});
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }});
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_DEFAULT, .lhs = destination, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(object_str) }});
+            // TAC_list_append(list, (TACExpr){ .operation = TAC_OP_DEFAULT, .lhs = destination, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(object_str) }});
 
             return destination;
         }

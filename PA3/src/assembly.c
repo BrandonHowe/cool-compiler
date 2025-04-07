@@ -991,7 +991,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             }
             else if (expr.rhs1.method.class_idx < 0) // Static dispatch
             {
-                asm_list_append_la(asm_list, R14, -expr.rhs1.method.class_idx, -2);
+                asm_list_append_la(asm_list, R14, -expr.rhs1.method.class_idx - 1, -2);
             }
             else
             {
