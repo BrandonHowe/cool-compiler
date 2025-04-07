@@ -443,8 +443,9 @@ void asm_list_append_error_str(ASMList* asm_list, const bh_str label, const bh_s
 void asm_list_create_error(ASMList* asm_list, bh_str error_label, const int64_t line_num, const char* message)
 {
     bh_str_buf message_buf = bh_str_buf_init(asm_list->string_allocator, 20);
-    bh_str_buf_append_format(&message_buf, "Error %i: Exception: ", line_num);
+    bh_str_buf_append_format(&message_buf, "ERROR: %i: Exception: ", line_num);
     bh_str_buf_append_lit(&message_buf, message);
+    bh_str_buf_append_lit(&message_buf, "\\n");
     bh_str message_str = (bh_str){ .buf = message_buf.buf, .len = message_buf.len };
 
     asm_list_append_error_str(asm_list, error_label, message_str);
@@ -1103,10 +1104,10 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
 
             asm_list_append_label(asm_list, error_label);
             asm_list_append_comment(asm_list, "case expression: error");
-            asm_list_append_runtime_error(asm_list, expr.rhs2.expression->line_num, "no case branch found");
+            asm_list_append_runtime_error(asm_list, expr.line_num, "no case branch found");
             asm_list_append_label(asm_list, void_label);
             asm_list_append_comment(asm_list, "case expression: void");
-            asm_list_append_runtime_error(asm_list, expr.rhs2.expression->line_num, "case expression on void");
+            asm_list_append_runtime_error(asm_list, expr.line_num, "case expression on void");
             asm_list_append_comment(asm_list, "case expression: branches");
 
             for (int j = 0; j < case_count; j++)
