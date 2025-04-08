@@ -8,6 +8,8 @@
 #include <string.h>
 #include <sys/mman.h>
 
+#include "optimizer_tac.h"
+
 TACExpr* TAC_list_append(TACList* list, TACExpr expr)
 {
     expr.lhs = get_bound_symbol_variable(list, expr.lhs);
@@ -40,6 +42,25 @@ TACList TAC_list_init(const int64_t capacity, bh_allocator allocator)
         .items = data,
         ._bindings = bh_alloc(allocator, 100 * sizeof(TACBinding)),
         ._binding_count = 0
+    };
+    return list;
+}
+
+TACList TAC_list_init_no_bindings(const int64_t capacity, bh_allocator allocator)
+{
+#ifdef WIN32
+    TACExpr* data = VirtualAlloc(NULL, 10000000, MEM_RESERVE, PAGE_NOACCESS);
+    VirtualAlloc(data, base_capacity * sizeof(TACExpr), MEM_COMMIT, PAGE_READWRITE);
+#else
+    TACExpr* data = mmap(NULL, 10000000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    mprotect(data, capacity * sizeof(TACExpr), PROT_READ | PROT_WRITE);
+#endif
+    TACList list = (TACList)
+    {
+        .allocator = allocator,
+        .capacity = capacity,
+        .count = 0,
+        .items = data
     };
     return list;
 }
@@ -119,6 +140,7 @@ TACList tac_list_from_class_list(ClassNodeList class_list, bh_allocator allocato
     });
 
     TACSymbol result = tac_list_from_expression(first_method_body, &list, (TACSymbol){ 0 });
+    optimize_tac_list(&list);
 
     TAC_list_append(&list, (TACExpr){
         .operation = TAC_OP_RETURN,
@@ -142,6 +164,7 @@ TACList tac_list_from_method(const ClassMethod* method, bh_allocator allocator)
     };
 
     TACSymbol result = tac_list_from_expression(&method->body, &list, (TACSymbol){ 0 });
+    optimize_tac_list(&list);
 
     TAC_list_append(&list, (TACExpr){
         .operation = TAC_OP_RETURN,
@@ -157,13 +180,25 @@ TACSymbol get_bound_symbol_variable(const TACList* list, const TACSymbol symbol)
     {
         for (int i = list->_binding_count - 1; i >= 0; i--)
         {
-            if (bh_str_equal(symbol.variable, list->_bindings[i].name))
+            if (bh_str_equal(symbol.variable.data, list->_bindings[i].name))
             {
                 return list->_bindings[i].symbol;
             }
         }
     }
     return symbol;
+}
+
+int64_t get_symbol_version_for_variable(const TACList* list, const bh_str str)
+{
+    for (int i = list->count - 1; i >= 0; i--)
+    {
+        if (bh_str_equal(list->items[i].lhs.variable.data, str))
+        {
+            return list->items[i].lhs.variable.version;
+        }
+    }
+    return 0;
 }
 
 TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TACSymbol destination)
@@ -173,11 +208,18 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
     {
     case COOL_EXPR_TYPE_ASSIGN:
         {
+            TACSymbol dest = (TACSymbol){
+                .type = TAC_SYMBOL_TYPE_VARIABLE,
+                .variable = {
+                    .data = expr->data.assign.var.name,
+                    .version = get_symbol_version_for_variable(list, expr->data.assign.var.name) + 1
+                }
+            };
             const TACExpr tac = (TACExpr){
                 .operation = TAC_OP_ASSIGN,
                 .line_num = expr->line_num,
                 .lhs = destination,
-                .rhs1 = tac_list_from_expression(expr->data.assign.rhs, list, (TACSymbol){ .type = TAC_SYMBOL_TYPE_VARIABLE, .variable = expr->data.assign.var.name })
+                .rhs1 = tac_list_from_expression(expr->data.assign.rhs, list, dest)
             };
             TAC_list_append(list, tac);
             return tac.lhs;
@@ -254,7 +296,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .operation = TAC_OP_CALL,
                 .line_num = expr->line_num,
                 .lhs = destination,
-                .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = expr->data.internal.method }
+                .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_VARIABLE, .variable = expr->data.internal.method }
             };
             TAC_list_append(list, tac);
             return tac.lhs;
@@ -275,14 +317,17 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             TAC_list_append(list, bt_true);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(else_str) }});
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_else }});
-            tac_list_from_expression(expr->data.if_expr.else_branch, list, destination);
+            TACSymbol symbol1 = TAC_request_symbol(list);
+            tac_list_from_expression(expr->data.if_expr.else_branch, list, symbol1);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }});
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(then_str) }});
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_then }});
-            tac_list_from_expression(expr->data.if_expr.then_branch, list, destination);
+            TACSymbol symbol2 = TAC_request_symbol(list);
+            tac_list_from_expression(expr->data.if_expr.then_branch, list, symbol2);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }});
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(if_join_str) }});
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }});
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_PHI, .lhs = destination, .rhs1 = symbol1, .rhs2 = symbol2 });
             return destination;
         }
     case COOL_EXPR_TYPE_WHILE:
@@ -414,7 +459,10 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
         {
             TACSymbol rhs = (TACSymbol){
                 .type = TAC_SYMBOL_TYPE_VARIABLE,
-                .variable = expr->data.identifier.variable.name
+                .variable = {
+                    .data = expr->data.identifier.variable.name,
+                    .version = get_symbol_version_for_variable(list, expr->data.identifier.variable.name)
+                }
             };
             const TACExpr tac = (TACExpr){
                 .operation = TAC_OP_ASSIGN,
@@ -471,13 +519,34 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
         {
             TACSymbol dest1 = TAC_request_symbol(list);
             tac_list_from_expression(expr->data.case_expr.expr, list, dest1);
-            const TACExpr tac = (TACExpr){
+            TACExpr tac = (TACExpr){
                 .operation = TAC_OP_CASE,
                 .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = dest1,
                 .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_EXPRESSION, .expression = expr },
             };
+            tac.branch_count = expr->data.case_expr.element_count;
+            tac.branches = bh_alloc(list->allocator, sizeof(TACList) * expr->data.case_expr.element_count);
+            for (int i = 0; i < tac.branch_count; i++)
+            {
+                tac.branches[i] = TAC_list_init_no_bindings(100, list->allocator);
+                tac.branches[i].class_list = list->class_list;
+                tac.branches[i].class_idx = list->class_idx;
+                tac.branches[i].method_idx = list->method_idx;
+                tac.branches[i].method_name = list->method_name;
+                tac.branches[i]._binding_count = list->_binding_count;
+                tac.branches[i]._bindings = list->_bindings;
+                tac.branches[i]._curr_label = list->_curr_label;
+                tac.branches[i]._curr_symbol = list->_curr_symbol;
+                tac.branches[i]._bindings[list->_binding_count] = (TACBinding){
+                    .name = expr->data.case_expr.elements[i].variable.name,
+                    .symbol = dest1
+                };
+                tac.branches[i]._binding_count += 1;
+                tac_list_from_expression(expr->data.case_expr.elements[i].body, &tac.branches[i], destination);
+                optimize_tac_list(&tac.branches[i]);
+            }
             TAC_list_append(list, tac);
             return tac.lhs;
         }

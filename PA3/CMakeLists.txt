@@ -18,5 +18,7 @@ add_executable(semantic_analyzer src/main.c
         src/cfg.h
         src/cfg.c
         src/assembly.c
-        src/assembly.h)
+        src/assembly.h
+        src/optimizer_tac.c
+        src/optimizer_tac.h)
 

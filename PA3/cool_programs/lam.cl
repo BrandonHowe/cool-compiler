@@ -465,12 +465,12 @@ class Main inherits Term {
       s().print_self();
       out_string("\n");
       beta_reduce(app(app(app(s(), k()), i()), i()));
-      beta_reduce(app(app(k(),i()),i()));
-      gen_code(app(i(), i()));
-      gen_code(app(app(app(s(), k()), i()), i()));
-      gen_code(app(app(app(app(app(app(app(app(i(), k()), s()), s()),
-                                   k()), s()), i()), k()), i()));
-      gen_code(app(app(i(), app(k(), s())), app(k(), app(s(), s()))));
+      --beta_reduce(app(app(k(),i()),i()));
+      --gen_code(app(i(), i()));
+      --gen_code(app(app(app(s(), k()), i()), i()));
+      --gen_code(app(app(app(app(app(app(app(app(i(), k()), s()), s()),
+      --                             k()), s()), i()), k()), i()));
+      --gen_code(app(app(i(), app(k(), s())), app(k(), app(s(), s()))));
       0;
     }
   };

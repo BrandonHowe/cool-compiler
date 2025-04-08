@@ -10,6 +10,8 @@
 #include <string.h>
 #include <sys/mman.h>
 
+#include "optimizer_tac.h"
+
 #pragma region Assembly operations
 
 ASMInstr* asm_list_append(ASMList* asm_list, const ASMInstr instr)
@@ -312,7 +314,7 @@ void asm_list_append_st_tac_symbol(ASMList* asm_list, const ClassNode class_node
             int64_t attribute_idx = -1;
             for (int j = 0; j < method.parameter_count; j++)
             {
-                if (bh_str_equal(method.parameters[j].name, symbol.variable))
+                if (bh_str_equal(method.parameters[j].name, symbol.variable.data))
                 {
                     attribute_idx = j;
                     break;
@@ -329,7 +331,7 @@ void asm_list_append_st_tac_symbol(ASMList* asm_list, const ClassNode class_node
                 // Look up the variable name from attributes
                 for (int j = 0; j < class_node.attribute_count; j++)
                 {
-                    if (bh_str_equal(class_node.attributes[j].name, symbol.variable))
+                    if (bh_str_equal(class_node.attributes[j].name, symbol.variable.data))
                     {
                         attribute_idx = j;
                         break;
@@ -355,7 +357,7 @@ void asm_list_append_ld_tac_symbol(ASMList* asm_list, const ClassNode class_node
         break;
     case TAC_SYMBOL_TYPE_VARIABLE:
         {
-            if (bh_str_equal_lit(symbol.variable, "self"))
+            if (bh_str_equal_lit(symbol.variable.data, "self"))
             {
                 asm_list_append_mov(asm_list, dest, R12);
                 break;
@@ -364,7 +366,7 @@ void asm_list_append_ld_tac_symbol(ASMList* asm_list, const ClassNode class_node
             int64_t attribute_idx = -1;
             for (int j = asm_list->case_binding_count - 1; j >= 0; j--)
             {
-                if (bh_str_equal(asm_list->case_bindings[j].name, symbol.variable))
+                if (bh_str_equal(asm_list->case_bindings[j].name, symbol.variable.data))
                 {
                     attribute_idx = asm_list->case_bindings[j].symbol;
                     break;
@@ -379,7 +381,7 @@ void asm_list_append_ld_tac_symbol(ASMList* asm_list, const ClassNode class_node
             // Look up the variable name from parameters
             for (int j = 0; j < method.parameter_count; j++)
             {
-                if (bh_str_equal(method.parameters[j].name, symbol.variable))
+                if (bh_str_equal(method.parameters[j].name, symbol.variable.data))
                 {
                     attribute_idx = j;
                     break;
@@ -395,7 +397,7 @@ void asm_list_append_ld_tac_symbol(ASMList* asm_list, const ClassNode class_node
             // Look up the variable name from attributes
             for (int j = 0; j < class_node.attribute_count; j++)
             {
-                if (bh_str_equal(class_node.attributes[j].name, symbol.variable))
+                if (bh_str_equal(class_node.attributes[j].name, symbol.variable.data))
                 {
                     attribute_idx = j;
                     break;
@@ -627,6 +629,7 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
                 list.class_idx = class_idx;
 
                 tac_list_from_expression(&attribute.expr, &list, (TACSymbol){ 0 });
+                optimize_tac_list(&list);
                 asm_from_tac_list(asm_list, list);
                 asm_list_append_st(asm_list, R12, i + 3, R13);
                 // arena_free_all(asm_list->tac_allocator);
@@ -752,7 +755,7 @@ void asm_from_tac_symbol(ASMList* asm_list, const TACSymbol symbol)
         bh_str_buf label_buf = bh_str_buf_init(asm_list->string_allocator, 8);
         bh_str_buf_append_format(&label_buf, "string%i", asm_list->_string_counter++);
         bh_str label = (bh_str){ .buf = label_buf.buf, .len = label_buf.len };
-        asm_list_append_error_str(asm_list, label, symbol.string);
+        asm_list_append_error_str(asm_list, label, symbol.string.data);
         asm_list_append_la_label(asm_list, R14, label);
         // asm_list_append_la(asm_list, R14, INTERNAL_CUSTOM_STRINGS, asm_list->_string_counter++);
         asm_list_append_st(asm_list, R13, 3, R14);
@@ -879,7 +882,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             break;
         case TAC_OP_NEW:
             {
-                if (bh_str_equal_lit(expr.rhs1.variable, "SELF_TYPE"))
+                if (bh_str_equal_lit(expr.rhs1.variable.data, "SELF_TYPE"))
                 {
                     asm_list_append_push(asm_list, RBP);
                     asm_list_append_push(asm_list, R12);
@@ -894,7 +897,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                     int64_t class_idx = -1;
                     for (int64_t j = 0; j < asm_list->class_list->class_count; j++)
                     {
-                        if (bh_str_equal(asm_list->class_list->class_nodes[j].name, expr.rhs1.variable))
+                        if (bh_str_equal(asm_list->class_list->class_nodes[j].name, expr.rhs1.variable.data))
                         {
                             class_idx = j;
                         }
@@ -907,19 +910,19 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             break;
         case TAC_OP_DEFAULT:
         {
-            if (bh_str_equal_lit(expr.rhs1.variable, "Int"))
+            if (bh_str_equal_lit(expr.rhs1.variable.data, "Int"))
             {
                 asm_list_append_comment(asm_list, "default constructor");
                 asm_list_append_call_method(asm_list, asm_list->int_class_idx, -1);
                 asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
             }
-            else if (bh_str_equal_lit(expr.rhs1.variable, "String"))
+            else if (bh_str_equal_lit(expr.rhs1.variable.data, "String"))
             {
                 asm_list_append_comment(asm_list, "default constructor");
                 asm_list_append_call_method(asm_list, asm_list->string_class_idx, -1);
                 asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
             }
-            else if (bh_str_equal_lit(expr.rhs1.variable, "Bool"))
+            else if (bh_str_equal_lit(expr.rhs1.variable.data, "Bool"))
             {
                 asm_list_append_comment(asm_list, "default constructor");
                 asm_list_append_call_method(asm_list, asm_list->bool_class_idx, -1);
@@ -968,6 +971,8 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                     assert(0 && "Unhandled tac ignore");
                     break;
             }
+            break;
+        case TAC_OP_PHI:
             break;
         case TAC_OP_CALL:
         {
@@ -1044,7 +1049,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R13, expr.rhs1);
             break;
         case TAC_OP_COMMENT:
-            asm_list_append_comment_str(asm_list, expr.rhs1.string);
+            asm_list_append_comment_str(asm_list, expr.rhs1.string.data);
             break;
         case TAC_OP_BT:
         {
@@ -1128,24 +1133,10 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                 asm_list_append_label(asm_list, labels[j]);
 
                 asm_list_push_case_binding(asm_list, element.variable.name, expr.rhs1.symbol);
-
-                TACList list = TAC_list_init(100, tac_list.allocator);
-                list.class_list = tac_list.class_list;
-                list.class_idx = tac_list.class_idx;
-                list.method_idx = tac_list.method_idx;
-                list.method_name = tac_list.method_name;
-                list._curr_label = tac_list._curr_label;
-                list._curr_symbol = tac_list._curr_symbol;
-
-                tac_list_from_expression(element.body, &list, expr.lhs);
-
-                asm_from_tac_list(asm_list, list);
-
+                asm_from_tac_list(asm_list, expr.branches[j]);
                 asm_list_append_jmp(asm_list, end_label);
-
                 asm_list_pop_case_binding(asm_list);
-
-                int64_t added_symbols = list._curr_symbol - tac_list._curr_symbol;
+                int64_t added_symbols = expr.branches[j]._curr_symbol - tac_list._curr_symbol;
                 if (added_symbols > extra_symbols) extra_symbols = added_symbols;
             }
 

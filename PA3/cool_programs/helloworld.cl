@@ -1,31 +1,8 @@
-class A inherits IO
-{
-  print() : Object
-  {
-    out_string("A\n")
-  };
-};
-
-
-class B inherits A
-{
-  print() : Object
-  {
-    out_string("B\n")
-  };
-};
-
-
-class Main
-{
-  main() : Object
-  {
-    {
-      let me : B <- new B in
-      {
-    	me@B.print();
-    	me@A.print();
-      };
-    }
-  };
+class Main {
+    main() : Object {
+        let x : Int <- 5 in case x + 1 of
+            a : Int => a + 7;
+            b : Object => x + 9;
+        esac
+    };
 };
