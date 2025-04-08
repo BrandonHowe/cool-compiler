@@ -490,9 +490,10 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             int64_t initial_binding_count = list->_binding_count;
             for (int i = 0; i < expr->data.let.binding_count; i++)
             {
+                TACSymbol new_symbol = TAC_request_symbol(list);
                 list->_bindings[list->_binding_count] = (TACBinding){
                     .name = expr->data.let.bindings[i].variable.name,
-                    .symbol = TAC_request_symbol(list)
+                    .symbol = new_symbol
                 };
 
                 if (expr->data.let.bindings[i].exp)
@@ -508,6 +509,11 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                     };
                     TAC_list_append(list, default_expr);
                 }
+
+                list->_bindings[list->_binding_count] = (TACBinding){
+                    .name = expr->data.let.bindings[i].variable.name,
+                    .symbol = new_symbol
+                };
 
                 list->_binding_count += 1;
             }
@@ -543,7 +549,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                     .name = expr->data.case_expr.elements[i].variable.name,
                     .symbol = dest1
                 };
-                tac.branches[i]._binding_count += 1;
+                tac.branches[i]._binding_count = list->_binding_count + 1;
                 tac_list_from_expression(expr->data.case_expr.elements[i].body, &tac.branches[i], destination);
                 optimize_tac_list(&tac.branches[i]);
             }

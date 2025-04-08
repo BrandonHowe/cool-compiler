@@ -21,8 +21,8 @@ typedef enum Mode
     MODE_TAC_ONLY,
     MODE_X86_ONLY,
     MODE_ASM_ONLY,
-    MODE_BOTH,
     MODE_TAC_SHOW_CASE,
+    MODE_BOTH,
 } Mode;
 
 #define MODE MODE_X86_ONLY
@@ -98,7 +98,7 @@ void display_tac_expr(bh_str_buf* str_buf, TACList tac_list, TACExpr expr)
         break;
     case TAC_OP_CASE:
         bh_str_buf_append_lit(str_buf, "case ");
-        if (MODE == MODE_TAC_SHOW_CASE)
+        if (MODE == MODE_TAC_SHOW_CASE || MODE == MODE_BOTH)
         {
             append_tac_symbol(str_buf, tac_list.class_list, expr.rhs1);
             bh_str_buf_append_lit(str_buf, "\n");

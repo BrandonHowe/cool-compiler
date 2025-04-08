@@ -1133,10 +1133,10 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                 asm_list_append_label(asm_list, labels[j]);
 
                 asm_list_push_case_binding(asm_list, element.variable.name, expr.rhs1.symbol);
-                asm_from_tac_list(asm_list, expr.branches[j]);
+                int64_t accumulated_symbols = asm_from_tac_list(asm_list, expr.branches[j]);
                 asm_list_append_jmp(asm_list, end_label);
                 asm_list_pop_case_binding(asm_list);
-                int64_t added_symbols = expr.branches[j]._curr_symbol - tac_list._curr_symbol;
+                int64_t added_symbols = accumulated_symbols + expr.branches[j]._curr_symbol - tac_list._curr_symbol;
                 if (added_symbols > extra_symbols) extra_symbols = added_symbols;
             }
 
