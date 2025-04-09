@@ -9,7 +9,7 @@ attribute_no_init
 2
 x
 2
-Int
+SELF_TYPE
 method
 3
 main

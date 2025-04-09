@@ -1,7 +1,0 @@
-comment start
-label Main_main_0
-t$2 <- new IO
-t$1 <- call in_int
-t$3 <- new IO
-t$0 <- call out_int t$1
-return t$0

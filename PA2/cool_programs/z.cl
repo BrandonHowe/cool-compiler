@@ -1,5 +1,5 @@
 class Main inherits IO{
- x: Int;
+ x: SELF_TYPE;
  main(): Object {{
 		   let x : String<- "test" in x.length();
 		   out_int(x);
