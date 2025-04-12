@@ -25,7 +25,7 @@ typedef enum Mode
     MODE_BOTH,
 } Mode;
 
-#define MODE MODE_X86_ONLY
+#define MODE MODE_TAC_ONLY
 
 void append_tac_symbol(bh_str_buf* str_buf, ClassNodeList class_list, TACSymbol symbol)
 {
@@ -35,7 +35,7 @@ void append_tac_symbol(bh_str_buf* str_buf, ClassNodeList class_list, TACSymbol 
     case TAC_SYMBOL_TYPE_SYMBOL: bh_str_buf_append_format(str_buf, "t$%i", symbol.symbol); break;
     case TAC_SYMBOL_TYPE_VARIABLE:
         bh_str_buf_append(str_buf, symbol.variable.data);
-        bh_str_buf_append_format(str_buf, "$%i", symbol.variable.version);
+        // bh_str_buf_append_format(str_buf, "$%i", symbol.variable.version);
         break;
     case TAC_SYMBOL_TYPE_INTEGER: bh_str_buf_append_format(str_buf, "%i", symbol.integer); break;
     case TAC_SYMBOL_TYPE_STRING: bh_str_buf_append(str_buf, symbol.string.data); break;
@@ -61,9 +61,10 @@ void display_tac_expr(bh_str_buf* str_buf, TACList tac_list, TACExpr expr)
             bh_str_buf_append_format(str_buf, "t$%i <- ", expr.lhs.symbol);
         }
     }
+    if (MODE == MODE_TAC_ONLY && expr.operation == TAC_OP_IGNORE) return;
     switch (expr.operation)
     {
-    case TAC_OP_IGNORE: bh_str_buf_append_lit(str_buf, "init call");
+    case TAC_OP_IGNORE: if (MODE != MODE_TAC_ONLY) bh_str_buf_append_lit(str_buf, "init call"); break;
     case TAC_OP_ASSIGN: bh_str_buf_append_lit(str_buf, ""); break;
     case TAC_OP_PLUS: bh_str_buf_append_lit(str_buf, "+ "); break;
     case TAC_OP_MINUS: bh_str_buf_append_lit(str_buf, "- "); break;

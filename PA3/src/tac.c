@@ -193,6 +193,7 @@ int64_t get_symbol_version_for_variable(const TACList* list, const bh_str str)
 {
     for (int i = list->count - 1; i >= 0; i--)
     {
+        if (list->items[i].lhs.type != TAC_SYMBOL_TYPE_VARIABLE) continue;
         if (bh_str_equal(list->items[i].lhs.variable.data, str))
         {
             return list->items[i].lhs.variable.version;
