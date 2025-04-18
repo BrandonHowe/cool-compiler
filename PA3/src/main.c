@@ -81,7 +81,7 @@ void display_tac_expr(bh_str_buf* str_buf, TACList tac_list, TACExpr expr)
     case TAC_OP_NEW: bh_str_buf_append_lit(str_buf, "new "); break;
     case TAC_OP_DEFAULT: bh_str_buf_append_lit(str_buf, "default "); break;
     case TAC_OP_ISVOID: bh_str_buf_append_lit(str_buf, "isvoid "); break;
-    case TAC_OP_PHI: bh_str_buf_append_lit(str_buf, "phi "); break;
+    case TAC_OP_PHI:bh_str_buf_append_lit(str_buf, "phi "); break;
     case TAC_OP_CALL: bh_str_buf_append_lit(str_buf, "call "); break;
     case TAC_OP_JMP:
         bh_str_buf_append_lit(str_buf, "jmp ");
@@ -161,41 +161,44 @@ int main(int argc, char* argv[])
 
     bh_allocator tac_allocator = GPA;
     ASMList asm_list = asm_list_init(&class_list);
-    asm_list.tac_allocator = tac_allocator;
-    asm_list.string_allocator = arena_init(1000000);
-    asm_from_vtable(&asm_list);
-
-    for (int i = 0; i < class_list.class_count; i++)
+    if (MODE == MODE_X86_ONLY || MODE == MODE_BOTH)
     {
-        asm_from_constructor(&asm_list, class_list.class_nodes[i], i);
-    }
+        asm_list.tac_allocator = tac_allocator;
+        asm_list.string_allocator = arena_init(1000000);
+        asm_from_vtable(&asm_list);
 
-    for (int i = 0; i < class_list.class_count; i++)
-    {
-        for (int j = 0; j < class_list.class_nodes[i].method_count; j++)
+        for (int i = 0; i < class_list.class_count; i++)
         {
-            const ClassMethod method = class_list.class_nodes[i].methods[j];
+            asm_from_constructor(&asm_list, class_list.class_nodes[i], i);
+        }
 
-            if (bh_str_equal(method.inherited_from, class_list.class_nodes[i].name))
+        for (int i = 0; i < class_list.class_count; i++)
+        {
+            for (int j = 0; j < class_list.class_nodes[i].method_count; j++)
             {
-                arena_free_all(tac_allocator);
+                const ClassMethod method = class_list.class_nodes[i].methods[j];
 
-                TACList list = TAC_list_init(100, GPA);
-                list.class_list = class_list;
-                list.class_idx = i;
-                list.method_idx = j;
-                list.method_name = method.name;
+                if (bh_str_equal(method.inherited_from, class_list.class_nodes[i].name))
+                {
+                    arena_free_all(tac_allocator);
 
-                tac_list_from_expression(&method.body, &list, (TACSymbol){ 0 });
-                optimize_tac_list(&list);
+                    TACList list = TAC_list_init(100, GPA);
+                    list.class_list = class_list;
+                    list.class_idx = i;
+                    list.method_idx = j;
+                    list.method_name = method.name;
 
-                asm_from_method(&asm_list, list);
+                    tac_list_from_expression(&method.body, &list, (TACSymbol){ 0 }, false);
+                    optimize_tac_list(&list);
+
+                    asm_from_method(&asm_list, list);
+                }
             }
         }
-    }
 
-    builtin_append_string_constants(&asm_list);
-    builtin_append_start(&asm_list);
+        builtin_append_string_constants(&asm_list);
+        builtin_append_start(&asm_list);
+    }
 
     if (MODE == MODE_TAC_ONLY || MODE == MODE_TAC_SHOW_CASE || MODE == MODE_BOTH) // PA3c2 -- output first method as TAC
     {

@@ -628,7 +628,7 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
                 list.class_list = *asm_list->class_list;
                 list.class_idx = class_idx;
 
-                tac_list_from_expression(&attribute.expr, &list, (TACSymbol){ 0 });
+                tac_list_from_expression(&attribute.expr, &list, (TACSymbol){ 0 }, false);
                 optimize_tac_list(&list);
                 asm_from_tac_list(asm_list, list);
                 asm_list_append_st(asm_list, R12, i + 3, R13);

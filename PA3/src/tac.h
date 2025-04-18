@@ -37,6 +37,7 @@ typedef struct TACSymbol
 typedef struct TACBinding
 {
     bh_str name;
+    TACSymbol original_symbol;
     TACSymbol symbol;
 } TACBinding;
 
@@ -119,12 +120,13 @@ typedef struct TACSlice
     TACExpr* items;
 } TACSlice;
 
-TACExpr* TAC_list_append(TACList* list, TACExpr expr);
+TACExpr* TAC_list_append(TACList* list, TACExpr expr, bool add_phi);
 TACList TAC_list_init(int64_t capacity, bh_allocator allocator);
 TACSymbol TAC_request_symbol(TACList* list);
 TACSymbol get_bound_symbol_variable(const TACList* list, TACSymbol symbol);
 TACList tac_list_from_class_list(ClassNodeList class_list, bh_allocator allocator);
-TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TACSymbol destination);
+TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TACSymbol destination, bool add_phi);
 TACList tac_list_from_method(const ClassMethod* method, bh_allocator allocator);
+bool tac_symbol_equal(TACSymbol s1, TACSymbol s2);
 
 #endif //TAC_H
