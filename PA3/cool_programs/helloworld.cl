@@ -4,6 +4,22 @@ class Z inherits IO {
 
 class Main inherits IO {
     io : IO <- new IO;
+    a() : Object {{
+
+    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
+    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
+    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
+    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
+    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
+    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
+    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
+    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
+    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
+    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
+    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
+    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
+    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
+    }};
     main() : Object {{
     if not not not not not not not not not not true then out_int(1) else out_int(2) fi;
     if not not not not not not not not not not true then out_int(1) else out_int(2) fi;

@@ -5,6 +5,8 @@
 #include <string.h>
 #include "optimizer_tac.h"
 
+#include "profiler.h"
+
 void remove_duplicate_phi_expressions(TACList* list)
 {
     for (int i = 0; i < list->count; i++)
@@ -32,31 +34,57 @@ void remove_duplicate_phi_expressions(TACList* list)
 
 void remove_phi_expressions(TACList* list)
 {
+    int64_t max_phi = 0;
+    for (int i = 0; i < list->count; i++)
+    {
+        if (list->items[i].operation == TAC_OP_PHI)
+        {
+            if (list->items[i].rhs1.symbol > max_phi) max_phi = list->items[i].rhs1.symbol;
+            if (list->items[i].rhs2.symbol > max_phi) max_phi = list->items[i].rhs2.symbol;
+        }
+    }
+    int64_t* phi_bindings = bh_alloc(GPA, max_phi * sizeof(int64_t));
+    for (int i = 0; i < list->count; i++)
+    {
+        if (list->items[i].operation == TAC_OP_PHI)
+        {
+            phi_bindings[list->items[i].rhs1.symbol] = list->items[i].lhs.symbol;
+            phi_bindings[list->items[i].rhs2.symbol] = list->items[i].lhs.symbol;
+        }
+    }
+    memset(phi_bindings, 0, max_phi * sizeof(int64_t));
+
+    PROFILE_BLOCK
+    {
+        for (int i = 0; i < list->count; i++)
+        {
+            TACExpr e = list->items[i];
+            if (e.operation != TAC_OP_PHI)
+            {
+                if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && e.rhs1.symbol < max_phi && phi_bindings[e.rhs1.symbol])
+                {
+                    e.rhs1.symbol = phi_bindings[e.rhs1.symbol];
+                }
+                if (e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && e.rhs2.symbol < max_phi && phi_bindings[e.rhs2.symbol])
+                {
+                    e.rhs2.symbol = phi_bindings[e.rhs2.symbol];
+                }
+                if (e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL && e.lhs.symbol < max_phi && phi_bindings[e.lhs.symbol])
+                {
+                    e.lhs.symbol = phi_bindings[e.lhs.symbol];
+                }
+            }
+        }
+    }
+    bh_free(GPA, phi_bindings);
+
     for (int i = list->count - 1; i >= 0; i--)
     {
         if (list->items[i].operation == TAC_OP_PHI)
         {
-            int64_t found_count = 0;
-            for (int j = list->count; j >= 0; j--)
-            {
-                if (j == i) continue;
-                if (list->items[j].lhs.symbol == list->items[i].rhs1.symbol)
-                {
-                    list->items[j].lhs.symbol = list->items[i].lhs.symbol;
-                    found_count += 1;
-                }
-                if (tac_symbol_equal(list->items[j].rhs1, list->items[i].rhs1)) list->items[j].rhs1 = list->items[i].lhs;
-                if (tac_symbol_equal(list->items[j].rhs2, list->items[i].rhs1)) list->items[j].rhs2 = list->items[i].lhs;
-                if (list->items[j].lhs.symbol == list->items[i].rhs2.symbol)
-                {
-                    list->items[j].lhs.symbol = list->items[i].lhs.symbol;
-                    found_count += 1;
-                }
-                if (tac_symbol_equal(list->items[j].rhs1, list->items[i].rhs2)) list->items[j].rhs1 = list->items[i].lhs;
-                if (tac_symbol_equal(list->items[j].rhs2, list->items[i].rhs2)) list->items[j].rhs2 = list->items[i].lhs;
-            }
             list->count -= 1;
             memmove(&list->items[i], &list->items[i + 1], (list->count - i) * sizeof(TACExpr));
+            i--;
         }
     }
 }
@@ -154,7 +182,10 @@ void eliminate_dead_tac(TACList* list)
 
 void optimize_tac_list(TACList* list)
 {
-    remove_duplicate_phi_expressions(list);
-    eliminate_dead_tac(list);
-    remove_phi_expressions(list);
+    PROFILE_BLOCK
+    {
+        remove_duplicate_phi_expressions(list);
+        // eliminate_dead_tac(list);
+        remove_phi_expressions(list);
+    }
 }

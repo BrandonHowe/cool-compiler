@@ -12,6 +12,7 @@
 #include "ast.h"
 #include "cfg.h"
 #include "optimizer_tac.h"
+#include "profiler.h"
 #include "tac.h"
 #include "types.h"
 
@@ -151,6 +152,8 @@ int main(int argc, char* argv[])
         return 0;
     }
 
+    InitProfiler();
+
     bh_str file = read_file_text(argv[1]);
     bh_str file_name = bh_str_from_cstr(argv[1]);
 
@@ -260,4 +263,6 @@ int main(int argc, char* argv[])
         fwrite(asm_display.buf, 1, asm_display.len, fptr);
         fclose(fptr);
     }
+
+    EndProfilerPrintProfile();
 }
