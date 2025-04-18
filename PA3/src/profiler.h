@@ -10,18 +10,24 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#ifdef defined(__x86_64__)
-inline uint64_t ReadCPUTimer(void)
-{
-	return __rdtsc();
+#ifdef _WIN32
+#include <intrin.h>
+inline uint64_t ReadCPUTimer(void) {
+    return __rdtsc();
+}
+#elif defined(__aarch64__)
+inline __attribute__((always_inline)) uint64_t ReadCPUTimer(void) {
+    uint64_t val;
+    __asm__ volatile("isb;\n\tmrs %0, cntvct_el0" : "=r" (val) :: "memory");
+    return val;
+}
+#elif defined(__x86_64__)
+#include <x86intrin.h>
+static inline uint64_t ReadCPUTimer(void) {
+    return __rdtsc();
 }
 #else
-inline __attribute__((always_inline)) uint64_t ReadCPUTimer(void) {
-	uint64_t val;
-	// use isb to avoid speculative read of cntvct_el0
-	__asm__ volatile("isb;\n\tmrs %0, cntvct_el0" : "=r" (val) :: "memory");
-	return val;
-}
+#error "Unsupported architecture"
 #endif
 
 #if _WIN32

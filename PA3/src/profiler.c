@@ -4,7 +4,35 @@
 
 #include "profiler.h"
 
-#if defined(__x86_64__)
+#if _WIN32
+static uint64_t EstimateCPUTimerFreq(void)
+{
+	uint64_t MillisecondsToWait = 100;
+	uint64_t OSFreq = GetOSTimerFreq();
+
+	uint64_t CPUStart = ReadCPUTimer();
+	uint64_t OSStart = ReadOSTimer();
+	uint64_t OSEnd = 0;
+	uint64_t OSElapsed = 0;
+	uint64_t OSWaitTime = OSFreq * MillisecondsToWait / 1000;
+	while (OSElapsed < OSWaitTime)
+	{
+		OSEnd = ReadOSTimer();
+		OSElapsed = OSEnd - OSStart;
+	}
+
+	uint64_t CPUEnd = ReadCPUTimer();
+	uint64_t CPUElapsed = CPUEnd - CPUStart;
+
+	uint64_t CPUFreq = 0;
+	if (OSElapsed)
+	{
+		CPUFreq = OSFreq * CPUElapsed / OSElapsed;
+	}
+
+	return CPUFreq;
+}
+#elif defined(__aarch64__)
 extern inline __attribute__((always_inline)) uint64_t EstimateCPUTimerFreq(void) {
 	// Do a rough estimate using sleep
 	uint64_t start = ReadCPUTimer();
@@ -12,12 +40,31 @@ extern inline __attribute__((always_inline)) uint64_t EstimateCPUTimerFreq(void)
 	uint64_t end = ReadCPUTimer();
 	return (end - start) * 10;
 }
-#else // ARM64
+#elif defined(__x86_64__)
+
+#include <stdint.h>
+#include <time.h>
+
 extern inline __attribute__((always_inline)) uint64_t EstimateCPUTimerFreq(void) {
-	uint64_t val;
-	__asm__ volatile("mrs %0, cntfrq_el0" : "=r" (val));
-	return val;
+    struct timespec start_ts, end_ts;
+    uint64_t start, end;
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start_ts);
+    start = __rdtsc();
+
+    struct timespec delay = {.tv_sec = 0, .tv_nsec = 100000000}; // 100ms
+    nanosleep(&delay, NULL);
+
+    end = __rdtsc();
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end_ts);
+
+    uint64_t elapsed_ns = (end_ts.tv_sec - start_ts.tv_sec) * 1000000000ULL +
+                          (end_ts.tv_nsec - start_ts.tv_nsec);
+    return ((end - start) * 1000000000ULL) / elapsed_ns;
 }
+
+#else
+#error "Unsupported architecture"
 #endif
 
 extern BHProfiler GlobalProfiler = { 0 };
