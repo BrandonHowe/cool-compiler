@@ -13,10 +13,10 @@
 TACList TAC_list_init(const int64_t capacity, bh_allocator allocator)
 {
 #ifdef WIN32
-    TACExpr* data = VirtualAlloc(NULL, 10000000, MEM_RESERVE, PAGE_NOACCESS);
+    TACExpr* data = VirtualAlloc(NULL, 1000000000, MEM_RESERVE, PAGE_NOACCESS);
     VirtualAlloc(data, base_capacity * sizeof(TACExpr), MEM_COMMIT, PAGE_READWRITE);
 #else
-    TACExpr* data = mmap(NULL, 10000000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    TACExpr* data = mmap(NULL, 100000000000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     mprotect(data, capacity * sizeof(TACExpr), PROT_READ | PROT_WRITE);
 #endif
     TACList list = (TACList)
@@ -34,10 +34,10 @@ TACList TAC_list_init(const int64_t capacity, bh_allocator allocator)
 TACList TAC_list_init_no_bindings(const int64_t capacity, bh_allocator allocator)
 {
 #ifdef WIN32
-    TACExpr* data = VirtualAlloc(NULL, 10000000, MEM_RESERVE, PAGE_NOACCESS);
+    TACExpr* data = VirtualAlloc(NULL, 100000000000, MEM_RESERVE, PAGE_NOACCESS);
     VirtualAlloc(data, base_capacity * sizeof(TACExpr), MEM_COMMIT, PAGE_READWRITE);
 #else
-    TACExpr* data = mmap(NULL, 10000000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    TACExpr* data = mmap(NULL, 100000000000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     mprotect(data, capacity * sizeof(TACExpr), PROT_READ | PROT_WRITE);
 #endif
     TACList list = (TACList)
@@ -349,32 +349,54 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(else_str) }}, add_phi);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_else }}, add_phi);
             TACSymbol symbol1 = TAC_request_symbol(list);
+            int64_t branch1_start = list->count;
+            int64_t original_binding_count = list->_binding_count;
+            TACBinding* original_bindings = bh_alloc(GPA, list->_binding_count * sizeof(TACBinding));
+            memcpy(original_bindings, list->_bindings, list->_binding_count * sizeof(TACBinding));
             tac_list_from_expression(expr->data.if_expr.else_branch, list, symbol1, add_phi);
+            TACBinding* branch1_bindings = bh_alloc(GPA, list->_binding_count * sizeof(TACBinding));
+            memcpy(branch1_bindings, list->_bindings, list->_binding_count * sizeof(TACBinding));
+            TACSlice branch1_slice = (TACSlice){ .items = &list->items[branch1_start], .count = list->count - branch1_start };
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }}, add_phi);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(then_str) }}, add_phi);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_then }}, add_phi);
             TACSymbol symbol2 = TAC_request_symbol(list);
+            int64_t branch2_start = list->count;
+            memcpy(list->_bindings, original_bindings, original_binding_count * sizeof(TACBinding));
+            list->_binding_count = original_binding_count;
             tac_list_from_expression(expr->data.if_expr.then_branch, list, symbol2, add_phi);
+            TACBinding* branch2_bindings = list->_bindings;
+            TACSlice branch2_slice = (TACSlice){ .items = &list->items[branch2_start], .count = list->count - branch2_start };
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }}, add_phi);
+
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(if_join_str) }}, add_phi);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }}, add_phi);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_PHI, .lhs = destination, .rhs1 = symbol1, .rhs2 = symbol2 }, add_phi);
+            for (int i = 0; i < original_binding_count; i++)
+            {
+                if (!tac_symbol_equal(branch1_bindings[i].symbol, branch2_bindings[i].symbol))
+                {
+                    TACSymbol new_symbol = TAC_request_symbol(list);
+                    TAC_list_append(list, (TACExpr){ .operation = TAC_OP_PHI, .lhs = new_symbol, .rhs1 = branch1_bindings[i].symbol, .rhs2 = branch2_bindings[i].symbol }, add_phi);
+                    list->_bindings[i].symbol = new_symbol;
+                }
+            }
+            bh_free(GPA, original_bindings);
+            bh_free(GPA, branch1_bindings);
             return destination;
         }
     case COOL_EXPR_TYPE_WHILE:
         {
             int64_t label_loop = list->_curr_label++;
             int64_t label_cond = list->_curr_label++;
-            int64_t label_join = list->_curr_label++;
 
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_cond }}, add_phi);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(while_body_str) }}, add_phi);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_loop }}, add_phi);
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_cond }}, add_phi);
             tac_list_from_expression(expr->data.while_expr.body, list, TAC_request_symbol(list), add_phi);
 
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(while_pred_str) }}, add_phi);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_cond }}, add_phi);
-            int64_t old_list_count = list->count;
 
             TACSymbol cond = tac_list_from_expression(expr->data.while_expr.predicate, list, (TACSymbol){ 0 }, true);
             const TACExpr bt_true = (TACExpr){

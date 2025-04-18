@@ -5,6 +5,29 @@
 #include <string.h>
 #include "optimizer_tac.h"
 
+void remove_duplicate_phi_expressions(TACList* list)
+{
+    for (int i = 0; i < list->count; i++)
+    {
+        if (list->items[i].operation == TAC_OP_PHI)
+        {
+            for (int j = i + 1; j < list->count; j++)
+            {
+                if (list->items[j].operation == TAC_OP_PHI)
+                {
+                    if (tac_symbol_equal(list->items[i].rhs1, list->items[j].rhs1) &&
+                        tac_symbol_equal(list->items[i].rhs2, list->items[j].rhs2))
+                    {
+                        list->items[j].operation = TAC_OP_ASSIGN;
+                        list->items[j].rhs1 = list->items[i].lhs;
+                        list->items[j].rhs2 = (TACSymbol){ 0 };
+                    }
+                }
+            }
+        }
+    }
+}
+
 void remove_phi_expressions(TACList* list)
 {
     for (int i = list->count - 1; i >= 0; i--)
@@ -12,23 +35,26 @@ void remove_phi_expressions(TACList* list)
         if (list->items[i].operation == TAC_OP_PHI)
         {
             int64_t found_count = 0;
-            for (int j = i; j >= 0; j--)
+            for (int j = i - 1; j >= 0; j--)
             {
                 if (list->items[j].lhs.symbol == list->items[i].rhs1.symbol)
                 {
                     list->items[j].lhs.symbol = list->items[i].lhs.symbol;
                     found_count += 1;
                 }
+                if (tac_symbol_equal(list->items[j].rhs1, list->items[i].rhs1)) list->items[j].rhs1 = list->items[i].lhs;
+                if (tac_symbol_equal(list->items[j].rhs2, list->items[i].rhs1)) list->items[j].rhs2 = list->items[i].lhs;
                 if (list->items[j].lhs.symbol == list->items[i].rhs2.symbol)
                 {
                     list->items[j].lhs.symbol = list->items[i].lhs.symbol;
                     found_count += 1;
                 }
+                if (tac_symbol_equal(list->items[j].rhs1, list->items[i].rhs2)) list->items[j].rhs1 = list->items[i].lhs;
+                if (tac_symbol_equal(list->items[j].rhs2, list->items[i].rhs2)) list->items[j].rhs2 = list->items[i].lhs;
                 if (found_count >= 2) break;
             }
             list->count -= 1;
             memmove(&list->items[i], &list->items[i + 1], (list->count - i) * sizeof(TACExpr));
-            i--;
         }
     }
 }
@@ -118,6 +144,7 @@ void eliminate_dead_tac(TACList* list)
 
 void optimize_tac_list(TACList* list)
 {
+    remove_duplicate_phi_expressions(list);
     // eliminate_dead_tac(list);
-    // remove_phi_expressions(list);
+    remove_phi_expressions(list);
 }

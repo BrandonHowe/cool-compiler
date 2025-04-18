@@ -2062,14 +2062,14 @@ ASMList asm_list_init(ClassNodeList* class_list)
 {
     int64_t base_capacity = 100;
 #ifdef WIN32
-    ASMInstr* data = VirtualAlloc(NULL, 10000000, MEM_RESERVE, PAGE_NOACCESS);
+    ASMInstr* data = VirtualAlloc(NULL, 100000000000, MEM_RESERVE, PAGE_NOACCESS);
     VirtualAlloc(data, base_capacity * sizeof(ASMInstr), MEM_COMMIT, PAGE_READWRITE);
     ASMErrorStr* error_strs = VirtualAlloc(NULL, 1000 * sizeof(ASMErrorStr), MEM_RESERVE, PAGE_NOACCESS);
     VirtualAlloc(error_strs, base_capacity * sizeof(ASMErrorStr), MEM_COMMIT, PAGE_READWRITE);
     ASMCaseBinding* case_bindings = VirtualAlloc(NULL, 80 * sizeof(ASMCaseBinding), MEM_RESERVE, PAGE_NOACCESS);
     VirtualAlloc(case_bindings, 10 * sizeof(ASMCaseBinding), MEM_COMMIT, PAGE_READWRITE);
 #else
-    ASMInstr* data = mmap(NULL, 10000000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    ASMInstr* data = mmap(NULL, 100000000000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     mprotect(data, base_capacity * sizeof(ASMInstr), PROT_READ | PROT_WRITE);
     ASMErrorStr* error_strs = mmap(NULL, 1000 * sizeof(ASMErrorStr), PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     mprotect(error_strs, base_capacity * sizeof(ASMErrorStr), PROT_READ | PROT_WRITE);

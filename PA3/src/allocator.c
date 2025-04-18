@@ -78,10 +78,10 @@ void* arena_proc(bh_allocator* this_allocator, bh_allocator_mode mode, bh_alloca
 bh_allocator arena_init(uint32_t buffer_size)
 {
 #ifdef WIN32
-    bh_arena_data* data = VirtualAlloc(NULL, 10000000, MEM_RESERVE, PAGE_NOACCESS);
+    bh_arena_data* data = VirtualAlloc(NULL, 100000000000, MEM_RESERVE, PAGE_NOACCESS);
     VirtualAlloc(data, sizeof(bh_arena_data) + buffer_size, MEM_COMMIT, PAGE_READWRITE);
 #else
-    bh_arena_data* data = mmap(NULL, 10000000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    bh_arena_data* data = mmap(NULL, 100000000000, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     mprotect(data, sizeof(bh_arena_data) + buffer_size, PROT_READ | PROT_WRITE);
 #endif
     memset(data, 0, sizeof(bh_arena_data) + buffer_size);

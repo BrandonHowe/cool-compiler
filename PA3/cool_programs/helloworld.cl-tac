@@ -1,0 +1,24 @@
+comment start
+label Main_main_0
+t$13 <- int 1
+jmp Main_main_2
+comment while-body
+label Main_main_1
+t$4 <- t$13
+t$5 <- int 1
+t$6 <- + t$4 t$5
+t$3 <- t$6
+t$8 <- t$6
+t$9 <- int 1
+t$13 <- + t$8 t$9
+t$7 <- t$13
+t$11 <- t$13
+t$2 <- call out_int t$11
+comment while-pred
+label Main_main_2
+t$14 <- int 8
+t$12 <- < t$13 t$14
+bt t$12 Main_main_1
+comment while-join
+t$0 <- default Object
+return t$0
