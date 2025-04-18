@@ -15,8 +15,10 @@ void remove_duplicate_phi_expressions(TACList* list)
             {
                 if (list->items[j].operation == TAC_OP_PHI)
                 {
-                    if (tac_symbol_equal(list->items[i].rhs1, list->items[j].rhs1) &&
-                        tac_symbol_equal(list->items[i].rhs2, list->items[j].rhs2))
+                    if ((tac_symbol_equal(list->items[i].rhs1, list->items[j].rhs1) &&
+                        tac_symbol_equal(list->items[i].rhs2, list->items[j].rhs2)) ||
+                        (tac_symbol_equal(list->items[i].rhs1, list->items[j].rhs2) &&
+                        tac_symbol_equal(list->items[i].rhs2, list->items[j].rhs1)))
                     {
                         list->items[j].operation = TAC_OP_ASSIGN;
                         list->items[j].rhs1 = list->items[i].lhs;
@@ -35,8 +37,9 @@ void remove_phi_expressions(TACList* list)
         if (list->items[i].operation == TAC_OP_PHI)
         {
             int64_t found_count = 0;
-            for (int j = i - 1; j >= 0; j--)
+            for (int j = list->count; j >= 0; j--)
             {
+                if (j == i) continue;
                 if (list->items[j].lhs.symbol == list->items[i].rhs1.symbol)
                 {
                     list->items[j].lhs.symbol = list->items[i].lhs.symbol;
@@ -51,7 +54,6 @@ void remove_phi_expressions(TACList* list)
                 }
                 if (tac_symbol_equal(list->items[j].rhs1, list->items[i].rhs2)) list->items[j].rhs1 = list->items[i].lhs;
                 if (tac_symbol_equal(list->items[j].rhs2, list->items[i].rhs2)) list->items[j].rhs2 = list->items[i].lhs;
-                if (found_count >= 2) break;
             }
             list->count -= 1;
             memmove(&list->items[i], &list->items[i + 1], (list->count - i) * sizeof(TACExpr));
@@ -101,27 +103,35 @@ void mark_symbol_live(TACList* list, bool* live_status, TACSymbol symbol)
 void eliminate_dead_tac(TACList* list)
 {
     bh_allocator allocator = GPA;
+    if (list->count > 2000) return;
 
     bool* live_status = bh_alloc(allocator, sizeof(bool) * list->count);
 
     for (int i = 0; i < list->count; i++)
     {
-        if (list->items[i].operation >= TAC_OP_CALL) live_status[i] = true;
-
         if (list->items[i].operation == TAC_OP_CALL)
         {
+            live_status[i] = true;
             mark_symbol_live(list, live_status, list->items[i].lhs);
+        }
+        if (list->items[i].operation == TAC_OP_JMP || list->items[i].operation == TAC_OP_LABEL)
+        {
+            live_status[i] = true;
         }
         if (list->items[i].operation == TAC_OP_BT)
         {
-            mark_symbol_live(list, live_status, list->items[i].lhs);
+            live_status[i] = true;
             mark_symbol_live(list, live_status, list->items[i].rhs1);
         }
         if (list->items[i].operation == TAC_OP_PHI)
         {
-            mark_symbol_live(list, live_status, list->items[i].lhs);
+            live_status[i] = true;
             mark_symbol_live(list, live_status, list->items[i].rhs1);
             mark_symbol_live(list, live_status, list->items[i].rhs2);
+        }
+        if (list->items[i].operation == TAC_OP_RETURN || list->items[i].operation == TAC_OP_IGNORE)
+        {
+            live_status[i] = true;
         }
     }
     mark_symbol_live(list, live_status, (TACSymbol){ .type = TAC_SYMBOL_TYPE_SYMBOL, .symbol = 0 });
@@ -145,6 +155,6 @@ void eliminate_dead_tac(TACList* list)
 void optimize_tac_list(TACList* list)
 {
     remove_duplicate_phi_expressions(list);
-    // eliminate_dead_tac(list);
+    eliminate_dead_tac(list);
     remove_phi_expressions(list);
 }
