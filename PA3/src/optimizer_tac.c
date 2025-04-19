@@ -186,6 +186,85 @@ void eliminate_dead_tac(TACList* list)
     list->count -= unused_count;
 }
 
+int64_t compress_tac_symbols(TACList* list, int64_t* symbols, int64_t old_max_symbol, int64_t starting_symbol)
+{
+    int64_t max_symbol = old_max_symbol;
+    for (int i = 0; i < list->count; i++)
+    {
+        TACExpr e = list->items[i];
+        if ((e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL || e.lhs.type == TAC_SYMBOL_TYPE_VARIABLE) && e.lhs.symbol > max_symbol) max_symbol = e.lhs.symbol;
+        if ((e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL || e.rhs1.type == TAC_SYMBOL_TYPE_VARIABLE) && e.rhs1.symbol > max_symbol) max_symbol = e.rhs1.symbol;
+        if ((e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL || e.rhs2.type == TAC_SYMBOL_TYPE_VARIABLE) && e.rhs2.symbol > max_symbol) max_symbol = e.rhs2.symbol;
+    }
+    max_symbol += 1;
+
+    symbols = bh_realloc(GPA, symbols, max_symbol * sizeof(int64_t));
+    memset(&symbols[old_max_symbol], -1, (max_symbol - old_max_symbol) * sizeof(int64_t));
+
+    int64_t current_symbol = starting_symbol;
+    for (int i = 0; i < list->count; i++)
+    {
+        if (list->items[i].rhs1.type == TAC_SYMBOL_TYPE_SYMBOL || list->items[i].rhs1.type == TAC_SYMBOL_TYPE_VARIABLE)
+        {
+            if (symbols[list->items[i].rhs1.symbol] > -1)
+            {
+                list->items[i].rhs1.symbol = symbols[list->items[i].rhs1.symbol];
+            }
+            else
+            {
+                symbols[list->items[i].rhs1.symbol] = current_symbol;
+                list->items[i].rhs1.symbol = current_symbol;
+                current_symbol++;
+            }
+        }
+        if (list->items[i].rhs2.type == TAC_SYMBOL_TYPE_SYMBOL || list->items[i].rhs2.type == TAC_SYMBOL_TYPE_VARIABLE)
+        {
+            if (symbols[list->items[i].rhs2.symbol] > -1)
+            {
+                list->items[i].rhs2.symbol = symbols[list->items[i].rhs2.symbol];
+            }
+            else
+            {
+                symbols[list->items[i].rhs2.symbol] = current_symbol;
+                list->items[i].rhs2.symbol = current_symbol;
+                current_symbol++;
+            }
+        }
+        if (list->items[i].lhs.type == TAC_SYMBOL_TYPE_SYMBOL || list->items[i].lhs.type == TAC_SYMBOL_TYPE_VARIABLE)
+        {
+            if (symbols[list->items[i].lhs.symbol] > -1)
+            {
+                list->items[i].lhs.symbol = symbols[list->items[i].lhs.symbol];
+            }
+            else
+            {
+                symbols[list->items[i].lhs.symbol] = current_symbol;
+                list->items[i].lhs.symbol = current_symbol;
+                current_symbol++;
+            }
+        }
+        for (int j = 0; j < list->items[i].arg_count; j++)
+        {
+            if (list->items[i].args[j].type == TAC_SYMBOL_TYPE_SYMBOL || list->items[i].args[j].type == TAC_SYMBOL_TYPE_VARIABLE)
+            {
+                if (symbols[list->items[i].args[j].symbol] > -1)
+                {
+                    list->items[i].args[j].symbol = symbols[list->items[i].args[j].symbol];
+                }
+                else
+                {
+                    symbols[list->items[i].args[j].symbol] = current_symbol;
+                    list->items[i].args[j].symbol = current_symbol;
+                    current_symbol++;
+                }
+            }
+        }
+    }
+
+    list->_curr_symbol = current_symbol;
+    return current_symbol;
+}
+
 void optimize_tac_list(TACList* list)
 {
     PROFILE_BLOCK
@@ -193,5 +272,6 @@ void optimize_tac_list(TACList* list)
         remove_duplicate_phi_expressions(list);
         // eliminate_dead_tac(list);
         remove_phi_expressions(list);
+        // compress_tac_symbols(list, NULL, 0, 1);
     }
 }

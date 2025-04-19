@@ -225,12 +225,12 @@ TACList tac_list_from_class_list(ClassNodeList class_list, bh_allocator allocato
                     }, false);
 
     TACSymbol result = tac_list_from_expression(first_method_body, &list, (TACSymbol){ 0 }, false);
-    optimize_tac_list(&list);
-
     TAC_list_append(&list, (TACExpr){
                         .operation = TAC_OP_RETURN,
                         .rhs1 = result
                     }, false);
+
+    optimize_tac_list(&list);
 
     return list;
 }
@@ -249,12 +249,11 @@ TACList tac_list_from_method(const ClassMethod* method, bh_allocator allocator)
     };
 
     TACSymbol result = tac_list_from_expression(&method->body, &list, (TACSymbol){ 0 }, false);
-    optimize_tac_list(&list);
-
     TAC_list_append(&list, (TACExpr){
                         .operation = TAC_OP_RETURN,
                         .rhs1 = result
                     }, false);
+    optimize_tac_list(&list);
 
     return list;
 }

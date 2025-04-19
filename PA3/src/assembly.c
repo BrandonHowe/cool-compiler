@@ -973,6 +973,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             }
             break;
         case TAC_OP_PHI:
+            assert(0 && "Cannot generate asm for phi nodes");
             break;
         case TAC_OP_CALL:
         {
