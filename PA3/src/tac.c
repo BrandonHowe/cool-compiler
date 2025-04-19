@@ -63,7 +63,7 @@ TACSymbol TAC_request_symbol(TACList* list)
     return (TACSymbol){ .type = TAC_SYMBOL_TYPE_SYMBOL, .symbol = res };
 }
 
-TACExpr* TAC_list_append(TACList* list, TACExpr expr)
+TACExpr* TAC_list_append(TACList* list, TACExpr expr, bool add_phi)
 {
     // expr.lhs = get_bound_symbol_variable(list, expr.lhs);
     if (expr.lhs.type == TAC_SYMBOL_TYPE_VARIABLE)
@@ -84,7 +84,7 @@ TACExpr* TAC_list_append(TACList* list, TACExpr expr)
         {
             if (bh_str_equal(expr.rhs1.variable.data, list->_bindings[i].name))
             {
-                if (!tac_symbol_equal(list->_bindings[i].symbol, list->_bindings[i].original_symbol))
+                if (add_phi && !tac_symbol_equal(list->_bindings[i].symbol, list->_bindings[i].original_symbol))
                 {
                     expr.operation = TAC_OP_PHI;
                     expr.rhs1 = list->_bindings[i].original_symbol;
@@ -199,20 +199,20 @@ TACList tac_list_from_class_list(ClassNodeList class_list, bh_allocator allocato
     TAC_list_append(&list, (TACExpr){
                         .operation = TAC_OP_COMMENT,
                         .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = comment_start_str }
-                    });
+                    }, false);
 
     TAC_list_append(&list, (TACExpr){
                         .operation = TAC_OP_LABEL,
                         .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = list._curr_label++ }
-                    });
+                    }, false);
 
-    TACSymbol result = tac_list_from_expression(first_method_body, &list, (TACSymbol){ 0 });
+    TACSymbol result = tac_list_from_expression(first_method_body, &list, (TACSymbol){ 0 }, false);
     optimize_tac_list(&list);
 
     TAC_list_append(&list, (TACExpr){
                         .operation = TAC_OP_RETURN,
                         .rhs1 = result
-                    });
+                    }, false);
 
     return list;
 }
@@ -230,13 +230,13 @@ TACList tac_list_from_method(const ClassMethod* method, bh_allocator allocator)
         ._binding_count = 0
     };
 
-    TACSymbol result = tac_list_from_expression(&method->body, &list, (TACSymbol){ 0 });
+    TACSymbol result = tac_list_from_expression(&method->body, &list, (TACSymbol){ 0 }, false);
     optimize_tac_list(&list);
 
     TAC_list_append(&list, (TACExpr){
                         .operation = TAC_OP_RETURN,
                         .rhs1 = result
-                    });
+                    }, false);
 
     return list;
 }
@@ -269,7 +269,7 @@ int64_t get_symbol_version_for_variable(const TACList* list, const bh_str str)
     return 0;
 }
 
-TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TACSymbol destination)
+TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TACSymbol destination, bool add_phi)
 {
     if (destination.type == TAC_SYMBOL_TYPE_NULL) destination = TAC_request_symbol(list);
     switch (expr->expression_type)
@@ -287,16 +287,16 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .operation = TAC_OP_ASSIGN,
                 .line_num = expr->line_num,
                 .lhs = destination,
-                .rhs1 = tac_list_from_expression(expr->data.assign.rhs, list, dest)
+                .rhs1 = tac_list_from_expression(expr->data.assign.rhs, list, dest, add_phi)
             };
-            TAC_list_append(list, tac);
+            TAC_list_append(list, tac, add_phi);
             return tac.lhs;
         }
     case COOL_EXPR_TYPE_DYNAMIC_DISPATCH:
     case COOL_EXPR_TYPE_STATIC_DISPATCH:
     case COOL_EXPR_TYPE_SELF_DISPATCH:
         {
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_IGNORE, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = -1 } });
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_IGNORE, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = -1 } }, add_phi);
             TACExpr tac = (TACExpr){
                 .operation = TAC_OP_CALL,
                 .line_num = expr->line_num,
@@ -307,7 +307,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             tac.args = bh_alloc(list->allocator, tac.arg_count * sizeof(TACSymbol));
             for (int i = 0; i < expr->data.dynamic_dispatch.args_length; i++)
             {
-                TACSymbol arg_symbol = tac_list_from_expression(&expr->data.dynamic_dispatch.args[i], list, (TACSymbol){ 0 });
+                TACSymbol arg_symbol = tac_list_from_expression(&expr->data.dynamic_dispatch.args[i], list, (TACSymbol){ 0 }, add_phi);
                 tac.args[i] = arg_symbol;
             }
 
@@ -337,7 +337,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
 
             if (expr->expression_type != COOL_EXPR_TYPE_SELF_DISPATCH)
             {
-                TACSymbol result = tac_list_from_expression(expr->data.dynamic_dispatch.e, list, (TACSymbol){ 0 });
+                TACSymbol result = tac_list_from_expression(expr->data.dynamic_dispatch.e, list, (TACSymbol){ 0 }, add_phi);
                 tac.args[tac.arg_count - 1] = result;
             }
 
@@ -355,7 +355,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             tac.rhs1.method.class_idx = class_idx;
             tac.rhs1.method.method_idx = method_idx;
 
-            TAC_list_append(list, tac);
+            TAC_list_append(list, tac, add_phi);
             return tac.lhs;
         }
     case COOL_EXPR_TYPE_INTERNAL:
@@ -366,7 +366,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .lhs = destination,
                 .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_VARIABLE, .variable = expr->data.internal.method }
             };
-            TAC_list_append(list, tac);
+            TAC_list_append(list, tac, add_phi);
             return tac.lhs;
         }
     case COOL_EXPR_TYPE_IF:
@@ -374,7 +374,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             int64_t label_else = list->_curr_label++;
             int64_t label_then = list->_curr_label++;
             int64_t label_join = list->_curr_label++;
-            TACSymbol cond = tac_list_from_expression(expr->data.if_expr.predicate, list, (TACSymbol){ 0 });
+            TACSymbol cond = tac_list_from_expression(expr->data.if_expr.predicate, list, (TACSymbol){ 0 }, add_phi);
             const TACExpr bt_true = (TACExpr){
                 .operation = TAC_OP_BT,
                 .line_num = expr->line_num,
@@ -382,34 +382,34 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .rhs1 = cond,
                 .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_then }
             };
-            TAC_list_append(list, bt_true);
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(else_str) }});
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_else }});
+            TAC_list_append(list, bt_true, add_phi);
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(else_str) }}, add_phi);
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_else }}, add_phi);
             TACSymbol symbol1 = TAC_request_symbol(list);
             int64_t original_binding_count = list->_binding_count;
             TACBinding* original_bindings = bh_alloc(GPA, list->_binding_count * sizeof(TACBinding));
             memcpy(original_bindings, list->_bindings, list->_binding_count * sizeof(TACBinding));
-            tac_list_from_expression(expr->data.if_expr.else_branch, list, symbol1);
+            tac_list_from_expression(expr->data.if_expr.else_branch, list, symbol1, add_phi);
             TACBinding* branch1_bindings = bh_alloc(GPA, list->_binding_count * sizeof(TACBinding));
             memcpy(branch1_bindings, list->_bindings, list->_binding_count * sizeof(TACBinding));
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }});
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(then_str) }});
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_then }});
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }}, add_phi);
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(then_str) }}, add_phi);
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_then }}, add_phi);
             TACSymbol symbol2 = TAC_request_symbol(list);
             memcpy(list->_bindings, original_bindings, original_binding_count * sizeof(TACBinding));
             list->_binding_count = original_binding_count;
-            tac_list_from_expression(expr->data.if_expr.then_branch, list, symbol2);
+            tac_list_from_expression(expr->data.if_expr.then_branch, list, symbol2, add_phi);
             TACBinding* branch2_bindings = list->_bindings;
 
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(if_join_str) }});
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }});
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_PHI, .lhs = destination, .rhs1 = symbol1, .rhs2 = symbol2 });
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(if_join_str) }}, add_phi);
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }}, add_phi);
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_PHI, .lhs = destination, .rhs1 = symbol1, .rhs2 = symbol2 }, add_phi);
             for (int i = 0; i < original_binding_count; i++)
             {
                 if (!tac_symbol_equal(branch1_bindings[i].symbol, branch2_bindings[i].symbol))
                 {
                     TACSymbol new_symbol = TAC_request_symbol(list);
-                    TAC_list_append(list, (TACExpr){ .operation = TAC_OP_PHI, .lhs = new_symbol, .rhs1 = branch1_bindings[i].symbol, .rhs2 = branch2_bindings[i].symbol });
+                    TAC_list_append(list, (TACExpr){ .operation = TAC_OP_PHI, .lhs = new_symbol, .rhs1 = branch1_bindings[i].symbol, .rhs2 = branch2_bindings[i].symbol }, add_phi);
                     list->_bindings[i].symbol = new_symbol;
                 }
             }
@@ -426,13 +426,13 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             TACBinding* original_bindings = bh_alloc(GPA, list->_binding_count * sizeof(TACBinding));
             memcpy(original_bindings, list->_bindings, list->_binding_count * sizeof(TACBinding));
 
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(while_pred_str) }});
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_cond }});
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(while_pred_str) }}, add_phi);
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_cond }}, add_phi);
             int64_t cond_start = list->count;
-            TACSymbol cond = tac_list_from_expression(expr->data.while_expr.predicate, list, (TACSymbol){ 0 });
+            TACSymbol cond = tac_list_from_expression(expr->data.while_expr.predicate, list, (TACSymbol){ 0 }, add_phi);
             TACSymbol not_cond_symbol = TAC_request_symbol(list);
             const TACExpr not_cond = (TACExpr){ .operation = TAC_OP_NOT, .lhs = not_cond_symbol, .rhs1 = cond };
-            TAC_list_append(list, not_cond);
+            TAC_list_append(list, not_cond, add_phi);
             const TACExpr bt_false = (TACExpr){
                 .operation = TAC_OP_BT,
                 .line_num = expr->line_num,
@@ -440,12 +440,12 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .rhs1 = not_cond_symbol,
                 .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }
             };
-            TAC_list_append(list, bt_false);
+            TAC_list_append(list, bt_false, add_phi);
             TACSlice cond_slice = (TACSlice){ .items = &list->items[cond_start], .count = list->count - cond_start };
 
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(while_body_str) }});
-            tac_list_from_expression(expr->data.while_expr.body, list, TAC_request_symbol(list));
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_cond }});
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(while_body_str) }}, add_phi);
+            tac_list_from_expression(expr->data.while_expr.body, list, TAC_request_symbol(list), add_phi);
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_cond }}, add_phi);
 
             for (int i = 0; i < original_binding_count; i++)
             {
@@ -477,9 +477,9 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 }
             }
 
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(while_join_str) }});
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join } });
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_DEFAULT, .lhs = destination, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(object_str) }});
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(while_join_str) }}, add_phi);
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join } }, add_phi);
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_DEFAULT, .lhs = destination, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(object_str) }}, add_phi);
 
             return destination;
         }
@@ -489,7 +489,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             for (int i = 0; i < expr->data.block.body_length; i++)
             {
                 int is_last = i == expr->data.block.body_length - 1;
-                tac_list_from_expression(&expr->data.block.body[i], list, is_last ? destination : (TACSymbol){ 0 });
+                tac_list_from_expression(&expr->data.block.body[i], list, is_last ? destination : (TACSymbol){ 0 }, add_phi);
             }
             return destination;
         }
@@ -501,19 +501,19 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .lhs = destination,
                 .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_VARIABLE, .variable = expr->data.new_expr.class_name.name }
             };
-            TAC_list_append(list, tac);
+            TAC_list_append(list, tac, add_phi);
             return tac.lhs;
         }
     case COOL_EXPR_TYPE_ISVOID:
         {
-            TACSymbol ta1 = tac_list_from_expression(expr->data.isvoid.e, list, (TACSymbol){ 0 });
+            TACSymbol ta1 = tac_list_from_expression(expr->data.isvoid.e, list, (TACSymbol){ 0 }, add_phi);
             TACExpr tac = (TACExpr) {
                 .operation = TAC_OP_ISVOID,
                 .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = ta1,
             };
-            TAC_list_append(list, tac);
+            TAC_list_append(list, tac, add_phi);
             return tac.lhs;
         }
     case COOL_EXPR_TYPE_PLUS:
@@ -528,12 +528,12 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 expr->expression_type == COOL_EXPR_TYPE_EQ ||
                 expr->expression_type == COOL_EXPR_TYPE_LE)
             {
-                TAC_list_append(list, (TACExpr){ .operation = TAC_OP_IGNORE, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = -1 } });
+                TAC_list_append(list, (TACExpr){ .operation = TAC_OP_IGNORE, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = -1 } }, add_phi);
             }
             TACSymbol dest1 = TAC_request_symbol(list);
             TACSymbol dest2 = TAC_request_symbol(list);
-            TACSymbol ta1 = tac_list_from_expression(expr->data.binary.x, list, dest1);
-            TACSymbol ta2 = tac_list_from_expression(expr->data.binary.y, list, dest2);
+            TACSymbol ta1 = tac_list_from_expression(expr->data.binary.x, list, dest1, add_phi);
+            TACSymbol ta2 = tac_list_from_expression(expr->data.binary.y, list, dest2, add_phi);
             TACExpr tac = (TACExpr) {
                 .operation = expr->expression_type - (COOL_EXPR_TYPE_PLUS - TAC_OP_PLUS),
                 .line_num = expr->line_num,
@@ -541,20 +541,20 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .rhs1 = ta1,
                 .rhs2 = ta2
             };
-            TAC_list_append(list, tac);
+            TAC_list_append(list, tac, add_phi);
             return tac.lhs;
         }
     case COOL_EXPR_TYPE_NOT:
     case COOL_EXPR_TYPE_NEGATE:
         {
-            TACSymbol ta1 = tac_list_from_expression(expr->data.unary.x, list, (TACSymbol){ 0 });
+            TACSymbol ta1 = tac_list_from_expression(expr->data.unary.x, list, (TACSymbol){ 0 }, add_phi);
             TACExpr tac = (TACExpr) {
                 .operation = expr->expression_type - (COOL_EXPR_TYPE_NOT - TAC_OP_NOT),
                 .line_num = expr->line_num,
                 .lhs = destination,
                 .rhs1 = ta1,
             };
-            TAC_list_append(list, tac);
+            TAC_list_append(list, tac, add_phi);
             return tac.lhs;
         }
     case COOL_EXPR_TYPE_INTEGER:
@@ -565,7 +565,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .lhs = destination,
                 .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = expr->data.integer.value }
             };
-            TAC_list_append(list, tac);
+            TAC_list_append(list, tac, add_phi);
             return tac.lhs;
         }
     case COOL_EXPR_TYPE_STRING:
@@ -576,7 +576,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .lhs = destination,
                 .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = expr->data.string.value }
             };
-            TAC_list_append(list, tac);
+            TAC_list_append(list, tac, add_phi);
             return tac.lhs;
         }
     case COOL_EXPR_TYPE_IDENTIFIER:
@@ -594,7 +594,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .lhs = destination,
                 .rhs1 = rhs
             };
-            TAC_list_append(list, tac);
+            TAC_list_append(list, tac, add_phi);
             return tac.lhs;
         }
     case COOL_EXPR_TYPE_TRUE:
@@ -606,7 +606,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .lhs = destination,
                 .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_BOOL, .integer = expr->expression_type == COOL_EXPR_TYPE_TRUE }
             };
-            TAC_list_append(list, tac);
+            TAC_list_append(list, tac, add_phi);
             return tac.lhs;
         }
     case COOL_EXPR_TYPE_LET:
@@ -623,7 +623,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
 
                 if (expr->data.let.bindings[i].exp)
                 {
-                    tac_list_from_expression(expr->data.let.bindings[i].exp, list, list->_bindings[list->_binding_count].symbol);
+                    tac_list_from_expression(expr->data.let.bindings[i].exp, list, list->_bindings[list->_binding_count].symbol, add_phi);
                 }
                 else
                 {
@@ -632,7 +632,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                         .lhs = list->_bindings[list->_binding_count].symbol,
                         .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_VARIABLE, .variable = expr->data.let.bindings[i].type_name.name }
                     };
-                    TAC_list_append(list, default_expr);
+                    TAC_list_append(list, default_expr, add_phi);
                 }
 
                 list->_bindings[list->_binding_count] = (TACBinding){
@@ -643,14 +643,14 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
 
                 list->_binding_count += 1;
             }
-            tac_list_from_expression(expr->data.let.expr, list, destination);
+            tac_list_from_expression(expr->data.let.expr, list, destination, add_phi);
             list->_binding_count = initial_binding_count;
             return destination;
         }
     case COOL_EXPR_TYPE_CASE:
         {
             TACSymbol dest1 = TAC_request_symbol(list);
-            tac_list_from_expression(expr->data.case_expr.expr, list, dest1);
+            tac_list_from_expression(expr->data.case_expr.expr, list, dest1, add_phi);
             TACExpr tac = (TACExpr){
                 .operation = TAC_OP_CASE,
                 .line_num = expr->line_num,
@@ -676,10 +676,10 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                     .symbol = dest1
                 };
                 tac.branches[i]._binding_count = list->_binding_count + 1;
-                tac_list_from_expression(expr->data.case_expr.elements[i].body, &tac.branches[i], destination);
+                tac_list_from_expression(expr->data.case_expr.elements[i].body, &tac.branches[i], destination, add_phi);
                 optimize_tac_list(&tac.branches[i]);
             }
-            TAC_list_append(list, tac);
+            TAC_list_append(list, tac, add_phi);
             return tac.lhs;
         }
     default:

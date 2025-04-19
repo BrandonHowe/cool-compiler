@@ -191,7 +191,7 @@ int main(int argc, char* argv[])
                     list.method_idx = j;
                     list.method_name = method.name;
 
-                    tac_list_from_expression(&method.body, &list, (TACSymbol){ 0 });
+                    tac_list_from_expression(&method.body, &list, (TACSymbol){ 0 }, false);
                     optimize_tac_list(&list);
 
                     asm_from_method(&asm_list, list);
