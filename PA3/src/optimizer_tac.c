@@ -44,14 +44,14 @@ void remove_phi_expressions(TACList* list)
         }
     }
     max_phi += 1;
-    int64_t* phi_bindings = bh_alloc(GPA, max_phi * sizeof(int64_t));
-    memset(phi_bindings, -1, max_phi * sizeof(int64_t));
+    TACSymbol* phi_bindings = bh_alloc(GPA, max_phi * sizeof(TACSymbol));
+    memset(phi_bindings, 0, max_phi * sizeof(TACSymbol));
     for (int i = 0; i < list->count; i++)
     {
         if (list->items[i].operation == TAC_OP_PHI)
         {
-            phi_bindings[list->items[i].rhs1.symbol] = list->items[i].lhs.symbol;
-            phi_bindings[list->items[i].rhs2.symbol] = list->items[i].lhs.symbol;
+            phi_bindings[list->items[i].rhs1.symbol] = list->items[i].lhs;
+            phi_bindings[list->items[i].rhs2.symbol] = list->items[i].lhs;
         }
     }
 
@@ -65,20 +65,20 @@ void remove_phi_expressions(TACList* list)
             TACExpr e = list->items[i];
             if (e.operation != TAC_OP_PHI)
             {
-                if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && e.rhs1.symbol < max_phi && phi_bindings[e.rhs1.symbol] > -1)
+                if ((e.rhs1.type == TAC_SYMBOL_TYPE_VARIABLE || e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL) && e.rhs1.symbol < max_phi && phi_bindings[e.rhs1.symbol].type > 0)
                 {
-                    list->items[i].rhs1.symbol = phi_bindings[e.rhs1.symbol];
+                    list->items[i].rhs1 = phi_bindings[e.rhs1.symbol];
                     rerun_needed = true;
                 }
-                if (e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && e.rhs2.symbol < max_phi && phi_bindings[e.rhs2.symbol] > -1)
+                if ((e.rhs2.type == TAC_SYMBOL_TYPE_VARIABLE || e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL) && e.rhs2.symbol < max_phi && phi_bindings[e.rhs2.symbol].type > 0)
                 {
-                    list->items[i].rhs2.symbol = phi_bindings[e.rhs2.symbol];
+                    list->items[i].rhs2 = phi_bindings[e.rhs2.symbol];
                     rerun_needed = true;
                 }
             }
-            if (e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL && e.lhs.symbol < max_phi && phi_bindings[e.lhs.symbol] > -1)
+            if ((e.lhs.type == TAC_SYMBOL_TYPE_VARIABLE || e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL) && e.lhs.symbol < max_phi && phi_bindings[e.lhs.symbol].type > 0)
             {
-                list->items[i].lhs.symbol = phi_bindings[e.lhs.symbol];
+                list->items[i].lhs = phi_bindings[e.lhs.symbol];
                 rerun_needed = true;
             }
         }

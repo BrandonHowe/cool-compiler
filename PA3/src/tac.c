@@ -73,7 +73,15 @@ TACExpr* TAC_list_append(TACList* list, TACExpr expr, bool add_phi)
             if (bh_str_equal(expr.lhs.variable.data, list->_bindings[i].name))
             {
                 TACSymbol new_symbol = TAC_request_symbol(list);
-                list->_bindings[i].symbol = new_symbol;
+                if (list->_bindings[i].symbol.type == TAC_SYMBOL_TYPE_VARIABLE)
+                {
+                    list->_bindings[i].symbol.variable.version = new_symbol.symbol;
+                    new_symbol = list->_bindings[i].symbol;
+                }
+                else
+                {
+                    list->_bindings[i].symbol = new_symbol;
+                }
                 expr.lhs = new_symbol;
             }
         }
@@ -111,29 +119,29 @@ TACExpr* TAC_list_append(TACList* list, TACExpr expr, bool add_phi)
 TACExpr* TAC_list_insert_at(TACList* list, TACExpr expr, int64_t index)
 {
     // expr.lhs = get_bound_symbol_variable(list, expr.lhs);
-    if (expr.lhs.type == TAC_SYMBOL_TYPE_VARIABLE)
-    {
-        for (int i = list->_binding_count - 1; i >= 0; i--)
-        {
-            if (bh_str_equal(expr.lhs.variable.data, list->_bindings[i].name))
-            {
-                TACSymbol new_symbol = TAC_request_symbol(list);
-                list->_bindings[i].symbol = new_symbol;
-                expr.lhs = new_symbol;
-            }
-        }
-    }
-    if (expr.rhs1.type == TAC_SYMBOL_TYPE_VARIABLE)
-    {
-        for (int i = list->_binding_count - 1; i >= 0; i--)
-        {
-            if (bh_str_equal(expr.rhs1.variable.data, list->_bindings[i].name))
-            {
-                expr.rhs1 = list->_bindings[i].symbol;
-            }
-        }
-    }
-    expr.rhs2 = get_bound_symbol_variable(list, expr.rhs2);
+    // if (expr.lhs.type == TAC_SYMBOL_TYPE_VARIABLE)
+    // {
+    //     for (int i = list->_binding_count - 1; i >= 0; i--)
+    //     {
+    //         if (bh_str_equal(expr.lhs.variable.data, list->_bindings[i].name))
+    //         {
+    //             TACSymbol new_symbol = TAC_request_symbol(list);
+    //             list->_bindings[i].symbol = new_symbol;
+    //             expr.lhs = new_symbol;
+    //         }
+    //     }
+    // }
+    // if (expr.rhs1.type == TAC_SYMBOL_TYPE_VARIABLE)
+    // {
+    //     for (int i = list->_binding_count - 1; i >= 0; i--)
+    //     {
+    //         if (bh_str_equal(expr.rhs1.variable.data, list->_bindings[i].name))
+    //         {
+    //             expr.rhs1 = list->_bindings[i].symbol;
+    //         }
+    //     }
+    // }
+    // expr.rhs2 = get_bound_symbol_variable(list, expr.rhs2);
     if (list->count + 1 >= list->capacity)
     {
         list->capacity *= 2;
@@ -193,6 +201,16 @@ TACList tac_list_from_class_list(ClassNodeList class_list, bh_allocator allocato
     list.class_idx = class_idx;
     list.method_idx = method_idx;
     list.method_name = method_name;
+
+    list._binding_count = class_list.class_nodes[class_idx].attribute_count;
+    for (int i = 0; i < class_list.class_nodes[class_idx].attribute_count; i++)
+    {
+        list._bindings[i].name = class_list.class_nodes[class_idx].attributes[i].name;
+        list._bindings[i].symbol.type = TAC_SYMBOL_TYPE_VARIABLE;
+        list._bindings[i].symbol.variable.data = class_list.class_nodes[class_idx].attributes[i].name;
+        list._bindings[i].symbol.variable.version = TAC_request_symbol(&list).symbol;
+        list._bindings[i].original_symbol = list._bindings[i].symbol;
+    }
 
     bh_str comment_start_str = bh_str_from_cstr(start_str);
 
@@ -280,7 +298,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .type = TAC_SYMBOL_TYPE_VARIABLE,
                 .variable = {
                     .data = expr->data.assign.var.name,
-                    .version = get_symbol_version_for_variable(list, expr->data.assign.var.name) + 1
+                    .version = TAC_request_symbol(list).symbol
                 }
             };
             const TACExpr tac = (TACExpr){
@@ -364,7 +382,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .operation = TAC_OP_CALL,
                 .line_num = expr->line_num,
                 .lhs = destination,
-                .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_VARIABLE, .variable = expr->data.internal.method }
+                .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_VARIABLE, .variable = { .data = expr->data.internal.method } }
             };
             TAC_list_append(list, tac, add_phi);
             return tac.lhs;
@@ -452,18 +470,25 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 if (!tac_symbol_equal(list->_bindings[i].symbol, original_bindings[i].symbol))
                 {
                     bool replacement_found = false;
-                    for (int j = 0; j < cond_slice.count; j++)
-                    {
-                        if (tac_symbol_equal(cond_slice.items[j].rhs1, original_bindings[i].symbol))
-                        {
-                            cond_slice.items[j].operation = TAC_OP_PHI;
-                            cond_slice.items[j].rhs2 = list->_bindings[i].symbol;
-                            replacement_found = true;
-                        }
-                    }
+                    // TODO TOMORROW: Get rid of this for loop, make it insert phi's everywhere.
+                    // If it's a variable (e.g. a) the LHS is also a, otherwise it's just t
+                    // for (int j = 0; j < cond_slice.count; j++)
+                    // {
+                    //     if (tac_symbol_equal(cond_slice.items[j].rhs1, original_bindings[i].symbol))
+                    //     {
+                    //         cond_slice.items[j].operation = TAC_OP_PHI;
+                    //         cond_slice.items[j].rhs2 = list->_bindings[i].symbol;
+                    //         replacement_found = true;
+                    //     }
+                    // }
                     if (!replacement_found)
                     {
                         TACSymbol new_symbol = TAC_request_symbol(list);
+                        if (list->_bindings[i].symbol.type == TAC_SYMBOL_TYPE_VARIABLE)
+                        {
+                            new_symbol.type = TAC_SYMBOL_TYPE_VARIABLE;
+                            new_symbol.variable.data = list->_bindings[i].symbol.variable.data;
+                        }
                         const TACExpr phi = (TACExpr){
                             .operation = TAC_OP_PHI,
                             .line_num = expr->line_num,
@@ -499,7 +524,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 .operation = TAC_OP_NEW,
                 .line_num = expr->line_num,
                 .lhs = destination,
-                .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_VARIABLE, .variable = expr->data.new_expr.class_name.name }
+                .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_VARIABLE, .variable = { .data = expr->data.new_expr.class_name.name } }
             };
             TAC_list_append(list, tac, add_phi);
             return tac.lhs;
@@ -630,7 +655,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                     TACExpr default_expr = (TACExpr){
                         .operation = TAC_OP_DEFAULT,
                         .lhs = list->_bindings[list->_binding_count].symbol,
-                        .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_VARIABLE, .variable = expr->data.let.bindings[i].type_name.name }
+                        .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_VARIABLE, .variable = { .data = expr->data.let.bindings[i].type_name.name } }
                     };
                     TAC_list_append(list, default_expr, add_phi);
                 }

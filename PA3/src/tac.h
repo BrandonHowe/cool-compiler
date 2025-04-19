@@ -28,7 +28,7 @@ typedef struct TACSymbol
         int64_t symbol;
         int64_t integer;
         struct { bh_str data; int64_t version; } string;
-        struct { bh_str data; int64_t version; } variable;
+        struct { int64_t version; bh_str data; } variable;
         struct { int64_t class_idx; int64_t method_idx; } method;
         const CoolExpression* expression;
     };

@@ -11362,10 +11362,13 @@ class Main inherits IO {
     }};*)
     --main() : Object { let a : Int, b : Int, c : Int, d : Int in { while a < 5 loop { a <- a + 1; b <- 1; while b < 5 loop { b <- b + 1; c <- c + 1; } pool; d <- d + 1; out_int(a); out_int(b); out_int(c); out_int(d); } pool; out_int(a); out_int(b); out_int(c); out_int(d); } };
     --main() : Object { (new A).print(5) };
-    main() : Object { let a : Int, b : Int, c : Int, d : Int in { a <- in_int(); b <- in_int(); if not a = b then { c <- in_int(); d <- in_int(); if not c = d then out_int(500) else out_int(999) fi; } else out_int(a / b) fi; } };
-    --main() : Object { while x < 100 loop x <- x + 1 pool };
-    --main() : Object { if not true then io.out_int(123) else io.out_int(~246) fi };
+    x : Int;
+    a : Int;
+    main() : Object {{ x <- in_int(); a <- in_int(); out_int(if x = a then 1 else 2 fi); }};
+    --main() : Object { { x <- in_int(); while a < x loop { a <- a + 1; out_int(a / 5); } pool; } };
     --main() : Object { let x : Int, a : Int in { x <- in_int(); while a < x loop { a <- a + 1; out_int(a / 5); } pool; } };
+    --main() : Object { if 1 < 2 then x <- x + 1 else x <- x + 2 fi };
+    --main() : Object { if not true then io.out_int(123) else io.out_int(~246) fi };
     --main() : Object {{ if (5 = 6) = (7 = 7) then io.out_int(1) else io.out_int(0) fi; }};
     --main() : Object {{ let a : Int <- 4 + 5 + 8 in out_int(a); }};
 };
