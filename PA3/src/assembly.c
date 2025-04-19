@@ -1347,6 +1347,9 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
 
 void builtin_append_string_helpers(bh_str_buf* buf)
 {
+    bh_str alloc_text = read_file_text("./coolalloc.txt");
+    bh_str_buf_append(buf, alloc_text);
+
     bh_str file_text = read_file_text("./string_helpers.txt");
     bh_str_buf_append(buf, file_text);
 }
@@ -1420,6 +1423,7 @@ void builtin_append_start(ASMList* asm_list)
 
     asm_list_append_comment(asm_list, "program begins here");
     asm_list_append_label(asm_list, start_str);
+    asm_list_append_syscall(asm_list, INTERNAL_CLASS, INTERNAL_COOLALLOC_INIT_HANDLER);
     asm_list_append_la(asm_list, R14, main_ctor_idx, -1);
     asm_list_append_push(asm_list, RBP);
     asm_list_append_call(asm_list, R14);
@@ -1795,6 +1799,9 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
             case INTERNAL_SUBSTR_HANDLER:
                 bh_str_buf_append_lit(str_buf, "coolsubstr");
                 break;
+            case INTERNAL_COOLALLOC_INIT_HANDLER:
+                bh_str_buf_append_lit(str_buf, "call coolalloc_init");
+                break;
             default:
                 assert(0 && "Unhandled internal method");
                 break;
@@ -2040,9 +2047,9 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
             break;
         case ASM_OP_ALLOC:
             bh_str_buf_append_lit(str_buf, "## guarantee 16-byte alignment before call\nandq $0xFFFFFFFFFFFFFFF0, %rsp\n");
-            bh_str_buf_append_lit(str_buf, "movq $8, %rsi\nmovq");
+            bh_str_buf_append_lit(str_buf, "movq");
             x86_asm_param(str_buf, class_list, instr.params[1]);
-            bh_str_buf_append_lit(str_buf, ", %rdi\ncall calloc\nmovq %rax,");
+            bh_str_buf_append_lit(str_buf, ", %rdi\ncall coolalloc\nmovq %rax,");
             x86_asm_param(str_buf, class_list, instr.params[0]);
             break;
         case ASM_OP_RETURN:

@@ -1,0 +1,29 @@
+coolalloc_init:
+        subq    $8, %rsp
+        xorl    %edx, %edx
+        xorl    %edi, %edi
+        xorl    %r9d, %r9d
+        movabsq $100000000000, %rsi
+        movl    $-1, %r8d
+        movl    $34, %ecx
+        call    mmap
+        movl    $3, %edx
+        movl    $100000, %esi
+        movq    %rax, coolalloc_buffer(%rip)
+        movq    %rax, %rdi
+        addq    $8, %rsp
+        jmp     mprotect
+coolalloc:
+        movq    coolalloc_used(%rip), %rax
+        movq    coolalloc_buffer(%rip), %rdx
+        addq    %rax, %rdx
+        addq    %rdi, %rax
+        movq    %rax, coolalloc_used(%rip)
+        movq    %rdx, %rax
+        ret
+coolalloc_used:
+        .zero   8
+coolalloc_capacity:
+        .zero   8
+coolalloc_buffer:
+        .zero   8
