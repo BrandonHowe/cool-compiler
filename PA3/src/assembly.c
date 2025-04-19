@@ -1347,11 +1347,11 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
 
 void builtin_append_string_helpers(bh_str_buf* buf)
 {
-    bh_str alloc_text = read_file_text("./coolalloc.txt");
-    bh_str_buf_append(buf, alloc_text);
-
     bh_str file_text = read_file_text("./string_helpers.txt");
     bh_str_buf_append(buf, file_text);
+
+    bh_str alloc_text = read_file_text("./coolalloc.txt");
+    bh_str_buf_append(buf, alloc_text);
 }
 
 void builtin_append_string_constants(ASMList* asm_list)
