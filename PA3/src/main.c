@@ -26,7 +26,7 @@ typedef enum Mode
     MODE_BOTH,
 } Mode;
 
-#define MODE MODE_TAC_ONLY
+#define MODE MODE_X86_ONLY
 
 void append_tac_symbol(bh_str_buf* str_buf, ClassNodeList class_list, TACSymbol symbol)
 {
@@ -191,7 +191,7 @@ int main(int argc, char* argv[])
                     list.method_idx = j;
                     list.method_name = method.name;
 
-                    tac_list_from_expression(&method.body, &list, (TACSymbol){ 0 }, false);
+                    tac_list_from_expression(&method.body, &list, (TACSymbol){ 0 });
                     optimize_tac_list(&list);
 
                     asm_from_method(&asm_list, list);
