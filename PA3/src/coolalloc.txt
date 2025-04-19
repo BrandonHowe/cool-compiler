@@ -1,81 +1,106 @@
-.text
-    .p2align 4
-    .globl    coolalloc_init
-    .type    coolalloc_init, @function
+	.text
+	.p2align 4
+	.globl	coolalloc_init
+	.type	coolalloc_init, @function
 coolalloc_init:
 .LFB0:
-    .cfi_startproc
-    endbr64
-    subq    $8, %rsp
-    .cfi_def_cfa_offset 16
-    xorl    %edx, %edx
-    xorl    %edi, %edi
-    xorl    %r9d, %r9d
-    movabsq    $100000000000, %rsi
-    movl    $-1, %r8d
-    movl    $34, %ecx
-    call    mmap@PLT
-    movl    $3, %edx
-    movl    $100000, %esi
-    movq    %rax, coolalloc_buffer(%rip)
-    movq    %rax, %rdi
-    addq    $8, %rsp
-    .cfi_def_cfa_offset 8
-    jmp    mprotect@PLT
-    .cfi_endproc
+	.cfi_startproc
+	endbr64
+	subq	$8, %rsp
+	.cfi_def_cfa_offset 16
+	xorl	%edx, %edx
+	xorl	%edi, %edi
+	xorl	%r9d, %r9d
+	movabsq	$100000000000, %rsi
+	movl	$-1, %r8d
+	movl	$34, %ecx
+	call	mmap@PLT
+	movl	$3, %edx
+	movl	$4096, %esi
+	movq	$4096, coolalloc_capacity(%rip)
+	movq	%rax, coolalloc_buffer(%rip)
+	movq	%rax, %rdi
+	addq	$8, %rsp
+	.cfi_def_cfa_offset 8
+	jmp	mprotect@PLT
+	.cfi_endproc
 .LFE0:
-    .size    coolalloc_init, .-coolalloc_init
-    .p2align 4
-    .globl    coolalloc
-    .type    coolalloc, @function
+	.size	coolalloc_init, .-coolalloc_init
+	.p2align 4
+	.globl	coolalloc
+	.type	coolalloc, @function
 coolalloc:
 .LFB1:
-    .cfi_startproc
-    endbr64
-    movq    coolalloc_used(%rip), %rax
-    movq    coolalloc_buffer(%rip), %r8
-    addq    %rax, %r8
-    leaq    (%rax,%rdi,8), %rax
-    movq    %rax, coolalloc_used(%rip)
-    movq    %r8, %rax
-    ret
-    .cfi_endproc
+	.cfi_startproc
+	endbr64
+	movq	coolalloc_used(%rip), %rax
+	movq	coolalloc_capacity(%rip), %rsi
+	pushq	%rbx
+	.cfi_def_cfa_offset 16
+	.cfi_offset 3, -16
+	leaq	0(,%rdi,8), %rbx
+	leaq	(%rbx,%rax), %rdx
+	cmpq	%rsi, %rdx
+	jge	.LBLAH
+	addq	coolalloc_buffer(%rip), %rax
+	popq	%rbx
+	.cfi_remember_state
+	.cfi_def_cfa_offset 8
+	movq	%rdx, coolalloc_used(%rip)
+	ret
+	.p2align 4,,10
+	.p2align 3
+.LBLAH:
+	.cfi_restore_state
+	movq	coolalloc_buffer(%rip), %rdi
+	addq	%rsi, %rsi
+	movl	$3, %edx
+	movq	%rsi, coolalloc_capacity(%rip)
+	call	mprotect@PLT
+	movq	coolalloc_used(%rip), %rax
+	leaq	(%rbx,%rax), %rdx
+	addq	coolalloc_buffer(%rip), %rax
+	popq	%rbx
+	.cfi_def_cfa_offset 8
+	movq	%rdx, coolalloc_used(%rip)
+	ret
+	.cfi_endproc
 .LFE1:
-    .size    coolalloc, .-coolalloc
-    .globl    coolalloc_used
-    .bss
-    .align 8
-    .type    coolalloc_used, @object
-    .size    coolalloc_used, 8
+	.size	coolalloc, .-coolalloc
+	.globl	coolalloc_used
+	.bss
+	.align 8
+	.type	coolalloc_used, @object
+	.size	coolalloc_used, 8
 coolalloc_used:
-    .zero    8
-    .globl    coolalloc_capacity
-    .align 8
-    .type    coolalloc_capacity, @object
-    .size    coolalloc_capacity, 8
+	.zero	8
+	.globl	coolalloc_capacity
+	.align 8
+	.type	coolalloc_capacity, @object
+	.size	coolalloc_capacity, 8
 coolalloc_capacity:
-    .zero    8
-    .globl    coolalloc_buffer
-    .align 8
-    .type    coolalloc_buffer, @object
-    .size    coolalloc_buffer, 8
+	.zero	8
+	.globl	coolalloc_buffer
+	.align 8
+	.type	coolalloc_buffer, @object
+	.size	coolalloc_buffer, 8
 coolalloc_buffer:
-    .zero    8
-    .ident    "GCC: (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0"
-    .section    .note.GNU-stack,"",@progbits
-    .section    .note.gnu.property,"a"
-    .align 8
-    .long    1f - 0f
-    .long    4f - 1f
-    .long    5
+	.zero	8
+	.ident	"GCC: (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0"
+	.section	.note.GNU-stack,"",@progbits
+	.section	.note.gnu.property,"a"
+	.align 8
+	.long	1f - 0f
+	.long	4f - 1f
+	.long	5
 0:
-    .string    "GNU"
+	.string	"GNU"
 1:
-    .align 8
-    .long    0xc0000002
-    .long    3f - 2f
+	.align 8
+	.long	0xc0000002
+	.long	3f - 2f
 2:
-    .long    0x3
+	.long	0x3
 3:
-    .align 8
+	.align 8
 4:
