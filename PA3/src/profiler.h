@@ -144,7 +144,7 @@ extern int64_t EndProfile(BHProfilerBlock block);
 extern void InitProfiler(void);
 extern void EndProfilerPrintProfile(void);
 
-#define BH_PROFILER_ENABLED 1
+#define BH_PROFILER_ENABLED 0
 
 #ifndef BH_PROFILER_ENABLED
 #define BH_PROFILER_ENABLED 0

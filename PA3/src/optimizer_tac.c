@@ -43,7 +43,9 @@ void remove_phi_expressions(TACList* list)
             if (list->items[i].rhs2.symbol > max_phi) max_phi = list->items[i].rhs2.symbol;
         }
     }
+    max_phi += 1;
     int64_t* phi_bindings = bh_alloc(GPA, max_phi * sizeof(int64_t));
+    memset(phi_bindings, -1, max_phi * sizeof(int64_t));
     for (int i = 0; i < list->count; i++)
     {
         if (list->items[i].operation == TAC_OP_PHI)
@@ -52,27 +54,32 @@ void remove_phi_expressions(TACList* list)
             phi_bindings[list->items[i].rhs2.symbol] = list->items[i].lhs.symbol;
         }
     }
-    memset(phi_bindings, 0, max_phi * sizeof(int64_t));
 
     PROFILE_BLOCK
+    bool rerun_needed = true;
+    while (rerun_needed)
     {
+        rerun_needed = false;
         for (int i = 0; i < list->count; i++)
         {
             TACExpr e = list->items[i];
             if (e.operation != TAC_OP_PHI)
             {
-                if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && e.rhs1.symbol < max_phi && phi_bindings[e.rhs1.symbol])
+                if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && e.rhs1.symbol < max_phi && phi_bindings[e.rhs1.symbol] > -1)
                 {
-                    e.rhs1.symbol = phi_bindings[e.rhs1.symbol];
+                    list->items[i].rhs1.symbol = phi_bindings[e.rhs1.symbol];
+                    rerun_needed = true;
                 }
-                if (e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && e.rhs2.symbol < max_phi && phi_bindings[e.rhs2.symbol])
+                if (e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && e.rhs2.symbol < max_phi && phi_bindings[e.rhs2.symbol] > -1)
                 {
-                    e.rhs2.symbol = phi_bindings[e.rhs2.symbol];
+                    list->items[i].rhs2.symbol = phi_bindings[e.rhs2.symbol];
+                    rerun_needed = true;
                 }
-                if (e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL && e.lhs.symbol < max_phi && phi_bindings[e.lhs.symbol])
-                {
-                    e.lhs.symbol = phi_bindings[e.lhs.symbol];
-                }
+            }
+            if (e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL && e.lhs.symbol < max_phi && phi_bindings[e.lhs.symbol] > -1)
+            {
+                list->items[i].lhs.symbol = phi_bindings[e.lhs.symbol];
+                rerun_needed = true;
             }
         }
     }
@@ -84,7 +91,6 @@ void remove_phi_expressions(TACList* list)
         {
             list->count -= 1;
             memmove(&list->items[i], &list->items[i + 1], (list->count - i) * sizeof(TACExpr));
-            i--;
         }
     }
 }
@@ -185,7 +191,8 @@ void optimize_tac_list(TACList* list)
     PROFILE_BLOCK
     {
         remove_duplicate_phi_expressions(list);
-        // eliminate_dead_tac(list);
+        eliminate_dead_tac(list);
+        eliminate_dead_tac(list);
         remove_phi_expressions(list);
     }
 }

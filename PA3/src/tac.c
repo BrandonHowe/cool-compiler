@@ -400,7 +400,6 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             list->_binding_count = original_binding_count;
             tac_list_from_expression(expr->data.if_expr.then_branch, list, symbol2, add_phi);
             TACBinding* branch2_bindings = list->_bindings;
-            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }}, add_phi);
 
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(if_join_str) }}, add_phi);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join }}, add_phi);

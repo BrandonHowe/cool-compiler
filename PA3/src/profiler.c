@@ -34,11 +34,9 @@ static uint64_t EstimateCPUTimerFreq(void)
 }
 #elif defined(__aarch64__)
 extern inline __attribute__((always_inline)) uint64_t EstimateCPUTimerFreq(void) {
-	// Do a rough estimate using sleep
-	uint64_t start = ReadCPUTimer();
-	usleep(100000); // 100ms
-	uint64_t end = ReadCPUTimer();
-	return (end - start) * 10;
+	uint64_t val;
+	__asm__ volatile("mrs %0, cntfrq_el0" : "=r" (val));
+	return val;
 }
 #elif defined(__x86_64__)
 

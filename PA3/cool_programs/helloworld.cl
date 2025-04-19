@@ -4,22 +4,12 @@ class Z inherits IO {
 
 class Main inherits IO {
     io : IO <- new IO;
-    a() : Object {{
-
-    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
-    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
-    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
-    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
-    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
-    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
-    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
-    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
-    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
-    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
-    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
-    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
-    let x : Int <- 100 in { while (x <- x + 1) < 10 loop { x <- x + 1; } pool; out_int(1); };
-    }};
+    (*main() : Object {{
+    let a : Int <- 1, x : Int <- 100 in { while a < 10 loop { x <- x + 1; a <- a + 1; out_int(x); } pool; out_int(x); };
+    out_int(if 1 < 2 then 5 else 6 fi);
+    let a : Int <- 1 in { while 100 < 10 loop { out_int(a); } pool; };
+    }};*)
+    (*
     main() : Object {{
     if not not not not not not not not not not true then out_int(1) else out_int(2) fi;
     if not not not not not not not not not not true then out_int(1) else out_int(2) fi;
@@ -11369,9 +11359,10 @@ class Main inherits IO {
     if not not not not not not not not not not true then out_int(1) else out_int(2) fi;
     if not not not not not not not not not not true then out_int(1) else out_int(2) fi;
     if not not not not not not not not not not true then out_int(1) else out_int(2) fi;
-    }};
+    }};*)
+    --main() : Object { let a : Int, b : Int, c : Int, d : Int in { while a < 5 loop { a <- a + 1; b <- 1; while b < 5 loop { b <- b + 1; c <- c + 1; } pool; d <- d + 1; out_int(a); out_int(b); out_int(c); out_int(d); } pool; out_int(a); out_int(b); out_int(c); out_int(d); } };
     --main() : Object { (new A).print(5) };
-    --main() : Object { let a : Int, b : Int, c : Int, d : Int in { a <- in_int(); b <- in_int(); if not a = b then { c <- in_int(); d <- in_int(); if not c = d then out_int(500) else out_int(999) fi; } else out_int(a / b) fi; } };
+    main() : Object { let a : Int, b : Int, c : Int, d : Int in { a <- in_int(); b <- in_int(); if not a = b then { c <- in_int(); d <- in_int(); if not c = d then out_int(500) else out_int(999) fi; } else out_int(a / b) fi; } };
     --main() : Object { while x < 100 loop x <- x + 1 pool };
     --main() : Object { if not true then io.out_int(123) else io.out_int(~246) fi };
     --main() : Object { let x : Int, a : Int in { x <- in_int(); while a < x loop { a <- a + 1; out_int(a / 5); } pool; } };
