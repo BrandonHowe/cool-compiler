@@ -442,21 +442,37 @@ void asm_list_append_error_str(ASMList* asm_list, const bh_str label, const bh_s
     asm_list->error_str_count += 1;
 }
 
-void asm_list_create_error(ASMList* asm_list, bh_str error_label, const int64_t line_num, const char* message)
+void asm_list_append_runtime_error(ASMList* asm_list, const int64_t line_num, const char* message)
 {
+    // Create bh_str for error and message
+    bh_str error_label = asm_list_create_error_label(asm_list);
     bh_str_buf message_buf = bh_str_buf_init(asm_list->string_allocator, 20);
     bh_str_buf_append_format(&message_buf, "ERROR: %i: Exception: ", line_num);
     bh_str_buf_append_lit(&message_buf, message);
     bh_str_buf_append_lit(&message_buf, "\\n");
     bh_str message_str = (bh_str){ .buf = message_buf.buf, .len = message_buf.len };
 
+    // Add the strings to the list of strings
     asm_list_append_error_str(asm_list, error_label, message_str);
+
+    // Call out_string andabort
+    asm_list_append_la_label(asm_list, R13, error_label);
+    asm_list_append_syscall(asm_list, asm_list->io_class_idx, 6);
+    asm_list_append_syscall(asm_list, INTERNAL_CLASS, 0);
 }
 
-void asm_list_append_runtime_error(ASMList* asm_list, const int64_t line_num, const char* message)
+void asm_list_append_runtime_error_bh_str(ASMList* asm_list, const int64_t line_num, bh_str message)
 {
+    // Create bh_str for error and message
     bh_str error_label = asm_list_create_error_label(asm_list);
-    asm_list_create_error(asm_list, error_label, line_num, message);
+    bh_str_buf message_buf = bh_str_buf_init(asm_list->string_allocator, 20);
+    bh_str_buf_append_format(&message_buf, "ERROR: %i: Exception: ", line_num);
+    bh_str_buf_append(&message_buf, message);
+    bh_str_buf_append_lit(&message_buf, "\\n");
+    bh_str message_str = (bh_str){ .buf = message_buf.buf, .len = message_buf.len };
+
+    // Add the strings to the list of strings
+    asm_list_append_error_str(asm_list, error_label, message_str);
 
     asm_list_append_la_label(asm_list, R13, error_label);
     asm_list_append_syscall(asm_list, asm_list->io_class_idx, 6);
@@ -1064,6 +1080,25 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             asm_list_append_bnz(asm_list, R13, (bh_str){ .buf = str_buf.buf, .len = str_buf.len });
             break;
         }
+        case TAC_OP_IS_CLASS:
+            // NOTE: This relies on the fact that an isclass op will always be succeeded by a bt op
+            asm_list_append_ld(asm_list, R13, RBP, -0 - expr.rhs1.symbol);
+            // asm_list_append_ld(asm_list, R13, R13, 0);
+            asm_list_append_li(asm_list, R14, expr.rhs2.integer, ASMImmediateUnitsBase);
+
+            i++; // Now we handle the bt instruction
+
+            bh_str_buf str_buf = bh_str_buf_init(asm_list->string_allocator, class_name.len + tac_list.method_name.len + 6);
+            bh_str_buf_append(&str_buf, class_name);
+            bh_str_buf_append_lit(&str_buf, "_");
+            bh_str_buf_append(&str_buf, tac_list.method_name);
+            bh_str_buf_append_format(&str_buf, "_%i", tac_list.items[i].rhs2.integer);
+            asm_from_tac_symbol(asm_list, expr.rhs1);
+            asm_list_append_beq(asm_list, R14, R13, (bh_str){ .buf = str_buf.buf, .len = str_buf.len });
+            break;
+        case TAC_OP_RUNTIME_ERROR:
+            asm_list_append_runtime_error_bh_str(asm_list, expr.line_num, expr.rhs1.string.data);
+            break;
         case TAC_OP_CASE:
         {
             asm_list_append_comment(asm_list, "TAC CASE STATEMENT");

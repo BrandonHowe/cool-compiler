@@ -505,6 +505,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_join } }, add_phi);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_DEFAULT, .lhs = destination, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(object_str) }}, add_phi);
 
+            bh_free(GPA, original_bindings);
             return destination;
         }
         break;
@@ -673,38 +674,138 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
         }
     case COOL_EXPR_TYPE_CASE:
         {
-            TACSymbol dest1 = TAC_request_symbol(list);
-            tac_list_from_expression(expr->data.case_expr.expr, list, dest1, add_phi);
-            TACExpr tac = (TACExpr){
-                .operation = TAC_OP_CASE,
+            // Generate all the if statements
+            TACSymbol expr_symbol = TAC_request_symbol(list);
+            tac_list_from_expression(expr->data.case_expr.expr, list, expr_symbol, add_phi);
+
+            int64_t void_label = list->_curr_label++;
+            int64_t error_label = list->_curr_label++;
+            int64_t case_count = expr->data.case_expr.element_count;
+
+            TACSymbol expr_is_void = TAC_request_symbol(list);
+            TACExpr isvoid_expr = (TACExpr) {
+                .operation = TAC_OP_ISVOID,
                 .line_num = expr->line_num,
-                .lhs = destination,
-                .rhs1 = dest1,
-                .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_EXPRESSION, .expression = expr },
+                .lhs = expr_is_void,
+                .rhs1 = expr_symbol,
             };
-            tac.branch_count = expr->data.case_expr.element_count;
-            tac.branches = bh_alloc(list->allocator, sizeof(TACList) * expr->data.case_expr.element_count);
-            for (int i = 0; i < tac.branch_count; i++)
+            TAC_list_append(list, isvoid_expr, add_phi);
+            TAC_list_append(list, (TACExpr){
+                .operation = TAC_OP_BT,
+                .line_num = expr->line_num,
+                .rhs1 = expr_is_void,
+                .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = void_label }
+            }, add_phi);
+
+            // Figre out which class maps to which label
+            for (int i = 0; i < list->class_list.class_count; i++)
             {
-                tac.branches[i] = TAC_list_init_no_bindings(100, list->allocator);
-                tac.branches[i].class_list = list->class_list;
-                tac.branches[i].class_idx = list->class_idx;
-                tac.branches[i].method_idx = list->method_idx;
-                tac.branches[i].method_name = list->method_name;
-                tac.branches[i]._binding_count = list->_binding_count;
-                tac.branches[i]._bindings = list->_bindings;
-                tac.branches[i]._curr_label = list->_curr_label;
-                tac.branches[i]._curr_symbol = list->_curr_symbol;
-                tac.branches[i]._bindings[list->_binding_count] = (TACBinding){
-                    .name = expr->data.case_expr.elements[i].variable.name,
-                    .symbol = dest1
-                };
-                tac.branches[i]._binding_count = list->_binding_count + 1;
-                tac_list_from_expression(expr->data.case_expr.elements[i].body, &tac.branches[i], destination, add_phi);
-                optimize_tac_list(&tac.branches[i]);
+                ClassNode class_node = list->class_list.class_nodes[i];
+                int64_t class_tag = i;
+                if (bh_str_equal_lit(class_node.name, "Bool")) class_tag = -1;
+                if (bh_str_equal_lit(class_node.name, "Int")) class_tag = -2;
+                if (bh_str_equal_lit(class_node.name, "String")) class_tag = -3;
+
+                // figure out which case branch it is mapped to
+                ClassNode* branch_class = &class_node;
+                int64_t correct_branch = -1;
+                while (branch_class != NULL && correct_branch == -1)
+                {
+                    for (int k = 0; k < case_count; k++)
+                    {
+                        CoolCaseElement element = expr->data.case_expr.elements[k];
+                        if (bh_str_equal(element.type_name.name, branch_class->name))
+                        {
+                            correct_branch = k;
+                            break;
+                        }
+                    }
+
+                    branch_class = branch_class->parent;
+                }
+
+                // generate the TAC expressions to branch to the correct label
+                TACSymbol cond = TAC_request_symbol(list);
+                TAC_list_append(list, (TACExpr){
+                    .operation = TAC_OP_IS_CLASS,
+                    .lhs = cond,
+                    .rhs1 = expr_symbol,
+                    .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_CLASSIDX, .integer = class_tag }
+                }, add_phi);
+                if (correct_branch == -1)
+                {
+                    TAC_list_append(list, (TACExpr){
+                        .operation = TAC_OP_BT,
+                        .rhs1 = cond,
+                        .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = error_label }
+                    }, add_phi);
+                }
+                else
+                {
+                    TAC_list_append(list, (TACExpr){
+                        .operation = TAC_OP_BT,
+                        .rhs1 = cond,
+                        .rhs2 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = list->_curr_label + correct_branch }
+                    }, add_phi);
+                }
             }
-            TAC_list_append(list, tac, add_phi);
-            return tac.lhs;
+
+            // TODO: remove codegen for unnecessary labels that are never hit (look at AST types)
+
+            int64_t join_label = list->_curr_label + expr->data.case_expr.element_count;
+
+            // if value is void
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = void_label }}, add_phi);
+            bh_str void_str = bh_str_alloc_cstr(list->allocator, "case on void");
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_RUNTIME_ERROR, .line_num = expr->line_num, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = void_str }}, add_phi);
+
+            // if no matching branch found
+
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = error_label }}, add_phi);
+            bh_str error_str = bh_str_alloc_cstr(list->allocator, "case without matching branch");
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_RUNTIME_ERROR, .line_num = expr->line_num, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = error_str }}, add_phi);
+
+            // each branch expressions as TAC
+            int64_t base_label = list->_curr_label++;
+            int64_t base_dest = list->_curr_symbol;
+            list->_curr_symbol += expr->data.case_expr.element_count;
+            list->_curr_label += expr->data.case_expr.element_count;
+            for (int i = 0; i < expr->data.case_expr.element_count; i++)
+            {
+                // Label setup
+                TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = base_label + i }}, add_phi);
+                TACSymbol branch_dest = (TACSymbol){ .type = TAC_SYMBOL_TYPE_SYMBOL, .symbol = base_dest + i };
+
+                // Add binding
+                TACSymbol new_symbol = TAC_request_symbol(list);
+                list->_bindings[list->_binding_count] = (TACBinding){
+                    .name = expr->data.case_expr.elements[i].variable.name,
+                    .symbol = new_symbol,
+                    .original_symbol = new_symbol
+                };
+                list->_binding_count += 1;
+
+                tac_list_from_expression(expr->data.case_expr.elements[i].body, list, branch_dest, add_phi);
+
+                list->_binding_count -= 1;
+
+                if (i < expr->data.case_expr.element_count - 1) // no need to jump on the last one
+                {
+                    TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = join_label }}, add_phi);
+                }
+            }
+
+            // case join (phi functions)
+            TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = join_label } }, add_phi);
+            TACSymbol last_symbol = (TACSymbol){ .type = TAC_SYMBOL_TYPE_SYMBOL, .symbol = base_dest };
+            for (int i = 1; i < expr->data.case_expr.element_count; i++)
+            {
+                TACSymbol new_symbol = i == expr->data.case_expr.element_count - 1 ? destination : TAC_request_symbol(list);
+                TACSymbol branch_dest = (TACSymbol){ .type = TAC_SYMBOL_TYPE_SYMBOL, .symbol = base_dest + i };
+                TAC_list_append(list, (TACExpr){ .operation = TAC_OP_PHI, .lhs = new_symbol, .rhs1 = last_symbol, .rhs2 = branch_dest }, add_phi);
+                last_symbol = new_symbol;
+            }
+            return destination;
         }
     default:
         assert(0 && "Unhandled expression type when generating TAC");

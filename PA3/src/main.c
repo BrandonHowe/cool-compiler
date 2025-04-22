@@ -26,7 +26,7 @@ typedef enum Mode
     MODE_BOTH,
 } Mode;
 
-#define MODE MODE_TAC_SHOW_CASE
+#define MODE MODE_X86_ONLY
 
 void append_tac_symbol(bh_str_buf* str_buf, ClassNodeList class_list, TACSymbol symbol)
 {
@@ -39,6 +39,22 @@ void append_tac_symbol(bh_str_buf* str_buf, ClassNodeList class_list, TACSymbol 
         // bh_str_buf_append_format(str_buf, "$%i", symbol.variable.version);
         break;
     case TAC_SYMBOL_TYPE_INTEGER: bh_str_buf_append_format(str_buf, "%i", symbol.integer); break;
+    case TAC_SYMBOL_TYPE_CLASSIDX:
+        for (int i = 0; i < class_list.class_count; i++)
+        {
+            ClassNode class_node = class_list.class_nodes[i];
+            int64_t class_tag = i;
+            if (bh_str_equal_lit(class_node.name, "Bool")) class_tag = -1;
+            if (bh_str_equal_lit(class_node.name, "Int")) class_tag = -2;
+            if (bh_str_equal_lit(class_node.name, "String")) class_tag = -3;
+            if (class_tag == symbol.integer)
+            {
+                bh_str_buf_append(str_buf, class_node.name);
+                return;
+            }
+        }
+        bh_str_buf_append_lit(str_buf, "invalid");
+        break;
     case TAC_SYMBOL_TYPE_STRING: bh_str_buf_append(str_buf, symbol.string.data); break;
     case TAC_SYMBOL_TYPE_BOOL: bh_str_buf_append_format(str_buf, "%s", symbol.integer ? "true" : "false"); break;
     case TAC_SYMBOL_TYPE_METHOD: bh_str_buf_append(str_buf, class_list.class_nodes[symbol.method.class_idx].methods[symbol.method.method_idx].name); break;
@@ -82,6 +98,7 @@ void display_tac_expr(bh_str_buf* str_buf, TACList tac_list, TACExpr expr)
     case TAC_OP_NEW: bh_str_buf_append_lit(str_buf, "new "); break;
     case TAC_OP_DEFAULT: bh_str_buf_append_lit(str_buf, "default "); break;
     case TAC_OP_ISVOID: bh_str_buf_append_lit(str_buf, "isvoid "); break;
+    case TAC_OP_IS_CLASS: bh_str_buf_append_lit(str_buf, "isclass "); break;
     case TAC_OP_PHI:bh_str_buf_append_lit(str_buf, "phi "); break;
     case TAC_OP_CALL: bh_str_buf_append_lit(str_buf, "call "); break;
     case TAC_OP_JMP:
@@ -119,6 +136,9 @@ void display_tac_expr(bh_str_buf* str_buf, TACList tac_list, TACExpr expr)
     case TAC_OP_RETURN: bh_str_buf_append_lit(str_buf, "return "); break;
     case TAC_OP_COMMENT: bh_str_buf_append_lit(str_buf, "comment "); break;
     case TAC_OP_BT: bh_str_buf_append_lit(str_buf, "bt "); break;
+    case TAC_OP_RUNTIME_ERROR:
+        bh_str_buf_append_format(str_buf, "ERROR %i: Exception: ", expr.line_num);
+        break;
     default: assert(0 && "Invalid expression");
     }
     append_tac_symbol(str_buf, tac_list.class_list, expr.rhs1);
