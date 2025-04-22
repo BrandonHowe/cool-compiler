@@ -115,24 +115,6 @@ void display_tac_expr(bh_str_buf* str_buf, TACList tac_list, TACExpr expr)
         bh_str_buf_append(str_buf, tac_list.method_name);
         bh_str_buf_append_lit(str_buf, "_");
         break;
-    case TAC_OP_CASE:
-        bh_str_buf_append_lit(str_buf, "case ");
-        if (MODE == MODE_TAC_SHOW_CASE || MODE == MODE_BOTH)
-        {
-            append_tac_symbol(str_buf, tac_list.class_list, expr.rhs1);
-            bh_str_buf_append_lit(str_buf, "\n");
-            for (int i = 0; i < expr.branch_count; i++)
-            {
-                bh_str_buf_append_format(str_buf, "comment case branch %i\n", i);
-                for (int j = 0; j < expr.branches[i].count; j++)
-                {
-                    display_tac_expr(str_buf, tac_list, expr.branches[i].items[j]);
-                }
-            }
-            bh_str_buf_append_lit(str_buf, "comment end of case\n");
-            return;
-        }
-        break;
     case TAC_OP_RETURN: bh_str_buf_append_lit(str_buf, "return "); break;
     case TAC_OP_COMMENT: bh_str_buf_append_lit(str_buf, "comment "); break;
     case TAC_OP_BT: bh_str_buf_append_lit(str_buf, "bt "); break;

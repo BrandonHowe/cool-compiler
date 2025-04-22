@@ -62,7 +62,6 @@ typedef enum TACOp
     TAC_OP_DEFAULT,
     TAC_OP_ISVOID,
     TAC_OP_IS_CLASS,
-    TAC_OP_CASE,
     TAC_OP_PHI,
     TAC_OP_CALL,
     TAC_OP_JMP,
