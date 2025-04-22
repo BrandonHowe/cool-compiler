@@ -633,6 +633,7 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
         }
 
         asm_list_append_comment(asm_list, "initialize attributes");
+        int64_t label = 0;
         for (int i = 0; i < class_node.attribute_count; i++) // initialize attributes
         {
             const ClassAttribute attribute = class_node.attributes[i];
@@ -643,6 +644,7 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
                 TACList list = TAC_list_init(1000, asm_list->tac_allocator);
                 list.class_list = *asm_list->class_list;
                 list.class_idx = class_idx;
+                list._curr_label = label;
 
                 tac_list_from_expression(&attribute.expr, &list, (TACSymbol){ 0 }, false);
                 optimize_tac_list(&list);
@@ -650,6 +652,7 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
                 asm_list_append_st(asm_list, R12, i + 3, R13);
                 // arena_free_all(asm_list->tac_allocator);
 
+                label = list._curr_label;
                 if (list._curr_symbol > extra_temps)
                 {
                     extra_temps = list._curr_symbol;

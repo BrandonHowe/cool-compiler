@@ -760,16 +760,15 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_RUNTIME_ERROR, .line_num = expr->line_num, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = void_str }}, add_phi);
 
             // if no matching branch found
-
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_LABEL, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = error_label }}, add_phi);
             bh_str error_str = bh_str_alloc_cstr(list->allocator, "case without matching branch");
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_RUNTIME_ERROR, .line_num = expr->line_num, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = error_str }}, add_phi);
 
             // each branch expressions as TAC
-            int64_t base_label = list->_curr_label++;
+            int64_t base_label = list->_curr_label;
             int64_t base_dest = list->_curr_symbol;
-            list->_curr_symbol += expr->data.case_expr.element_count;
             list->_curr_label += expr->data.case_expr.element_count;
+            list->_curr_symbol += expr->data.case_expr.element_count;
             for (int i = 0; i < expr->data.case_expr.element_count; i++)
             {
                 // Label setup
