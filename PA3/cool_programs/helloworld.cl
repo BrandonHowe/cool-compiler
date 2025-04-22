@@ -12,8 +12,8 @@ b : Int <- let x : Int <- 5 in
                  b : String => 10;
                  c : Object => 11;
                esac;
-c : Int <- let x : Object <- 5 in
-               case x of
+c : Int <- let x : Object <- 5, y : Int <- 8 in
+               case if 1 < 2 then x else y fi of
                  a : Int => if a < 9 then 1 else 2 fi;
                  b : String => 10;
                  c : Object => 11;
