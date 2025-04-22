@@ -767,7 +767,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             // each branch expressions as TAC
             int64_t base_label = list->_curr_label;
             int64_t base_dest = list->_curr_symbol;
-            list->_curr_label += expr->data.case_expr.element_count;
+            list->_curr_label += expr->data.case_expr.element_count + 1;
             list->_curr_symbol += expr->data.case_expr.element_count;
             for (int i = 0; i < expr->data.case_expr.element_count; i++)
             {
