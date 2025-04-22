@@ -1083,7 +1083,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
         case TAC_OP_IS_CLASS:
             // NOTE: This relies on the fact that an isclass op will always be succeeded by a bt op
             asm_list_append_ld(asm_list, R13, RBP, -0 - expr.rhs1.symbol);
-            // asm_list_append_ld(asm_list, R13, R13, 0);
+            asm_list_append_ld(asm_list, R13, R13, 0);
             asm_list_append_li(asm_list, R14, expr.rhs2.integer, ASMImmediateUnitsBase);
 
             i++; // Now we handle the bt instruction

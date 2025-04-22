@@ -777,11 +777,10 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 TACSymbol branch_dest = (TACSymbol){ .type = TAC_SYMBOL_TYPE_SYMBOL, .symbol = base_dest + i };
 
                 // Add binding
-                TACSymbol new_symbol = TAC_request_symbol(list);
                 list->_bindings[list->_binding_count] = (TACBinding){
                     .name = expr->data.case_expr.elements[i].variable.name,
-                    .symbol = new_symbol,
-                    .original_symbol = new_symbol
+                    .symbol = expr_symbol,
+                    .original_symbol = expr_symbol
                 };
                 list->_binding_count += 1;
 
