@@ -65,12 +65,18 @@ void remove_phi_expressions(TACList* list)
             TACExpr e = list->items[i];
             if (e.operation != TAC_OP_PHI)
             {
-                if ((e.rhs1.type == TAC_SYMBOL_TYPE_VARIABLE || e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL) && e.rhs1.symbol < max_phi && phi_bindings[e.rhs1.symbol].type > 0)
+                if ((e.rhs1.type == TAC_SYMBOL_TYPE_VARIABLE || e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL) &&
+                    e.rhs1.symbol < max_phi &&
+                    phi_bindings[e.rhs1.symbol].type > 0 &&
+                    !tac_symbol_equal(list->items[i].rhs1, phi_bindings[e.rhs1.symbol]))
                 {
                     list->items[i].rhs1 = phi_bindings[e.rhs1.symbol];
                     rerun_needed = true;
                 }
-                if ((e.rhs2.type == TAC_SYMBOL_TYPE_VARIABLE || e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL) && e.rhs2.symbol < max_phi && phi_bindings[e.rhs2.symbol].type > 0)
+                if ((e.rhs2.type == TAC_SYMBOL_TYPE_VARIABLE || e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL) &&
+                    e.rhs2.symbol < max_phi &&
+                    phi_bindings[e.rhs2.symbol].type > 0 &&
+                    !tac_symbol_equal(list->items[i].rhs1, phi_bindings[e.rhs1.symbol]))
                 {
                     list->items[i].rhs2 = phi_bindings[e.rhs2.symbol];
                     rerun_needed = true;
@@ -304,8 +310,8 @@ void optimize_tac_list(TACList* list)
     {
         remove_duplicate_phi_expressions(list);
         // eliminate_dead_tac(list);
-        perform_substitutions(list);
-        remove_empty_exprs(list);
+        // perform_substitutions(list);
+        // remove_empty_exprs(list);
         remove_phi_expressions(list);
         // compress_tac_symbols(list, NULL, 0, 1);
     }
