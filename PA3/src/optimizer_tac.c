@@ -283,8 +283,8 @@ void perform_substitutions(TACList* list)
             {
                 TACExpr e2 = list->items[j];
                 // if (e2.lhs.symbol == e.lhs.symbol) list->items[j].lhs.symbol = e.rhs1.symbol;
-                if (e2.rhs1.symbol == e.lhs.symbol) list->items[j].rhs1.symbol = e.rhs1.symbol;
-                if (e2.rhs2.symbol == e.lhs.symbol) list->items[j].rhs2.symbol = e.rhs1.symbol;
+                if (tac_symbol_equal(e2.rhs1, e.lhs)) list->items[j].rhs1.symbol = e.rhs1.symbol;
+                if (tac_symbol_equal(e2.rhs2, e.lhs)) list->items[j].rhs2.symbol = e.rhs1.symbol;
             }
             list->items[i] = (TACExpr){ 0 };
         }

@@ -816,6 +816,10 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                 TAC_list_append(list, (TACExpr){ .operation = TAC_OP_PHI, .lhs = new_symbol, .rhs1 = last_symbol, .rhs2 = branch_dest }, add_phi);
                 last_symbol = new_symbol;
             }
+            if (expr->data.case_expr.element_count == 1)
+            {
+                TAC_list_append(list, (TACExpr){ .operation = TAC_OP_ASSIGN, .lhs = destination, .rhs1 = last_symbol }, add_phi);
+            }
             return destination;
         }
     default:
