@@ -460,43 +460,55 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
             TAC_list_append(list, bt_false, add_phi);
             TACSlice cond_slice = (TACSlice){ .items = &list->items[cond_start], .count = list->count - cond_start };
 
+            int64_t body_start = list->count;
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_COMMENT, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = bh_str_from_cstr(while_body_str) }}, add_phi);
             tac_list_from_expression(expr->data.while_expr.body, list, TAC_request_symbol(list), add_phi);
             TAC_list_append(list, (TACExpr){ .operation = TAC_OP_JMP, .rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = label_cond }}, add_phi);
+            TACSlice body_slice = (TACSlice){ .items = &list->items[body_start], .count = list->count - body_start };
 
             for (int i = 0; i < original_binding_count; i++)
             {
                 if (!tac_symbol_equal(list->_bindings[i].symbol, original_bindings[i].symbol))
                 {
-                    bool replacement_found = false;
-                    // TODO TOMORROW: Get rid of this for loop, make it insert phi's everywhere.
-                    // If it's a variable (e.g. a) the LHS is also a, otherwise it's just t
-                    // for (int j = 0; j < cond_slice.count; j++)
-                    // {
-                    //     if (tac_symbol_equal(cond_slice.items[j].rhs1, original_bindings[i].symbol))
-                    //     {
-                    //         cond_slice.items[j].operation = TAC_OP_PHI;
-                    //         cond_slice.items[j].rhs2 = list->_bindings[i].symbol;
-                    //         replacement_found = true;
-                    //     }
-                    // }
-                    if (!replacement_found)
+                    TACSymbol new_symbol = TAC_request_symbol(list);
+                    if (list->_bindings[i].symbol.type == TAC_SYMBOL_TYPE_VARIABLE)
                     {
-                        TACSymbol new_symbol = TAC_request_symbol(list);
-                        if (list->_bindings[i].symbol.type == TAC_SYMBOL_TYPE_VARIABLE)
+                        new_symbol.type = TAC_SYMBOL_TYPE_VARIABLE;
+                        new_symbol.variable.data = list->_bindings[i].symbol.variable.data;
+                    }
+                    const TACExpr phi = (TACExpr){
+                        .operation = TAC_OP_PHI,
+                        .line_num = expr->line_num,
+                        .lhs = new_symbol,
+                        .rhs1 = list->_bindings[i].symbol,
+                        .rhs2 = original_bindings[i].symbol
+                    };
+                    TAC_list_insert_at(list, phi, cond_start);
+                    cond_slice.count += 1;
+                    list->_bindings[i].symbol = new_symbol;
+
+                    for (int j = i; j < cond_slice.count; j++)
+                    {
+                        if (tac_symbol_equal(cond_slice.items[j].rhs1, original_bindings[i].symbol))
                         {
-                            new_symbol.type = TAC_SYMBOL_TYPE_VARIABLE;
-                            new_symbol.variable.data = list->_bindings[i].symbol.variable.data;
+                            cond_slice.items[j].rhs1 = new_symbol;
                         }
-                        const TACExpr phi = (TACExpr){
-                            .operation = TAC_OP_PHI,
-                            .line_num = expr->line_num,
-                            .lhs = new_symbol,
-                            .rhs1 = list->_bindings[i].symbol,
-                            .rhs2 = original_bindings[i].symbol
-                        };
-                        TAC_list_insert_at(list, phi, cond_start);
-                        list->_bindings[i].symbol = new_symbol;
+                        if (tac_symbol_equal(cond_slice.items[j].rhs2, original_bindings[i].symbol))
+                        {
+                            cond_slice.items[j].rhs2 = new_symbol;
+                        }
+                    }
+
+                    for (int j = 0; j < body_slice.count; j++)
+                    {
+                        if (tac_symbol_equal(body_slice.items[j].rhs1, original_bindings[i].symbol))
+                        {
+                            body_slice.items[j].rhs1 = new_symbol;
+                        }
+                        if (tac_symbol_equal(body_slice.items[j].rhs2, original_bindings[i].symbol))
+                        {
+                            body_slice.items[j].rhs2 = new_symbol;
+                        }
                     }
                 }
             }
