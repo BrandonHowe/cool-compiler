@@ -18,7 +18,7 @@ for file in ../bad_programs2/*; do
     gcc -w --no-pie --static -g ../cool_programs/helloworld.s
     ./a.out &> reference_output
 
-    # diff my_output reference_output
+    diff my_output reference_output
 done
 
 rm my_output
