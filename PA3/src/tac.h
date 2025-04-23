@@ -97,6 +97,28 @@ typedef struct TACExpr
     };
 } TACExpr;
 
+
+// Non owning version of TACList (for CFG etc)
+typedef struct TACSlice
+{
+    int64_t count;
+    TACExpr* items;
+} TACSlice;
+
+typedef struct CFGBlock
+{
+    int16_t id;
+    TACSlice tac_contents;
+    struct CFGBlock* next[2];
+} CFGBlock;
+
+typedef struct CFG
+{
+    CFGBlock* blocks;
+    int16_t block_count;
+    int16_t block_capacity;
+} CFG;
+
 typedef struct TACList
 {
     int64_t count;
@@ -107,6 +129,7 @@ typedef struct TACList
     TACExpr* items;
     bh_allocator allocator;
     ClassNodeList class_list;
+    CFG cfg;
 
     int64_t _curr_label;
     int64_t _curr_symbol;
@@ -114,13 +137,6 @@ typedef struct TACList
     TACBinding* _bindings;
     int64_t _binding_count;
 } TACList;
-
-// Non owning version of TACList (for CFG etc)
-typedef struct TACSlice
-{
-    int64_t count;
-    TACExpr* items;
-} TACSlice;
 
 TACExpr* TAC_list_append(TACList* list, TACExpr expr, bool add_phi);
 TACList TAC_list_init(int64_t capacity, bh_allocator allocator);
@@ -130,5 +146,6 @@ TACList tac_list_from_class_list(ClassNodeList class_list, bh_allocator allocato
 TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TACSymbol destination, bool add_phi);
 TACList tac_list_from_method(const ClassMethod* method, bh_allocator allocator);
 bool tac_symbol_equal(TACSymbol s1, TACSymbol s2);
+void generate_cfg_for_tac_list(TACList* tac_list);
 
 #endif //TAC_H

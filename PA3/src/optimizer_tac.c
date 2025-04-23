@@ -76,10 +76,22 @@ void remove_phi_expressions(TACList* list)
                 if ((e.rhs2.type == TAC_SYMBOL_TYPE_VARIABLE || e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL) &&
                     e.rhs2.symbol < max_phi &&
                     phi_bindings[e.rhs2.symbol].type > 0 &&
-                    !tac_symbol_equal(list->items[i].rhs1, phi_bindings[e.rhs1.symbol]))
+                    !tac_symbol_equal(list->items[i].rhs2, phi_bindings[e.rhs2.symbol]))
                 {
                     list->items[i].rhs2 = phi_bindings[e.rhs2.symbol];
                     rerun_needed = true;
+                }
+                for (int j = 0; j < e.arg_count; j++)
+                {
+                    TACSymbol arg = e.args[j];
+                    if ((arg.type == TAC_SYMBOL_TYPE_VARIABLE || arg.type == TAC_SYMBOL_TYPE_SYMBOL) &&
+                        arg.symbol < max_phi &&
+                        phi_bindings[arg.symbol].type > 0 &&
+                        !tac_symbol_equal(list->items[i].rhs1, phi_bindings[arg.symbol]))
+                    {
+                        list->items[i].args[j] = phi_bindings[arg.symbol];
+                        rerun_needed = true;
+                    }
                 }
             }
             if ((e.lhs.type == TAC_SYMBOL_TYPE_VARIABLE || e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL) && e.lhs.symbol < max_phi && phi_bindings[e.lhs.symbol].type > 0)
@@ -271,6 +283,31 @@ int64_t compress_tac_symbols(TACList* list, int64_t* symbols, int64_t old_max_sy
     return current_symbol;
 }
 
+void remove_double_nots(TACList* list)
+{
+    for (int i = 0; i < list->count - 1; i++)
+    {
+        if (list->items[i].operation == TAC_OP_NOT && list->items[i + 1].operation == TAC_OP_NOT)
+        {
+            if (tac_symbol_equal(list->items[i + 1].rhs1, list->items[i].lhs))
+            {
+                list->items[i].operation = TAC_OP_ASSIGN;
+                list->items[i].lhs = list->items[i + 1].lhs;
+                list->items[i + 1] = (TACExpr){ 0 };
+            }
+        }
+        if (list->items[i].operation == TAC_OP_NEG && list->items[i + 1].operation == TAC_OP_NEG)
+        {
+            if (tac_symbol_equal(list->items[i + 1].rhs1, list->items[i].lhs))
+            {
+                list->items[i].operation = TAC_OP_ASSIGN;
+                list->items[i].lhs = list->items[i + 1].lhs;
+                list->items[i + 1] = (TACExpr){ 0 };
+            }
+        }
+    }
+}
+
 void perform_substitutions(TACList* list)
 {
     // TODO: use a fake hashmap to make this O(n) instead of O(n2)
@@ -281,10 +318,15 @@ void perform_substitutions(TACList* list)
         {
             for (int j = 0; j < list->count; j++)
             {
+                if (i == j) continue;
                 TACExpr e2 = list->items[j];
                 // if (e2.lhs.symbol == e.lhs.symbol) list->items[j].lhs.symbol = e.rhs1.symbol;
                 if (tac_symbol_equal(e2.rhs1, e.lhs)) list->items[j].rhs1.symbol = e.rhs1.symbol;
                 if (tac_symbol_equal(e2.rhs2, e.lhs)) list->items[j].rhs2.symbol = e.rhs1.symbol;
+                for (int k = 0; k < e2.arg_count; k++)
+                {
+                    if (tac_symbol_equal(e2.args[k], e.lhs)) list->items[j].args[k].symbol = e.rhs1.symbol;
+                }
             }
             list->items[i] = (TACExpr){ 0 };
         }
@@ -310,8 +352,10 @@ void optimize_tac_list(TACList* list)
     {
         remove_duplicate_phi_expressions(list);
         // eliminate_dead_tac(list);
-        // perform_substitutions(list);
-        // remove_empty_exprs(list);
+        // remove_double_nots(list);
+        // generate_cfg_for_tac_list(list);
+        perform_substitutions(list);
+        remove_empty_exprs(list);
         remove_phi_expressions(list);
         // compress_tac_symbols(list, NULL, 0, 1);
     }

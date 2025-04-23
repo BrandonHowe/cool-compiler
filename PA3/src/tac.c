@@ -850,3 +850,66 @@ bool tac_symbol_equal(const TACSymbol s1, const TACSymbol s2)
         return false;  // Unknown type
     }
 }
+
+void generate_cfg_for_tac_list(TACList* tac_list)
+{
+    CFG cfg = (CFG){ 0 };
+    cfg.block_capacity = 1;
+    cfg.blocks = bh_alloc(tac_list->allocator, sizeof(CFGBlock) * 1);
+
+    // Separate the TAC into parts based on control flow
+    int block_len = 0;
+    int block_start = 0;
+    for (int k = 0; k < tac_list->count; k++)
+    {
+        block_len += 1;
+
+        TACExpr expr = tac_list->items[k];
+        if (expr.operation == TAC_OP_JMP ||
+            expr.operation == TAC_OP_BT)
+        {
+            CFGBlock block = (CFGBlock){
+                .id = cfg.block_count + 1,
+                .tac_contents = (TACSlice){ .count = block_len, .items = &tac_list->items[block_start] }
+            };
+
+            if (expr.operation == TAC_OP_JMP)
+            {
+                block.next[0] = &cfg.blocks[expr.rhs1.integer + 1];
+            }
+            if (expr.operation == TAC_OP_BT)
+            {
+                block.next[0] = &cfg.blocks[cfg.block_count + 1];
+                block.next[1] = &cfg.blocks[expr.rhs2.integer + 1];
+            }
+
+            if (cfg.block_count + 1 > cfg.block_capacity)
+            {
+                cfg.blocks = bh_realloc(tac_list->allocator, cfg.blocks, sizeof(CFGBlock) * cfg.block_capacity * 2);
+                cfg.block_capacity *= 2;
+            }
+
+            cfg.blocks[cfg.block_count++] = block;
+            block_len = 0;
+            block_start = k + 1;
+        }
+    }
+
+    if (block_len > 0)
+    {
+        CFGBlock block = (CFGBlock){
+            .id = cfg.block_count + 1,
+            .tac_contents = (TACSlice){ .count = block_len, .items = &tac_list->items[block_start] }
+        };
+
+        if (cfg.block_count + 1 > cfg.block_capacity)
+        {
+            bh_realloc(tac_list->allocator, cfg.blocks, sizeof(CFGBlock) * cfg.block_capacity * 2);
+            cfg.block_capacity *= 2;
+        }
+
+        cfg.blocks[cfg.block_count++] = block;
+    }
+
+    tac_list->cfg = cfg;
+}

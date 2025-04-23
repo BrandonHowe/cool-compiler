@@ -10,7 +10,6 @@
 
 #include "assembly.h"
 #include "ast.h"
-#include "cfg.h"
 #include "optimizer_tac.h"
 #include "profiler.h"
 #include "tac.h"
