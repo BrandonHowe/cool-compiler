@@ -351,8 +351,8 @@ void optimize_tac_list(TACList* list)
     PROFILE_BLOCK
     {
         remove_duplicate_phi_expressions(list);
-        // eliminate_dead_tac(list);
-        // remove_double_nots(list);
+        eliminate_dead_tac(list);
+        remove_double_nots(list);
         // generate_cfg_for_tac_list(list);
         perform_substitutions(list);
         remove_empty_exprs(list);
