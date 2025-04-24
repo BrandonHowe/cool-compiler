@@ -1087,7 +1087,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
         case TAC_OP_IS_CLASS:
             // NOTE: This relies on the fact that an isclass op will always be succeeded by a bt op
             asm_list_append_ld(asm_list, R13, RBP, -0 - expr.rhs1.symbol);
-            asm_list_append_ld(asm_list, R13, R13, 0);
+            asm_list_append_ld(asm_list, R15, R13, 0);
             asm_list_append_li(asm_list, R14, expr.rhs2.integer, ASMImmediateUnitsBase);
 
             i++; // Now we handle the bt instruction
@@ -1098,7 +1098,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             bh_str_buf_append(&str_buf, tac_list.method_name);
             bh_str_buf_append_format(&str_buf, "_%i", tac_list.items[i].rhs2.integer);
             asm_from_tac_symbol(asm_list, expr.rhs1);
-            asm_list_append_beq(asm_list, R14, R13, (bh_str){ .buf = str_buf.buf, .len = str_buf.len });
+            asm_list_append_beq(asm_list, R14, R15, (bh_str){ .buf = str_buf.buf, .len = str_buf.len });
             break;
         case TAC_OP_RUNTIME_ERROR:
             asm_list_append_runtime_error_bh_str(asm_list, expr.line_num, expr.rhs1.string.data);
