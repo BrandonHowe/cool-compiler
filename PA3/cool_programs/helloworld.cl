@@ -1,10 +1,9 @@
 class Main inherits IO {
-    main() : Object {
-        out_int(case 5 of
-            a : Int => case a of
-                b : Object => 7;
-            esac;
-            b : Object => 9;
-        esac)
-    };
+	main():Object {{
+		let x:Bool, y:Int, z:String in
+			if x then abort() else {
+				out_int(y + 1);
+				out_string(z.concat("test\n"));
+			} fi;
+	}};
 };

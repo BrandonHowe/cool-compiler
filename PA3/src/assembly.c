@@ -1078,7 +1078,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             bh_str_buf_append_lit(&str_buf, "_");
             bh_str_buf_append(&str_buf, tac_list.method_name);
             bh_str_buf_append_format(&str_buf, "_%i", expr.rhs2.integer);
-            asm_from_tac_symbol(asm_list, expr.rhs1);
+            asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R13, expr.rhs1);
             asm_list_append_ld(asm_list, R13, R13, 3);
             asm_list_append_bnz(asm_list, R13, (bh_str){ .buf = str_buf.buf, .len = str_buf.len });
             break;
