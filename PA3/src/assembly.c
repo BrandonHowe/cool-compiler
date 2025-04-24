@@ -1001,6 +1001,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             if (!is_self_dispatch)
             {
                 bh_str success_label = asm_list_create_label(asm_list);
+                asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R13, expr.args[expr.arg_count - 1]);
                 asm_list_append_bnz(asm_list, R13, success_label);
                 asm_list_append_runtime_error(asm_list, expr.line_num, "dispatch on void");
                 asm_list_append_label(asm_list, success_label);
