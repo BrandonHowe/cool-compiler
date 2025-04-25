@@ -195,7 +195,14 @@ void eliminate_dead_tac(TACList* list)
             mark_symbol_live(list, live_status, list->items[i].lhs);
         }
     }
-    mark_symbol_live(list, live_status, (TACSymbol){ .type = TAC_SYMBOL_TYPE_SYMBOL, .symbol = 0 });
+    if (list->items[list->count - 1].operation == TAC_OP_RETURN)
+    {
+        mark_symbol_live(list, live_status, list->items[list->count - 1].rhs1);
+    }
+    else
+    {
+        mark_symbol_live(list, live_status, (TACSymbol){ .type = TAC_SYMBOL_TYPE_SYMBOL, .symbol = 0 });
+    }
 
     // Remove unused expressions
     int64_t unused_count = 0;

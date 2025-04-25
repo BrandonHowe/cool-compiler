@@ -488,29 +488,29 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                     cond_slice.count += 1;
                     list->_bindings[i].symbol = new_symbol;
 
-                    // for (int j = i; j < cond_slice.count; j++)
-                    // {
-                    //     if (tac_symbol_equal(cond_slice.items[j].rhs1, original_bindings[i].symbol))
-                    //     {
-                    //         cond_slice.items[j].rhs1 = new_symbol;
-                    //     }
-                    //     if (tac_symbol_equal(cond_slice.items[j].rhs2, original_bindings[i].symbol))
-                    //     {
-                    //         cond_slice.items[j].rhs2 = new_symbol;
-                    //     }
-                    // }
+                    for (int j = i; j < cond_slice.count; j++)
+                    {
+                        if (tac_symbol_equal(cond_slice.items[j].rhs1, original_bindings[i].symbol))
+                        {
+                            cond_slice.items[j].rhs1 = new_symbol;
+                        }
+                        if (tac_symbol_equal(cond_slice.items[j].rhs2, original_bindings[i].symbol))
+                        {
+                            cond_slice.items[j].rhs2 = new_symbol;
+                        }
+                    }
 
-                    // for (int j = 0; j < body_slice.count; j++)
-                    // {
-                    //     if (tac_symbol_equal(body_slice.items[j].rhs1, original_bindings[i].symbol))
-                    //     {
-                    //         body_slice.items[j].rhs1 = new_symbol;
-                    //     }
-                    //     if (tac_symbol_equal(body_slice.items[j].rhs2, original_bindings[i].symbol))
-                    //     {
-                    //         body_slice.items[j].rhs2 = new_symbol;
-                    //     }
-                    // }
+                    for (int j = 0; j < body_slice.count; j++)
+                    {
+                        if (tac_symbol_equal(body_slice.items[j].rhs1, original_bindings[i].symbol))
+                        {
+                            body_slice.items[j].rhs1 = new_symbol;
+                        }
+                        if (tac_symbol_equal(body_slice.items[j].rhs2, original_bindings[i].symbol))
+                        {
+                            body_slice.items[j].rhs2 = new_symbol;
+                        }
+                    }
                 }
             }
 
