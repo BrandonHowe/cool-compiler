@@ -74,13 +74,7 @@ coolout:
 	movq	%rbp, %rsi
 	addq	coolout_buffer(%rip), %rdi
 	call	memcpy@PLT
-	addq	coolout_used(%rip), %rbx
-	movl	$1, %edi
-	movq	coolout_buffer(%rip), %rsi
-	movq	%rbx, %rdx
-	movq	%rbx, coolout_used(%rip)
-	call	write@PLT
-	movq	$0, coolout_used(%rip)
+	addq	%rbx, coolout_used(%rip)
 	addq	$8, %rsp
 	.cfi_remember_state
 	.cfi_def_cfa_offset 24
