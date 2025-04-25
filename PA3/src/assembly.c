@@ -1393,6 +1393,7 @@ void builtin_append_start(ASMList* asm_list)
     asm_list_append_push(asm_list, R13);
     asm_list_append_la(asm_list, R14, main_class_idx, main_method_idx);
     asm_list_append_call(asm_list, R14);
+    asm_list_append_syscall(asm_list, INTERNAL_CLASS, INTERNAL_COOLOUT_FLUSH_HANDLER);
     asm_list_append_syscall(asm_list, -1, 0);
 }
 
@@ -1763,6 +1764,9 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
                 break;
             case INTERNAL_COOLALLOC_INIT_HANDLER:
                 bh_str_buf_append_lit(str_buf, "call coolalloc_init");
+                break;
+            case INTERNAL_COOLOUT_FLUSH_HANDLER:
+                bh_str_buf_append_lit(str_buf, "call coolout_flush");
                 break;
             default:
                 assert(0 && "Unhandled internal method");
