@@ -122,6 +122,7 @@ void mark_symbol_live(TACList* list, bool* live_status, TACSymbol symbol)
     for (int i = list->count - 1; i >= 0; i--)
     {
         bool is_live = false;
+        if (live_status[i]) continue;
         if (symbol.type == TAC_SYMBOL_TYPE_SYMBOL)
         {
             if (list->items[i].lhs.type == TAC_SYMBOL_TYPE_SYMBOL && list->items[i].lhs.symbol == symbol.symbol)
@@ -141,8 +142,8 @@ void mark_symbol_live(TACList* list, bool* live_status, TACSymbol symbol)
         if (is_live)
         {
             live_status[i] = true;
-            mark_symbol_live(list, live_status, list->items[i].rhs1);
-            mark_symbol_live(list, live_status, list->items[i].rhs2);
+            if (!tac_symbol_equal(list->items[i].rhs1, list->items[i].lhs)) mark_symbol_live(list, live_status, list->items[i].rhs1);
+            if (!tac_symbol_equal(list->items[i].rhs2, list->items[i].lhs)) mark_symbol_live(list, live_status, list->items[i].rhs2);
             for (int j = 0; j < list->items[i].arg_count; j++)
             {
                 mark_symbol_live(list, live_status, list->items[i].args[j]);
@@ -163,7 +164,7 @@ void eliminate_dead_tac(TACList* list)
     {
         if (list->items[i].operation == TAC_OP_CALL)
         {
-            live_status[i] = true;
+            // live_status[i] = true;
             mark_symbol_live(list, live_status, list->items[i].lhs);
         }
         if (list->items[i].operation == TAC_OP_JMP || list->items[i].operation == TAC_OP_LABEL)
@@ -191,7 +192,7 @@ void eliminate_dead_tac(TACList* list)
         }
         if (list->items[i].lhs.type == TAC_SYMBOL_TYPE_VARIABLE)
         {
-            live_status[i] = true;
+            // live_status[i] = true;
             mark_symbol_live(list, live_status, list->items[i].lhs);
         }
     }

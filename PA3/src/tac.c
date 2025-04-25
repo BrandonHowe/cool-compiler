@@ -488,7 +488,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
                     cond_slice.count += 1;
                     list->_bindings[i].symbol = new_symbol;
 
-                    for (int j = i; j < cond_slice.count; j++)
+                    for (int j = i + 1; j < cond_slice.count; j++)
                     {
                         if (tac_symbol_equal(cond_slice.items[j].rhs1, original_bindings[i].symbol))
                         {
