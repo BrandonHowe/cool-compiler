@@ -1311,6 +1311,9 @@ void builtin_append_string_helpers(bh_str_buf* buf)
 
     bh_str alloc_text = read_file_text("./coolalloc.txt");
     bh_str_buf_append(buf, alloc_text);
+
+    bh_str out_text = read_file_text("./coolout.txt");
+    bh_str_buf_append(buf, out_text);
 }
 
 void builtin_append_string_constants(ASMList* asm_list)
