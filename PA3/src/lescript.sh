@@ -1,5 +1,7 @@
 #!/bin/bash
 
+gcc -w *.c *.h -o bean.out
+
 for file in ../bad_programs2/*; do
     filename=$(basename "$file")
     echo "=== Running test: $filename ==="
@@ -8,8 +10,7 @@ for file in ../bad_programs2/*; do
 
     ~/cool --type ../cool_programs/helloworld.cl
 
-    gcc -w *.c *.h
-    ./a.out ../cool_programs/helloworld.cl-type
+    ./bean.out ../cool_programs/helloworld.cl-type
 
     gcc -w --no-pie --static -g ../cool_programs/helloworld.s
     ./a.out &> my_output
@@ -21,5 +22,6 @@ for file in ../bad_programs2/*; do
     diff my_output reference_output
 done
 
+rm bean.out
 rm my_output
 rm reference_output
