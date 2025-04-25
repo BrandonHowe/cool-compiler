@@ -1,7 +1,6 @@
 class Main inherits IO {
     main() : Object {
     out_int(let
-          b : Bool <- false,
           i : Int,
           j : Int,
           k : Int,
@@ -13,11 +12,6 @@ class Main inherits IO {
           while i < 10 loop {
             j <- 0;
             while j < 10 loop {
-                k <- 0;
-                while k < 10 loop {
-                  k <- k + 1;
-                  ctK <- ctK + 1;
-                } pool;
               j <- j + 1;
               ctJ <- ctJ + 1;
             } pool;

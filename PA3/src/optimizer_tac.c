@@ -404,9 +404,9 @@ void perform_constant_folding(TACList* list)
                         : e.operation == TAC_OP_MINUS ? constants[e.rhs1.symbol] - constants[e.rhs2.symbol]
                         : e.operation == TAC_OP_TIMES ? constants[e.rhs1.symbol] * constants[e.rhs2.symbol]
                         : e.operation == TAC_OP_DIVIDE ? constants[e.rhs1.symbol] / constants[e.rhs2.symbol]
-                        : e.operation == TAC_OP_LTE ? (constants[e.rhs1.symbol] <= constants[e.rhs2.symbol] ? 1 : 0)
-                        : e.operation == TAC_OP_LT ? (constants[e.rhs1.symbol] < constants[e.rhs2.symbol] ? 1 : 0)
-                        : (constants[e.rhs1.symbol] == constants[e.rhs2.symbol] ? 1 : 0);
+                        : e.operation == TAC_OP_LTE ? constants[e.rhs1.symbol] <= constants[e.rhs2.symbol]
+                        : e.operation == TAC_OP_LT ? constants[e.rhs1.symbol] < constants[e.rhs2.symbol]
+                        : constants[e.rhs1.symbol] == constants[e.rhs2.symbol];
                     list->items[i].rhs1 = (TACSymbol){
                         .type = is_comparison ? TAC_SYMBOL_TYPE_BOOL : TAC_SYMBOL_TYPE_INTEGER,
                         .integer = result
@@ -436,7 +436,7 @@ void perform_constant_folding(TACList* list)
                     list->items[i].operation = TAC_OP_BOOL;
                     int64_t result = constants[e.rhs1.symbol] == 0 ? 1 : 0;
                     list->items[i].rhs1 = (TACSymbol){
-                        .type = TAC_SYMBOL_TYPE_INTEGER,
+                        .type = TAC_SYMBOL_TYPE_BOOL,
                         .integer = result
                     };
                     list->items[i].rhs2 = (TACSymbol){ 0 };
