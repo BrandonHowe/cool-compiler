@@ -443,6 +443,24 @@ void perform_constant_folding(TACList* list)
                     rerun_needed = true;
                 }
             }
+            if (e.operation == TAC_OP_BT)
+            {
+                if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && constants[e.rhs1.symbol] != INT64_MIN)
+                {
+                    if (constants[e.rhs1.symbol])
+                    {
+                        list->items[i].operation = TAC_OP_JMP;
+                        list->items[i].rhs2 = list->items[i].rhs1;
+                        list->items[i].rhs2 = (TACSymbol){ 0 };
+                    }
+                    else
+                    {
+                        list->items[i].operation = TAC_OP_ASSIGN;
+                        list->items[i].rhs1 = list->items[i].lhs;
+                        list->items[i].rhs2 = (TACSymbol){ 0 };
+                    }
+                }
+            }
         }
     }
 
