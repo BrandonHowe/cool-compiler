@@ -342,6 +342,62 @@ void perform_substitutions(TACList* list)
     }
 }
 
+void perform_constant_folding(TACList* list)
+{
+    int64_t max_symbol = list->_curr_symbol + 1;
+    int64_t* constants = bh_alloc(GPA, max_symbol * sizeof(int64_t));
+    for (int i = 0; i < max_symbol; i++)
+    {
+        constants[i] = INT64_MIN;
+    }
+
+    bool rerun_needed = true;
+    while (rerun_needed)
+    {
+        rerun_needed = false;
+        // Collect constants
+        for (int i = 0; i < list->count; i++)
+        {
+            TACExpr e = list->items[i];
+
+            if (e.operation == TAC_OP_INT && e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL)
+            {
+                constants[e.lhs.symbol] = e.rhs1.integer;
+            }
+        }
+
+        for (int i = 0; i < list->count; i++)
+        {
+            TACExpr e = list->items[i];
+
+            if (e.operation == TAC_OP_PLUS ||
+                e.operation == TAC_OP_MINUS ||
+                e.operation == TAC_OP_TIMES ||
+                e.operation == TAC_OP_DIVIDE)
+            {
+                if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && constants[e.rhs1.symbol] != INT64_MIN &&
+                    e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && constants[e.rhs2.symbol] != INT64_MIN)
+                {
+                    if (e.operation == TAC_OP_DIVIDE && constants[e.rhs2.symbol] == 0) continue; // No division by 0
+                    list->items[i].operation = TAC_OP_INT;
+                    int64_t result = e.operation == TAC_OP_PLUS ? constants[e.rhs1.symbol] + constants[e.rhs2.symbol]
+                        : e.operation == TAC_OP_MINUS ? constants[e.rhs1.symbol] - constants[e.rhs2.symbol]
+                        : e.operation == TAC_OP_TIMES ? constants[e.rhs1.symbol] * constants[e.rhs2.symbol]
+                        : constants[e.rhs1.symbol] / constants[e.rhs2.symbol];
+                    list->items[i].rhs1 = (TACSymbol){
+                        .type = TAC_SYMBOL_TYPE_INTEGER,
+                        .integer = result
+                    };
+                    list->items[i].rhs2 = (TACSymbol){ 0 };
+                    rerun_needed = true;
+                }
+            }
+        }
+    }
+
+    bh_free(GPA, constants);
+}
+
 void remove_empty_exprs(TACList* list)
 {
     int64_t new_count = 0;
@@ -364,6 +420,8 @@ void optimize_tac_list(TACList* list)
         remove_double_nots(list);
         // generate_cfg_for_tac_list(list);
         perform_substitutions(list);
+        perform_constant_folding(list);
+        eliminate_dead_tac(list);
         remove_empty_exprs(list);
         remove_phi_expressions(list);
         // compress_tac_symbols(list, NULL, 0, 1);

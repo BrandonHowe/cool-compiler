@@ -1,12 +1,5 @@
-class A {};
-
-class Main {
-    a : A;
+class Main inherits IO {
     main() : Object {
-    {
-        case a of
-            x: Object => 123;
-        esac;
-    }
+        out_int(1 + 2 * 3 / 4)
     };
 };
