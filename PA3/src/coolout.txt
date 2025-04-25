@@ -68,8 +68,8 @@ coolout:
 	movslq	%eax, %rbx
 	leaq	1(%rdi,%rbx), %rax
 	cmpq	%rsi, %rax
-	jge	.L9
-.L7:
+	jge	.LPOOP9
+.LPOOP7:
 	movq	%rbx, %rdx
 	movq	%rbp, %rsi
 	addq	coolout_buffer(%rip), %rdi
@@ -85,7 +85,7 @@ coolout:
 	ret
 	.p2align 4,,10
 	.p2align 3
-.L9:
+.LPOOP9:
 	.cfi_restore_state
 	movq	coolout_buffer(%rip), %rdi
 	addq	%rsi, %rsi
@@ -93,7 +93,7 @@ coolout:
 	movq	%rsi, coolout_capacity(%rip)
 	call	mprotect@PLT
 	movq	coolout_used(%rip), %rdi
-	jmp	.L7
+	jmp	.LPOOP7
 	.cfi_endproc
 .LFE26:
 	.size	coolout, .-coolout
