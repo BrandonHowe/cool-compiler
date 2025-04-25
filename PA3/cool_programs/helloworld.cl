@@ -1,21 +1,23 @@
--- not.cl
--- show off quick negation
-
-class Main {
-  main():Object {
+class Main inherits IO {
+    main() : Object {
     let
-      x:Int <- 0,
-      b:Bool
-    in {
-      while x < 100 loop {
-        b = not not not not not  not not not not not  not b;
-        b = not not not not not  not not not not not  not b;
-        b = not not not not not  not not not not not  not b;
-        b = not not not not not  not not not not not  not b;
-        b = not not not not not  not not not not not  not b;
-        x <- x + 1;
-      } pool;
-      if b then abort() else 0 fi;
-    }
-  };
+          i : Int,
+          j : Int,
+          k : Int,
+          ctI : Int <- 0,
+          ctJ : Int <- 0,
+          ctK : Int <- 0
+        in {
+          i <- 0;
+          while i < 10 loop {
+            j <- 0;
+            while j < 10 loop {
+              j <- j + 1;
+              ctJ <- ctJ + 1;
+            } pool;
+            i <- i + 1;
+            ctI <- ctI + 1;
+          } pool;
+        }
+    };
 };

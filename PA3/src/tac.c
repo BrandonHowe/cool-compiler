@@ -490,6 +490,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
 
                     for (int j = i + 1; j < cond_slice.count; j++)
                     {
+                        if (cond_slice.items[j].operation == TAC_OP_PHI) continue;
                         if (tac_symbol_equal(cond_slice.items[j].rhs1, original_bindings[i].symbol))
                         {
                             cond_slice.items[j].rhs1 = new_symbol;
@@ -502,6 +503,7 @@ TACSymbol tac_list_from_expression(const CoolExpression* expr, TACList* list, TA
 
                     for (int j = 0; j < body_slice.count; j++)
                     {
+                        if (body_slice.items[j].operation == TAC_OP_PHI) continue;
                         if (tac_symbol_equal(body_slice.items[j].rhs1, original_bindings[i].symbol))
                         {
                             body_slice.items[j].rhs1 = new_symbol;

@@ -63,7 +63,7 @@ void remove_phi_expressions(TACList* list)
         for (int i = 0; i < list->count; i++)
         {
             TACExpr e = list->items[i];
-            if (e.operation != TAC_OP_PHI)
+            // if (e.operation != TAC_OP_PHI)
             {
                 if ((e.rhs1.type == TAC_SYMBOL_TYPE_VARIABLE || e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL) &&
                     e.rhs1.symbol < max_phi &&
@@ -87,7 +87,7 @@ void remove_phi_expressions(TACList* list)
                     if ((arg.type == TAC_SYMBOL_TYPE_VARIABLE || arg.type == TAC_SYMBOL_TYPE_SYMBOL) &&
                         arg.symbol < max_phi &&
                         phi_bindings[arg.symbol].type > 0 &&
-                        !tac_symbol_equal(list->items[i].rhs1, phi_bindings[arg.symbol]))
+                        !tac_symbol_equal(list->items[i].args[j], phi_bindings[arg.symbol]))
                     {
                         list->items[i].args[j] = phi_bindings[arg.symbol];
                         rerun_needed = true;
@@ -100,6 +100,16 @@ void remove_phi_expressions(TACList* list)
                 rerun_needed = true;
             }
         }
+        TACSymbol* phi_bindings_copy = bh_alloc(GPA, max_phi * sizeof(TACSymbol));
+        //TODO: figure out cyclical phis
+        for (int i = 0; i < max_phi; i++)
+        {
+            if (phi_bindings_copy[phi_bindings_copy[i].symbol].symbol > phi_bindings_copy[i].symbol)
+            {
+                phi_bindings[i] = phi_bindings_copy[phi_bindings_copy[i].symbol];
+            }
+        }
+        bh_free(GPA, phi_bindings_copy);
     }
     bh_free(GPA, phi_bindings);
 
@@ -333,10 +343,11 @@ void perform_substitutions(TACList* list)
         TACExpr e = list->items[i];
         if (e.operation == TAC_OP_ASSIGN && e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL && e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL)
         {
-            for (int j = 0; j < list->count; j++)
+            for (int j = i; j < list->count; j++)
             {
                 if (i == j) continue;
                 TACExpr e2 = list->items[j];
+                if (e2.operation == TAC_OP_PHI) continue;
                 // if (e2.lhs.symbol == e.lhs.symbol) list->items[j].lhs.symbol = e.rhs1.symbol;
                 if (tac_symbol_equal(e2.rhs1, e.lhs)) list->items[j].rhs1.symbol = e.rhs1.symbol;
                 if (tac_symbol_equal(e2.rhs2, e.lhs)) list->items[j].rhs2.symbol = e.rhs1.symbol;
@@ -345,7 +356,6 @@ void perform_substitutions(TACList* list)
                     if (tac_symbol_equal(e2.args[k], e.lhs)) list->items[j].args[k].symbol = e.rhs1.symbol;
                 }
             }
-            list->items[i] = (TACExpr){ 0 };
         }
     }
 }
@@ -368,7 +378,7 @@ void perform_constant_folding(TACList* list)
         {
             TACExpr e = list->items[i];
 
-            if (e.operation == TAC_OP_INT && e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL)
+            if ((e.operation == TAC_OP_INT || e.operation == TAC_OP_BOOL) && e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL)
             {
                 constants[e.lhs.symbol] = e.rhs1.integer;
             }
@@ -378,20 +388,53 @@ void perform_constant_folding(TACList* list)
         {
             TACExpr e = list->items[i];
 
+            bool is_comparison = e.operation == TAC_OP_EQ || e.operation == TAC_OP_LTE || e.operation == TAC_OP_LT;
             if (e.operation == TAC_OP_PLUS ||
                 e.operation == TAC_OP_MINUS ||
                 e.operation == TAC_OP_TIMES ||
-                e.operation == TAC_OP_DIVIDE)
+                e.operation == TAC_OP_DIVIDE ||
+                is_comparison)
             {
                 if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && constants[e.rhs1.symbol] != INT64_MIN &&
                     e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && constants[e.rhs2.symbol] != INT64_MIN)
                 {
                     if (e.operation == TAC_OP_DIVIDE && constants[e.rhs2.symbol] == 0) continue; // No division by 0
-                    list->items[i].operation = TAC_OP_INT;
+                    list->items[i].operation = is_comparison ? TAC_OP_BOOL : TAC_OP_INT;
                     int64_t result = e.operation == TAC_OP_PLUS ? constants[e.rhs1.symbol] + constants[e.rhs2.symbol]
                         : e.operation == TAC_OP_MINUS ? constants[e.rhs1.symbol] - constants[e.rhs2.symbol]
                         : e.operation == TAC_OP_TIMES ? constants[e.rhs1.symbol] * constants[e.rhs2.symbol]
-                        : constants[e.rhs1.symbol] / constants[e.rhs2.symbol];
+                        : e.operation == TAC_OP_DIVIDE ? constants[e.rhs1.symbol] / constants[e.rhs2.symbol]
+                        : e.operation == TAC_OP_LTE ? (constants[e.rhs1.symbol] <= constants[e.rhs2.symbol] ? 1 : 0)
+                        : e.operation == TAC_OP_LT ? (constants[e.rhs1.symbol] < constants[e.rhs2.symbol] ? 1 : 0)
+                        : (constants[e.rhs1.symbol] == constants[e.rhs2.symbol] ? 1 : 0);
+                    list->items[i].rhs1 = (TACSymbol){
+                        .type = is_comparison ? TAC_SYMBOL_TYPE_BOOL : TAC_SYMBOL_TYPE_INTEGER,
+                        .integer = result
+                    };
+                    list->items[i].rhs2 = (TACSymbol){ 0 };
+                    rerun_needed = true;
+                }
+            }
+            if (e.operation == TAC_OP_NEG)
+            {
+                if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && constants[e.rhs1.symbol] != INT64_MIN)
+                {
+                    list->items[i].operation = TAC_OP_INT;
+                    int64_t result = -constants[e.rhs1.symbol];
+                    list->items[i].rhs1 = (TACSymbol){
+                        .type = TAC_SYMBOL_TYPE_INTEGER,
+                        .integer = result
+                    };
+                    list->items[i].rhs2 = (TACSymbol){ 0 };
+                    rerun_needed = true;
+                }
+            }
+            if (e.operation == TAC_OP_NOT)
+            {
+                if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && constants[e.rhs1.symbol] != INT64_MIN)
+                {
+                    list->items[i].operation = TAC_OP_BOOL;
+                    int64_t result = constants[e.rhs1.symbol] == 0 ? 1 : 0;
                     list->items[i].rhs1 = (TACSymbol){
                         .type = TAC_SYMBOL_TYPE_INTEGER,
                         .integer = result
@@ -426,7 +469,7 @@ void optimize_tac_list(TACList* list)
         remove_duplicate_phi_expressions(list);
         eliminate_dead_tac(list);
         remove_double_nots(list);
-        // generate_cfg_for_tac_list(list);
+        generate_cfg_for_tac_list(list);
         perform_substitutions(list);
         perform_constant_folding(list);
         eliminate_dead_tac(list);
