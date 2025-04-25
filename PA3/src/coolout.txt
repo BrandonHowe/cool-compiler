@@ -1,0 +1,142 @@
+	.text
+	.p2align 4
+	.globl	coolout_init
+	.type	coolout_init, @function
+coolout_init:
+.LFB24:
+	.cfi_startproc
+	endbr64
+	subq	$8, %rsp
+	.cfi_def_cfa_offset 16
+	xorl	%edx, %edx
+	movl	$100000000, %esi
+	xorl	%edi, %edi
+	xorl	%r9d, %r9d
+	movl	$-1, %r8d
+	movl	$34, %ecx
+	call	mmap@PLT
+	movl	$3, %edx
+	movl	$4096, %esi
+	movq	$4096, coolout_capacity(%rip)
+	movq	%rax, coolout_buffer(%rip)
+	movq	%rax, %rdi
+	addq	$8, %rsp
+	.cfi_def_cfa_offset 8
+	jmp	mprotect@PLT
+	.cfi_endproc
+.LFE24:
+	.size	coolout_init, .-coolout_init
+	.p2align 4
+	.globl	coolout_flush
+	.type	coolout_flush, @function
+coolout_flush:
+.LFB25:
+	.cfi_startproc
+	endbr64
+	subq	$8, %rsp
+	.cfi_def_cfa_offset 16
+	movq	coolout_used(%rip), %rdx
+	movq	coolout_buffer(%rip), %rsi
+	movl	$1, %edi
+	call	write@PLT
+	movq	$0, coolout_used(%rip)
+	addq	$8, %rsp
+	.cfi_def_cfa_offset 8
+	ret
+	.cfi_endproc
+.LFE25:
+	.size	coolout_flush, .-coolout_flush
+	.p2align 4
+	.globl	coolout
+	.type	coolout, @function
+coolout:
+.LFB26:
+	.cfi_startproc
+	endbr64
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16
+	movq	%rdi, %rbp
+	pushq	%rbx
+	.cfi_def_cfa_offset 24
+	.cfi_offset 3, -24
+	subq	$8, %rsp
+	.cfi_def_cfa_offset 32
+	call	strlen@PLT
+	movq	coolout_used(%rip), %rdi
+	movq	coolout_capacity(%rip), %rsi
+	movslq	%eax, %rbx
+	leaq	1(%rdi,%rbx), %rax
+	cmpq	%rsi, %rax
+	jge	.L9
+.L7:
+	movq	%rbx, %rdx
+	movq	%rbp, %rsi
+	addq	coolout_buffer(%rip), %rdi
+	call	memcpy@PLT
+	addq	coolout_used(%rip), %rbx
+	movl	$1, %edi
+	movq	coolout_buffer(%rip), %rsi
+	movq	%rbx, %rdx
+	movq	%rbx, coolout_used(%rip)
+	call	write@PLT
+	movq	$0, coolout_used(%rip)
+	addq	$8, %rsp
+	.cfi_remember_state
+	.cfi_def_cfa_offset 24
+	popq	%rbx
+	.cfi_def_cfa_offset 16
+	popq	%rbp
+	.cfi_def_cfa_offset 8
+	ret
+	.p2align 4,,10
+	.p2align 3
+.L9:
+	.cfi_restore_state
+	movq	coolout_buffer(%rip), %rdi
+	addq	%rsi, %rsi
+	movl	$3, %edx
+	movq	%rsi, coolout_capacity(%rip)
+	call	mprotect@PLT
+	movq	coolout_used(%rip), %rdi
+	jmp	.L7
+	.cfi_endproc
+.LFE26:
+	.size	coolout, .-coolout
+	.globl	coolout_used
+	.bss
+	.align 8
+	.type	coolout_used, @object
+	.size	coolout_used, 8
+coolout_used:
+	.zero	8
+	.globl	coolout_capacity
+	.align 8
+	.type	coolout_capacity, @object
+	.size	coolout_capacity, 8
+coolout_capacity:
+	.zero	8
+	.globl	coolout_buffer
+	.align 8
+	.type	coolout_buffer, @object
+	.size	coolout_buffer, 8
+coolout_buffer:
+	.zero	8
+	.ident	"GCC: (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0"
+	.section	.note.GNU-stack,"",@progbits
+	.section	.note.gnu.property,"a"
+	.align 8
+	.long	1f - 0f
+	.long	4f - 1f
+	.long	5
+0:
+	.string	"GNU"
+1:
+	.align 8
+	.long	0xc0000002
+	.long	3f - 2f
+2:
+	.long	0x3
+3:
+	.align 8
+4:
