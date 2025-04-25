@@ -185,6 +185,10 @@ void eliminate_dead_tac(TACList* list)
         {
             live_status[i] = true;
         }
+        if (list->items[i].operation == TAC_OP_RUNTIME_ERROR)
+        {
+            live_status[i] = true;
+        }
         if (list->items[i].lhs.type == TAC_SYMBOL_TYPE_VARIABLE)
         {
             live_status[i] = true;
