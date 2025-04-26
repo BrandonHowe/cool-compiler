@@ -144,194 +144,134 @@ coolout_int:
 .LFB28:
 	.cfi_startproc
 	endbr64
-	movl	%edi, %eax
+	movq	%rdi, %rax
 	pushq	%r12
 	.cfi_def_cfa_offset 16
 	.cfi_offset 12, -16
-	negl	%eax
+	negq	%rax
 	pushq	%rbp
 	.cfi_def_cfa_offset 24
 	.cfi_offset 6, -24
-	cmovs	%edi, %eax
+	movq	%rdi, %rbp
+	cmovs	%rdi, %rax
 	pushq	%rbx
 	.cfi_def_cfa_offset 32
 	.cfi_offset 3, -32
-	movl	%edi, %ebx
-	cmpl	$9, %eax
-	jle	.LPOOP24
-	cmpl	$99, %eax
+	cmpq	$9, %rax
 	jle	.LPOOP25
-	cmpl	$999, %eax
+	cmpq	$99, %rax
 	jle	.LPOOP26
-	cmpl	$9999, %eax
+	cmpq	$999, %rax
 	jle	.LPOOP27
-	cmpl	$99999, %eax
+	cmpq	$9999, %rax
 	jle	.LPOOP28
-	cmpl	$999999, %eax
+	cmpq	$99999, %rax
 	jle	.LPOOP29
-	cmpl	$9999999, %eax
+	cmpq	$999999, %rax
 	jle	.LPOOP30
-	cmpl	$99999999, %eax
+	cmpq	$9999999, %rax
 	jle	.LPOOP31
-	cmpl	$999999999, %eax
-	setg	%r12b
-	setg	%bpl
-	movzbl	%bpl, %ebp
-	movzbl	%r12b, %r12d
-	addq	$9, %rbp
-	addl	$9, %r12d
+	cmpq	$99999999, %rax
+	jle	.LPOOP32
+	cmpq	$999999999, %rax
+	jle	.LPOOP33
+	movabsq	$9999999999, %rdx
+	cmpq	%rdx, %rax
+	jle	.LPOOP34
+	movabsq	$99999999999, %rdx
+	cmpq	%rdx, %rax
+	jle	.LPOOP35
+	movabsq	$999999999999, %rdx
+	cmpq	%rdx, %rax
+	jle	.LPOOP36
+	movabsq	$9999999999999, %rdx
+	cmpq	%rdx, %rax
+	jle	.LPOOP37
+	movabsq	$99999999999999, %rdx
+	cmpq	%rdx, %rax
+	jle	.LPOOP38
+	movabsq	$999999999999999, %rdx
+	cmpq	%rdx, %rax
+	jle	.LPOOP39
+	movabsq	$9999999999999999, %rdx
+	cmpq	%rdx, %rax
+	jle	.LPOOP40
+	movabsq	$99999999999999999, %rdx
+	cmpq	%rdx, %rax
+	jle	.LPOOP41
+	movabsq	$999999999999999999, %rdx
+	cmpq	%rdx, %rax
+	setg	%r9b
+	setg	%bl
+	movzbl	%bl, %ebx
+	movzbl	%r9b, %r12d
+	addq	$18, %rbx
+	addl	$18, %r12d
 	jmp	.LPOOP20
 	.p2align 4,,10
 	.p2align 3
-.LPOOP24:
-	movl	$1, %ebp
+.LPOOP25:
+	movl	$1, %ebx
 	movl	$1, %r12d
 .LPOOP20:
 	movq	coolout_used(%rip), %rax
-	movl	%ebx, %ecx
+	movq	%rbp, %rcx
 	movq	coolout_capacity(%rip), %rsi
-	shrl	$31, %ecx
-	leaq	(%rax,%rbp), %rdx
+	shrq	$63, %rcx
+	leaq	(%rax,%rbx), %rdx
 	addq	%rcx, %rdx
 	cmpq	%rsi, %rdx
-	jg	.LPOOP58
+	jg	.LPOOP48
 .LPOOP21:
-	testl	%ebx, %ebx
+	testq	%rbp, %rbp
 	jns	.LPOOP22
 	leaq	1(%rax), %rdx
-	negl	%ebx
+	negq	%rbp
 	movq	%rdx, coolout_used(%rip)
 	movq	coolout_buffer(%rip), %rdx
 	movb	$45, (%rdx,%rax)
 	movq	coolout_used(%rip), %rax
 .LPOOP22:
 	addq	coolout_buffer(%rip), %rax
-	movl	$3435973837, %ecx
-	movq	%rax, %rdx
-	movl	%ebx, %eax
-	imulq	%rcx, %rax
-	shrq	$35, %rax
-	leal	(%rax,%rax,4), %esi
-	addl	%esi, %esi
-	subl	%esi, %ebx
-	addl	$48, %ebx
-	movb	%bl, -1(%rbp,%rdx)
+	movabsq	$-3689348814741910323, %r8
+	movq	%rax, %rsi
+	movq	%rbp, %rax
+	mulq	%r8
+	movq	%rdx, %rcx
+	shrq	$3, %rcx
+	leaq	(%rcx,%rcx,4), %rax
+	addq	%rax, %rax
+	subq	%rax, %rbp
+	addl	$48, %ebp
+	movb	%bpl, -1(%rbx,%rsi)
 	cmpl	$1, %r12d
 	je	.LPOOP23
-	movl	%eax, %edx
-	movq	coolout_buffer(%rip), %rsi
-	imulq	%rcx, %rdx
-	addq	%rbp, %rsi
-	addq	coolout_used(%rip), %rsi
-	shrq	$35, %rdx
-	leal	(%rdx,%rdx,4), %edi
-	addl	%edi, %edi
-	subl	%edi, %eax
-	addl	$48, %eax
-	movb	%al, -2(%rsi)
-	cmpl	$2, %r12d
-	je	.LPOOP23
-	movl	%edx, %eax
-	movq	coolout_buffer(%rip), %rsi
-	imulq	%rcx, %rax
-	addq	%rbp, %rsi
-	addq	coolout_used(%rip), %rsi
-	shrq	$35, %rax
-	leal	(%rax,%rax,4), %edi
-	addl	%edi, %edi
-	subl	%edi, %edx
-	addl	$48, %edx
-	movb	%dl, -3(%rsi)
-	cmpl	$3, %r12d
-	je	.LPOOP23
-	movl	%eax, %edx
-	movq	coolout_buffer(%rip), %rsi
-	imulq	%rcx, %rdx
-	addq	%rbp, %rsi
-	addq	coolout_used(%rip), %rsi
-	shrq	$35, %rdx
-	leal	(%rdx,%rdx,4), %edi
-	addl	%edi, %edi
-	subl	%edi, %eax
-	addl	$48, %eax
-	movb	%al, -4(%rsi)
-	cmpl	$4, %r12d
-	je	.LPOOP23
-	movl	%edx, %eax
-	movq	coolout_buffer(%rip), %rsi
-	imulq	%rcx, %rax
-	addq	%rbp, %rsi
-	addq	coolout_used(%rip), %rsi
-	shrq	$35, %rax
-	leal	(%rax,%rax,4), %edi
-	addl	%edi, %edi
-	subl	%edi, %edx
-	addl	$48, %edx
-	movb	%dl, -5(%rsi)
-	cmpl	$5, %r12d
-	je	.LPOOP23
-	movl	%eax, %edx
-	movq	coolout_buffer(%rip), %rsi
-	imulq	%rcx, %rdx
-	addq	%rbp, %rsi
-	addq	coolout_used(%rip), %rsi
-	shrq	$35, %rdx
-	leal	(%rdx,%rdx,4), %edi
-	addl	%edi, %edi
-	subl	%edi, %eax
-	addl	$48, %eax
-	movb	%al, -6(%rsi)
-	cmpl	$6, %r12d
-	je	.LPOOP23
-	movl	%edx, %eax
-	movq	coolout_buffer(%rip), %rsi
-	imulq	%rcx, %rax
-	addq	%rbp, %rsi
-	addq	coolout_used(%rip), %rsi
-	shrq	$35, %rax
-	leal	(%rax,%rax,4), %edi
-	addl	%edi, %edi
-	subl	%edi, %edx
-	addl	$48, %edx
-	movb	%dl, -7(%rsi)
-	cmpl	$7, %r12d
-	je	.LPOOP23
-	movl	%eax, %edx
-	movq	coolout_buffer(%rip), %rsi
-	imulq	%rcx, %rdx
-	addq	%rbp, %rsi
-	addq	coolout_used(%rip), %rsi
-	shrq	$35, %rdx
-	leal	(%rdx,%rdx,4), %edi
-	addl	%edi, %edi
-	subl	%edi, %eax
-	addl	$48, %eax
-	movb	%al, -8(%rsi)
-	cmpl	$8, %r12d
-	je	.LPOOP23
-	movl	%edx, %eax
-	movq	coolout_buffer(%rip), %rsi
-	imulq	%rcx, %rax
-	addq	%rbp, %rsi
-	addq	coolout_used(%rip), %rsi
-	shrq	$35, %rax
-	leal	(%rax,%rax,4), %ecx
-	addl	%ecx, %ecx
-	subl	%ecx, %edx
-	addl	$48, %edx
-	movb	%dl, -9(%rsi)
-	cmpl	$10, %r12d
-	jne	.LPOOP23
-	movq	coolout_buffer(%rip), %rdx
-	addl	$48, %eax
-	addq	%rbp, %rdx
-	addq	coolout_used(%rip), %rdx
-	movb	%al, -10(%rdx)
+	movslq	%r12d, %r9
+	movl	$1, %esi
+	.p2align 4,,10
+	.p2align 3
+.LPOOP24:
+	movq	%rcx, %rax
+	movq	coolout_used(%rip), %rdi
+	mulq	%r8
+	addq	%rbx, %rdi
+	subq	%rsi, %rdi
+	addq	$1, %rsi
+	shrq	$3, %rdx
+	leaq	(%rdx,%rdx,4), %rax
+	addq	%rax, %rax
+	subq	%rax, %rcx
+	movq	coolout_buffer(%rip), %rax
+	addl	$48, %ecx
+	movb	%cl, -1(%rax,%rdi)
+	movq	%rdx, %rcx
+	cmpq	%r9, %rsi
+	jne	.LPOOP24
 .LPOOP23:
+	addq	%rbx, coolout_used(%rip)
 	popq	%rbx
 	.cfi_remember_state
 	.cfi_def_cfa_offset 24
-	addq	%rbp, coolout_used(%rip)
 	popq	%rbp
 	.cfi_def_cfa_offset 16
 	popq	%r12
@@ -339,7 +279,7 @@ coolout_int:
 	ret
 	.p2align 4,,10
 	.p2align 3
-.LPOOP58:
+.LPOOP48:
 	.cfi_restore_state
 	movq	coolout_buffer(%rip), %rdi
 	addq	%rsi, %rsi
@@ -350,35 +290,71 @@ coolout_int:
 	jmp	.LPOOP21
 	.p2align 4,,10
 	.p2align 3
-.LPOOP26:
-	movl	$3, %ebp
+.LPOOP27:
+	movl	$3, %ebx
 	movl	$3, %r12d
 	jmp	.LPOOP20
-.LPOOP29:
-	movl	$6, %ebp
+.LPOOP30:
+	movl	$6, %ebx
 	movl	$6, %r12d
 	jmp	.LPOOP20
 	.p2align 4,,10
 	.p2align 3
-.LPOOP25:
-	movl	$2, %ebp
+.LPOOP26:
+	movl	$2, %ebx
 	movl	$2, %r12d
 	jmp	.LPOOP20
-.LPOOP27:
-	movl	$4, %ebp
+.LPOOP28:
+	movl	$4, %ebx
 	movl	$4, %r12d
 	jmp	.LPOOP20
-.LPOOP28:
-	movl	$5, %ebp
+.LPOOP29:
+	movl	$5, %ebx
 	movl	$5, %r12d
 	jmp	.LPOOP20
-.LPOOP30:
-	movl	$7, %ebp
-	movl	$7, %r12d
+.LPOOP36:
+	movl	$12, %ebx
+	movl	$12, %r12d
 	jmp	.LPOOP20
 .LPOOP31:
-	movl	$8, %ebp
+	movl	$7, %ebx
+	movl	$7, %r12d
+	jmp	.LPOOP20
+.LPOOP32:
+	movl	$8, %ebx
 	movl	$8, %r12d
+	jmp	.LPOOP20
+.LPOOP33:
+	movl	$9, %ebx
+	movl	$9, %r12d
+	jmp	.LPOOP20
+.LPOOP34:
+	movl	$10, %ebx
+	movl	$10, %r12d
+	jmp	.LPOOP20
+.LPOOP35:
+	movl	$11, %ebx
+	movl	$11, %r12d
+	jmp	.LPOOP20
+.LPOOP37:
+	movl	$13, %ebx
+	movl	$13, %r12d
+	jmp	.LPOOP20
+.LPOOP38:
+	movl	$14, %ebx
+	movl	$14, %r12d
+	jmp	.LPOOP20
+.LPOOP39:
+	movl	$15, %ebx
+	movl	$15, %r12d
+	jmp	.LPOOP20
+.LPOOP40:
+	movl	$16, %ebx
+	movl	$16, %r12d
+	jmp	.LPOOP20
+.LPOOP41:
+	movl	$17, %ebx
+	movl	$17, %r12d
 	jmp	.LPOOP20
 	.cfi_endproc
 .LFE28:
