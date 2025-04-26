@@ -1739,7 +1739,7 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
             switch (param.method.method_idx)
             {
             case 0:
-                bh_str_buf_append_lit(str_buf, "movl $0, %edi\ncall exit");
+                bh_str_buf_append_lit(str_buf, "call coolout_flush\nmovl $0, %edi\ncall exit");
                 break;
             case -2:
                 bh_str_buf_append_lit(str_buf, "$string_abort");
@@ -1763,7 +1763,7 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
                 bh_str_buf_append_lit(str_buf, "coolsubstr");
                 break;
             case INTERNAL_COOLALLOC_INIT_HANDLER:
-                bh_str_buf_append_lit(str_buf, "call coolalloc_init");
+                bh_str_buf_append_lit(str_buf, "call coolalloc_init\ncall coolout_init");
                 break;
             case INTERNAL_COOLOUT_FLUSH_HANDLER:
                 bh_str_buf_append_lit(str_buf, "call coolout_flush");
@@ -1811,12 +1811,12 @@ void x86_asm_param_internal(bh_str_buf* str_buf, const ClassNodeList class_list,
             }
             if (param.method.method_idx == 5) // out_int
             {
-                bh_str_buf_append_lit(str_buf, "## guarantee 16-byte alignment before call\nandq $0xFFFFFFFFFFFFFFF0, %rsp\n");
-                bh_str_buf_append_lit(str_buf, "movq $percent.d, %rdi\nmovl %r13d, %eax\ncdqe\nmovq %rax, %rsi\nmovl $0, %eax\ncall printf");
+                //bh_str_buf_append_lit(str_buf, "## guarantee 16-byte alignment before call\nandq $0xFFFFFFFFFFFFFFF0, %rsp\n");
+                bh_str_buf_append_lit(str_buf, "movq %r13, %rdi\ncall coolout_int");
             }
             else if (param.method.method_idx == 6) // out_string
             {
-                bh_str_buf_append_lit(str_buf, "movq %r13, %rdi\ncall cooloutstr");
+                bh_str_buf_append_lit(str_buf, "movq %r13, %rdi\ncall coolout");
             }
         }
         else
