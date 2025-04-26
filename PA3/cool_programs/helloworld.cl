@@ -1,30 +1,6 @@
-class Main inherits IO {
-    main() : Object {
-    out_int(let
-          b : Bool <- false,
-          i : Int,
-          j : Int,
-          k : Int,
-          ctI : Int <- 0,
-          ctJ : Int <- 0,
-          ctK : Int <- 0
-        in {
-          i <- 0;
-          while i < 10 loop {
-            j <- 0;
-            while j < 10 loop {
-                k <- 0;
-                while k < 10 loop {
-                  k <- k + 1;
-                  ctK <- ctK + 1;
-                } pool;
-              j <- j + 1;
-              ctJ <- ctJ + 1;
-            } pool;
-            i <- i + 1;
-            ctI <- ctI + 1;
-          } pool;
-          ctJ;
-        })
-    };
+class Main {
+  x : Int;
+  main() : Object {
+    (new IO). out_string(while (x < 10) loop x <- x + 1 pool.type_name())
+  };
 };
