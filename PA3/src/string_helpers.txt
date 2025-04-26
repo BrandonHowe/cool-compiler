@@ -252,95 +252,6 @@ lt_end:                 ## return address handling
                         popq %rbp
                         ret
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	.globl	cooloutstr
-	.type	cooloutstr, @function
-cooloutstr:
-.LFB6:
-	.cfi_startproc
-	endbr64
-	pushq	%rbp
-	.cfi_def_cfa_offset 16
-	.cfi_offset 6, -16
-	movq	%rsp, %rbp
-	.cfi_def_cfa_register 6
-	subq	$32, %rsp
-	movq	%rdi, -24(%rbp)
-	movl	$0, -4(%rbp)
-	jmp	.L2
-.L5:
-	movl	-4(%rbp), %eax
-	movslq	%eax, %rdx
-	movq	-24(%rbp), %rax
-	addq	%rdx, %rax
-	movzbl	(%rax), %eax
-	cmpb	$92, %al
-	jne	.L3
-	movl	-4(%rbp), %eax
-	cltq
-	leaq	1(%rax), %rdx
-	movq	-24(%rbp), %rax
-	addq	%rdx, %rax
-	movzbl	(%rax), %eax
-	cmpb	$110, %al
-	jne	.L3
-	movq	stdout(%rip), %rax
-	movq	%rax, %rsi
-	movl	$10, %edi
-	call	fputc@PLT
-	addl	$2, -4(%rbp)
-	jmp	.L2
-.L3:
-	movl	-4(%rbp), %eax
-	movslq	%eax, %rdx
-	movq	-24(%rbp), %rax
-	addq	%rdx, %rax
-	movzbl	(%rax), %eax
-	cmpb	$92, %al
-	jne	.L4
-	movl	-4(%rbp), %eax
-	cltq
-	leaq	1(%rax), %rdx
-	movq	-24(%rbp), %rax
-	addq	%rdx, %rax
-	movzbl	(%rax), %eax
-	cmpb	$116, %al
-	jne	.L4
-	movq	stdout(%rip), %rax
-	movq	%rax, %rsi
-	movl	$9, %edi
-	call	fputc@PLT
-	addl	$2, -4(%rbp)
-	jmp	.L2
-.L4:
-	movq	stdout(%rip), %rdx
-	movl	-4(%rbp), %eax
-	movslq	%eax, %rcx
-	movq	-24(%rbp), %rax
-	addq	%rcx, %rax
-	movzbl	(%rax), %eax
-	movsbl	%al, %eax
-	movq	%rdx, %rsi
-	movl	%eax, %edi
-	call	fputc@PLT
-	addl	$1, -4(%rbp)
-.L2:
-	movl	-4(%rbp), %eax
-	movslq	%eax, %rdx
-	movq	-24(%rbp), %rax
-	addq	%rdx, %rax
-	movzbl	(%rax), %eax
-	testb	%al, %al
-	jne	.L5
-	movq	stdout(%rip), %rax
-	movq	%rax, %rdi
-	call	fflush@PLT
-	nop
-	leave
-	.cfi_def_cfa 7, 8
-	ret
-	.cfi_endproc
-.LFE6:
-	.size	cooloutstr, .-cooloutstr
 	.globl	coolstrlen
 	.type	coolstrlen, @function
 coolstrlen:
@@ -548,3 +459,117 @@ coolsubstr:
 	.cfi_endproc
 .LFE10:
 	.size	coolsubstr, .-coolsubstr
+.globl	coolinint
+	.type	coolinint, @function
+coolinint:
+.LFB11:
+	.cfi_startproc
+	endbr64
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16
+	movq	%rsp, %rbp
+	.cfi_def_cfa_register 6
+	subq	$304, %rsp
+	movq	%fs:40, %rax
+	movq	%rax, -8(%rbp)
+	xorl	%eax, %eax
+	movq	stdin(%rip), %rdx
+	leaq	-272(%rbp), %rax
+	movl	$256, %esi
+	movq	%rax, %rdi
+	call	fgets@PLT
+	testq	%rax, %rax
+	jne	.L26
+	movl	$0, %eax
+	jmp	.L37
+.L26:
+	leaq	-272(%rbp), %rax
+	movq	%rax, -288(%rbp)
+	jmp	.L28
+.L29:
+	addq	$1, -288(%rbp)
+.L28:
+	call	__ctype_b_loc@PLT
+	movq	(%rax), %rdx
+	movq	-288(%rbp), %rax
+	movzbl	(%rax), %eax
+	movzbl	%al, %eax
+	addq	%rax, %rax
+	addq	%rdx, %rax
+	movzwl	(%rax), %eax
+	movzwl	%ax, %eax
+	andl	$8192, %eax
+	testl	%eax, %eax
+	jne	.L29
+	movq	-288(%rbp), %rax
+	movzbl	(%rax), %eax
+	testb	%al, %al
+	je	.L30
+	movq	-288(%rbp), %rax
+	movzbl	(%rax), %eax
+	cmpb	$45, %al
+	je	.L31
+	movq	-288(%rbp), %rax
+	movzbl	(%rax), %eax
+	cmpb	$43, %al
+	je	.L31
+	call	__ctype_b_loc@PLT
+	movq	(%rax), %rdx
+	movq	-288(%rbp), %rax
+	movzbl	(%rax), %eax
+	movzbl	%al, %eax
+	addq	%rax, %rax
+	addq	%rdx, %rax
+	movzwl	(%rax), %eax
+	movzwl	%ax, %eax
+	andl	$2048, %eax
+	testl	%eax, %eax
+	jne	.L31
+.L30:
+	movl	$0, %eax
+	jmp	.L37
+.L31:
+	leaq	-296(%rbp), %rcx
+	movq	-288(%rbp), %rax
+	movl	$10, %edx
+	movq	%rcx, %rsi
+	movq	%rax, %rdi
+	call	strtol@PLT
+	movq	%rax, -280(%rbp)
+	movabsq	$-2147483649, %rax
+	cmpq	%rax, -280(%rbp)
+	jle	.L32
+	movl	$2147483648, %eax
+	cmpq	%rax, -280(%rbp)
+	jl	.L34
+.L32:
+	movl	$0, %eax
+	jmp	.L37
+.L36:
+	movq	-296(%rbp), %rax
+	addq	$1, %rax
+	movq	%rax, -296(%rbp)
+.L34:
+	movq	-296(%rbp), %rax
+	movzbl	(%rax), %eax
+	testb	%al, %al
+	je	.L35
+	movq	-296(%rbp), %rax
+	movzbl	(%rax), %eax
+	cmpb	$10, %al
+	jne	.L36
+.L35:
+	movq	-280(%rbp), %rax
+.L37:
+	movq	-8(%rbp), %rdx
+	subq	%fs:40, %rdx
+	je	.L38
+	call	__stack_chk_fail@PLT
+.L38:
+	leave
+	.cfi_def_cfa 7, 8
+	ret
+	.cfi_endproc
+.LFE11:
+	.size	coolinint, .-coolinint

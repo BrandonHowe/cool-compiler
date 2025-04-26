@@ -6,6 +6,7 @@ set(CMAKE_C_STANDARD 11)
 file(COPY ${CMAKE_SOURCE_DIR}/cool_programs DESTINATION ${CMAKE_BINARY_DIR})
 file(COPY ${CMAKE_SOURCE_DIR}/src/string_helpers.txt DESTINATION ${CMAKE_BINARY_DIR})
 file(COPY ${CMAKE_SOURCE_DIR}/src/coolalloc.txt DESTINATION ${CMAKE_BINARY_DIR})
+file(COPY ${CMAKE_SOURCE_DIR}/src/coolout.txt DESTINATION ${CMAKE_BINARY_DIR})
 
 add_executable(semantic_analyzer src/main.c
         src/types.c
