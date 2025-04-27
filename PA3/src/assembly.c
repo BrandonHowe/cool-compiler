@@ -1114,7 +1114,18 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
 
 void asm_from_method_stub(ASMList* asm_list, TACList tac_list)
 {
+    const bh_str class_name = tac_list.class_list.class_nodes[tac_list.class_idx].name;
 
+    // Construct method name
+    int64_t label_len = class_name.len + tac_list.method_name.len + 1;
+    char* label_buf = bh_alloc(asm_list->string_allocator, label_len + 4);
+    strncpy(label_buf, class_name.buf, class_name.len);
+    label_buf[class_name.len] = '.';
+    strncpy(label_buf + class_name.len + 1, tac_list.method_name.buf, tac_list.method_name.len);
+    strncpy(label_buf + class_name.len + tac_list.method_name.len + 1, ".end", 4);
+    asm_list_append_label(asm_list, (bh_str){ .buf = label_buf, .len = label_len });
+
+    asm_list_append_return(asm_list);
 }
 
 void asm_from_method(ASMList* asm_list, const TACList tac_list)
