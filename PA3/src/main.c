@@ -146,6 +146,14 @@ void display_tac_expr(bh_str_buf* str_buf, TACList tac_list, TACExpr expr)
     bh_str_buf_append_lit(str_buf, "\n");
 }
 
+typedef struct CallData
+{
+    TACList tac_list;
+    int64_t class_idx;
+    int64_t method_idx;
+    bool called;
+} CallData;
+
 int main(int argc, char* argv[])
 {
     if (argc < 2) {
@@ -176,6 +184,8 @@ int main(int argc, char* argv[])
             asm_from_constructor(&asm_list, class_list.class_nodes[i], i);
         }
 
+        // Count how many total methods there are to allocate space
+        int64_t total_method_count = 0;
         for (int i = 0; i < class_list.class_count; i++)
         {
             for (int j = 0; j < class_list.class_nodes[i].method_count; j++)
@@ -184,8 +194,37 @@ int main(int argc, char* argv[])
 
                 if (bh_str_equal(method.inherited_from, class_list.class_nodes[i].name))
                 {
-                    arena_free_all(tac_allocator);
+                    total_method_count += 1;
+                }
+            }
+        }
+        CallData* call_data = bh_alloc(GPA, sizeof(CallData) * total_method_count);
+        // Init the call data fields
+        total_method_count = 0;
+        for (int i = 0; i < class_list.class_count; i++)
+        {
+            for (int j = 0; j < class_list.class_nodes[i].method_count; j++)
+            {
+                const ClassMethod method = class_list.class_nodes[i].methods[j];
 
+                if (bh_str_equal(method.inherited_from, class_list.class_nodes[i].name))
+                {
+                    call_data[total_method_count].class_idx = i;
+                    call_data[total_method_count].method_idx = j;
+                    total_method_count += 1;
+                }
+            }
+        }
+
+        int64_t method_idx = 0;
+        for (int i = 0; i < class_list.class_count; i++)
+        {
+            for (int j = 0; j < class_list.class_nodes[i].method_count; j++)
+            {
+                const ClassMethod method = class_list.class_nodes[i].methods[j];
+
+                if (bh_str_equal(method.inherited_from, class_list.class_nodes[i].name))
+                {
                     TACList list = TAC_list_init(100, GPA);
                     list.class_list = class_list;
                     list.class_idx = i;
@@ -193,14 +232,58 @@ int main(int argc, char* argv[])
                     list.method_name = method.name;
 
                     TACSymbol result = tac_list_from_expression(&method.body, &list, (TACSymbol){ 0 }, false);
-                    TAC_list_append(&list, (TACExpr){
-                        .operation = TAC_OP_RETURN,
-                        .rhs1 = result
-                    }, false);
+                    TAC_list_append(&list, (TACExpr){ .operation = TAC_OP_RETURN, .rhs1 = result }, false);
                     optimize_tac_list(&list);
 
-                    asm_from_method(&asm_list, list);
+                    call_data[method_idx].tac_list = list;
+
+                    for (int k = 0; k < list.count; k++)
+                    {
+                        if (list.items[k].operation == TAC_OP_CALL)
+                        {
+                            int64_t target_class = list.items[k].rhs1.method.class_idx;
+                            int64_t target_method = list.items[k].rhs1.method.method_idx;
+                            for (int l = 0; l < total_method_count; l++)
+                            {
+                                bool is_subtype = is_class_subtype_of(class_list.class_nodes[target_class], class_list.class_nodes[call_data[l].class_idx]);
+                                if ((call_data[l].class_idx == target_class || is_subtype) && call_data[l].method_idx == target_method)
+                                {
+                                    call_data[l].called = true;
+                                }
+                            }
+                        }
+                    }
+
+                    method_idx++;
                 }
+            }
+        }
+
+        MainData main_data = find_maindata(&asm_list);
+        for (int i = 0; i < total_method_count; i++)
+        {
+            if (call_data[i].called ||
+                (call_data[i].class_idx == main_data.main_class_idx && call_data[i].method_idx == main_data.main_method_idx))
+            {
+                asm_from_method(&asm_list, call_data[i].tac_list);
+
+                // Make all subclasses live too
+                for (int j = 0; j < total_method_count; j++)
+                {
+                    if (i == j) continue;
+                    if (call_data[j].method_idx != call_data[i].method_idx) continue;
+                    if (is_class_subtype_of(
+                        class_list.class_nodes[call_data[j].class_idx],
+                        class_list.class_nodes[call_data[i].class_idx]
+                    ))
+                    {
+                        asm_from_method(&asm_list, call_data[j].tac_list);
+                    }
+                }
+            }
+            else
+            {
+                asm_from_method_stub(&asm_list, call_data[i].tac_list);
             }
         }
 

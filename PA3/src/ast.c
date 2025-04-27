@@ -6,6 +6,7 @@
 
 #include <alloca.h>
 #include <assert.h>
+#include <stddef.h>
 
 ClassNodeList parse_class_map(bh_str* str, bh_allocator allocator)
 {
@@ -380,4 +381,22 @@ CoolExpression parse_expression(bh_str* str, bh_allocator allocator)
     }
 
     return expression;
+}
+
+// Checks if subclass is a subtype of the parent class. Is not called directly and does not support SELF_TYPE directly
+bool is_class_subtype_of(ClassNode subclass, ClassNode parent_class)
+{
+    if (bh_str_equal(subclass.name, parent_class.name)) return true;
+
+    // Walk through the subclass's parents until we find the parent class
+    ClassNode* parent = subclass.parent;
+    while (parent != NULL)
+    {
+        if (bh_str_equal(parent->name, parent_class.name))
+        {
+            return true;
+        }
+        parent = parent->parent;
+    }
+    return false;
 }

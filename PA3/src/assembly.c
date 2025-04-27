@@ -1112,6 +1112,11 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
     return extra_symbols;
 }
 
+void asm_from_method_stub(ASMList* asm_list, TACList tac_list)
+{
+
+}
+
 void asm_from_method(ASMList* asm_list, const TACList tac_list)
 {
     const bh_str class_name = tac_list.class_list.class_nodes[tac_list.class_idx].name;
@@ -1347,8 +1352,7 @@ void builtin_append_string_constants(ASMList* asm_list)
     }
 }
 
-// I used the reference compiler's output for this code
-void builtin_append_start(ASMList* asm_list)
+MainData find_maindata(ASMList* asm_list)
 {
     int64_t main_ctor_idx = -1;
     int64_t main_class_idx = -1;
@@ -1378,6 +1382,13 @@ void builtin_append_start(ASMList* asm_list)
         }
         if (main_class_idx > -1) break;
     }
+    return (MainData){ .main_ctor_idx = main_ctor_idx, .main_class_idx = main_class_idx, .main_method_idx = main_method_idx };
+}
+
+// I used the reference compiler's output for this code
+void builtin_append_start(ASMList* asm_list)
+{
+    MainData main_data = find_maindata(asm_list);
 
     char* start_buf = bh_alloc(asm_list->string_allocator, 5);
     strncpy(start_buf, "start", 5);
@@ -1386,12 +1397,12 @@ void builtin_append_start(ASMList* asm_list)
     asm_list_append_comment(asm_list, "program begins here");
     asm_list_append_label(asm_list, start_str);
     asm_list_append_syscall(asm_list, INTERNAL_CLASS, INTERNAL_COOLALLOC_INIT_HANDLER);
-    asm_list_append_la(asm_list, R14, main_ctor_idx, -1);
+    asm_list_append_la(asm_list, R14, main_data.main_ctor_idx, -1);
     asm_list_append_push(asm_list, RBP);
     asm_list_append_call(asm_list, R14);
     asm_list_append_push(asm_list, RBP);
     asm_list_append_push(asm_list, R13);
-    asm_list_append_la(asm_list, R14, main_class_idx, main_method_idx);
+    asm_list_append_la(asm_list, R14, main_data.main_class_idx, main_data.main_method_idx);
     asm_list_append_call(asm_list, R14);
     asm_list_append_syscall(asm_list, INTERNAL_CLASS, INTERNAL_COOLOUT_FLUSH_HANDLER);
     asm_list_append_syscall(asm_list, -1, 0);

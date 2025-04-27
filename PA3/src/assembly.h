@@ -155,10 +155,19 @@ typedef struct ASMList
     int64_t _string_counter;
 } ASMList;
 
+typedef struct MainData
+{
+    int64_t main_ctor_idx;
+    int64_t main_class_idx;
+    int64_t main_method_idx;
+} MainData;
+
+MainData find_maindata(ASMList* asm_list);
 void asm_from_vtable(ASMList* asm_list);
 void asm_list_append_call_method(ASMList* asm_list, int64_t class_idx, int64_t method_idx);
 void asm_from_constructor(ASMList* asm_list, ClassNode class_node, int64_t class_idx);
 int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list);
+void asm_from_method_stub(ASMList* asm_list, TACList tac_list);
 void asm_from_method(ASMList* asm_list, TACList tac_list);
 ASMList asm_list_init(ClassNodeList* class_list);
 
