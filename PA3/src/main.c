@@ -165,6 +165,10 @@ ClassNode class_node_from_id(ClassNodeList list, int64_t id)
             if (id == -3 && bh_str_equal_lit(list.class_nodes[i].name, "String")) return list.class_nodes[i];
         }
     }
+    if (id < 0)
+    {
+        id = -id - 1;
+    }
     return list.class_nodes[id];
 }
 
