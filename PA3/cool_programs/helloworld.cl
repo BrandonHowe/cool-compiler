@@ -1,3 +1,7 @@
+-- Static dispatch chooses a method based on the static type of the
+-- dispatching object.
+
+
 class Base inherits IO
 {
   identify() : Object
@@ -22,13 +26,16 @@ class Main
   {
     {
       let me : Base <- new Base in
-	me.identify();
+	me@Base.identify();
 
       let me : Base <- new Derived in
-	me.identify();
+	me@Base.identify();
 
       let me : Derived <- new Derived in
-	me.identify();
+	{
+	  me@Base.identify();
+	  me@Derived.identify();
+	};
     }
   };
 };

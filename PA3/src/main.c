@@ -154,6 +154,20 @@ typedef struct CallData
     bool called;
 } CallData;
 
+ClassNode class_node_from_id(ClassNodeList list, int64_t id)
+{
+    if (id == -1 || id == -2 || id == -3)
+    {
+        for (int i = 0; i < list.class_count; i++)
+        {
+            if (id == -1 && bh_str_equal_lit(list.class_nodes[i].name, "Bool")) return list.class_nodes[i];
+            if (id == -2 && bh_str_equal_lit(list.class_nodes[i].name, "Int")) return list.class_nodes[i];
+            if (id == -3 && bh_str_equal_lit(list.class_nodes[i].name, "String")) return list.class_nodes[i];
+        }
+    }
+    return list.class_nodes[id];
+}
+
 int main(int argc, char* argv[])
 {
     if (argc < 2) {
@@ -245,8 +259,8 @@ int main(int argc, char* argv[])
                             int64_t target_method = list.items[k].rhs1.method.method_idx;
                             for (int l = 0; l < total_method_count; l++)
                             {
-                                bool is_subtype = is_class_subtype_of(class_list.class_nodes[target_class], class_list.class_nodes[call_data[l].class_idx]);
-                                bool is_subtype2 = is_class_subtype_of(class_list.class_nodes[call_data[l].class_idx], class_list.class_nodes[target_class]);
+                                bool is_subtype = is_class_subtype_of(class_node_from_id(class_list, target_class), class_node_from_id(class_list, call_data[l].class_idx));
+                                bool is_subtype2 = is_class_subtype_of(class_node_from_id(class_list, call_data[l].class_idx), class_node_from_id(class_list, target_class));
                                 if ((call_data[l].class_idx == target_class || is_subtype || is_subtype2) && call_data[l].method_idx == target_method)
                                 {
                                     call_data[l].called = true;
