@@ -162,10 +162,18 @@ typedef struct MainData
     int64_t main_method_idx;
 } MainData;
 
+typedef struct CallData
+{
+    TACList tac_list;
+    int64_t class_idx;
+    int64_t method_idx;
+    bool called;
+} CallData;
+
 MainData find_maindata(ASMList* asm_list);
 void asm_from_vtable(ASMList* asm_list);
 void asm_list_append_call_method(ASMList* asm_list, int64_t class_idx, int64_t method_idx);
-void asm_from_constructor(ASMList* asm_list, ClassNode class_node, int64_t class_idx);
+void asm_from_constructor(ASMList* asm_list, ClassNode class_node, int64_t class_idx, CallData* call_data, int64_t total_method_count);
 int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list);
 void asm_from_method_stub(ASMList* asm_list, TACList tac_list);
 void asm_from_method(ASMList* asm_list, TACList tac_list);
@@ -178,5 +186,7 @@ void builtin_append_string_helpers(bh_str_buf* buf);
 void builtin_append_string_constants(ASMList* asm_list);
 void builtin_append_comp_handler(ASMList* asm_list, TACOp op);
 void builtin_append_start(ASMList* asm_list);
+
+void fill_call_data_from_list(TACList list, CallData* call_data, int64_t total_method_count);
 
 #endif //ASSEMBLY_H

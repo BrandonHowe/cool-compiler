@@ -534,7 +534,8 @@ void asm_from_vtable(ASMList* asm_list)
     }
 }
 
-void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const int64_t class_idx)
+// TODO: refactor how CallData is handled (put it in ASMList?)
+void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const int64_t class_idx, CallData* call_data, int64_t total_method_count)
 {
     char* constructor_buf = bh_alloc(asm_list->string_allocator, class_node.name.len + 5);
     strncpy(constructor_buf, class_node.name.buf, class_node.name.len);
@@ -657,6 +658,8 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
                 {
                     extra_temps = list._curr_symbol;
                 }
+
+                fill_call_data_from_list(list, call_data, total_method_count);
             }
             else if (bh_str_equal_lit(attribute.type, "Int"))
             {
@@ -2103,4 +2106,26 @@ ASMList asm_list_init(ClassNodeList* class_list)
     list.string_class_idx = string_class_idx;
 
     return list;
+}
+
+void fill_call_data_from_list(TACList list, CallData* call_data, int64_t total_method_count)
+{
+    ClassNodeList class_list = list.class_list;
+    for (int k = 0; k < list.count; k++)
+    {
+        if (list.items[k].operation == TAC_OP_CALL)
+        {
+            int64_t target_class = list.items[k].rhs1.method.class_idx;
+            int64_t target_method = list.items[k].rhs1.method.method_idx;
+            for (int l = 0; l < total_method_count; l++)
+            {
+                bool is_subtype = is_class_subtype_of(class_node_from_id(class_list, target_class), class_node_from_id(class_list, call_data[l].class_idx));
+                bool is_subtype2 = is_class_subtype_of(class_node_from_id(class_list, call_data[l].class_idx), class_node_from_id(class_list, target_class));
+                if ((call_data[l].class_idx == target_class || is_subtype || is_subtype2) && call_data[l].method_idx == target_method)
+                {
+                    call_data[l].called = true;
+                }
+            }
+        }
+    }
 }

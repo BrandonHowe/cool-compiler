@@ -146,32 +146,6 @@ void display_tac_expr(bh_str_buf* str_buf, TACList tac_list, TACExpr expr)
     bh_str_buf_append_lit(str_buf, "\n");
 }
 
-typedef struct CallData
-{
-    TACList tac_list;
-    int64_t class_idx;
-    int64_t method_idx;
-    bool called;
-} CallData;
-
-ClassNode class_node_from_id(ClassNodeList list, int64_t id)
-{
-    if (id == -1 || id == -2 || id == -3)
-    {
-        for (int i = 0; i < list.class_count; i++)
-        {
-            if (id == -1 && bh_str_equal_lit(list.class_nodes[i].name, "Bool")) return list.class_nodes[i];
-            if (id == -2 && bh_str_equal_lit(list.class_nodes[i].name, "Int")) return list.class_nodes[i];
-            if (id == -3 && bh_str_equal_lit(list.class_nodes[i].name, "String")) return list.class_nodes[i];
-        }
-    }
-    if (id < 0)
-    {
-        id = -id - 1;
-    }
-    return list.class_nodes[id];
-}
-
 int main(int argc, char* argv[])
 {
     if (argc < 2) {
@@ -196,11 +170,6 @@ int main(int argc, char* argv[])
         asm_list.tac_allocator = tac_allocator;
         asm_list.string_allocator = arena_init(1000000);
         asm_from_vtable(&asm_list);
-
-        for (int i = 0; i < class_list.class_count; i++)
-        {
-            asm_from_constructor(&asm_list, class_list.class_nodes[i], i);
-        }
 
         // Count how many total methods there are to allocate space
         int64_t total_method_count = 0;
@@ -234,6 +203,11 @@ int main(int argc, char* argv[])
             }
         }
 
+        for (int i = 0; i < class_list.class_count; i++)
+        {
+            asm_from_constructor(&asm_list, class_list.class_nodes[i], i, call_data, total_method_count);
+        }
+
         int64_t method_idx = 0;
         for (int i = 0; i < class_list.class_count; i++)
         {
@@ -255,23 +229,7 @@ int main(int argc, char* argv[])
 
                     call_data[method_idx].tac_list = list;
 
-                    for (int k = 0; k < list.count; k++)
-                    {
-                        if (list.items[k].operation == TAC_OP_CALL)
-                        {
-                            int64_t target_class = list.items[k].rhs1.method.class_idx;
-                            int64_t target_method = list.items[k].rhs1.method.method_idx;
-                            for (int l = 0; l < total_method_count; l++)
-                            {
-                                bool is_subtype = is_class_subtype_of(class_node_from_id(class_list, target_class), class_node_from_id(class_list, call_data[l].class_idx));
-                                bool is_subtype2 = is_class_subtype_of(class_node_from_id(class_list, call_data[l].class_idx), class_node_from_id(class_list, target_class));
-                                if ((call_data[l].class_idx == target_class || is_subtype || is_subtype2) && call_data[l].method_idx == target_method)
-                                {
-                                    call_data[l].called = true;
-                                }
-                            }
-                        }
-                    }
+                    fill_call_data_from_list(list, call_data, total_method_count);
 
                     method_idx++;
                 }

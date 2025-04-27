@@ -204,5 +204,6 @@ ClassNodeList parse_class_map(bh_str* str, bh_allocator allocator);
 void parse_implementation_map(bh_str* str, bh_allocator allocator, ClassNodeList list);
 void parse_parent_map(bh_str* str, bh_allocator allocator, ClassNodeList list);
 bool is_class_subtype_of(ClassNode subclass, ClassNode parent_class);
+ClassNode class_node_from_id(ClassNodeList list, int64_t id);
 
 #endif //AST_H
