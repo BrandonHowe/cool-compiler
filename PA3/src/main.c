@@ -246,7 +246,8 @@ int main(int argc, char* argv[])
                             for (int l = 0; l < total_method_count; l++)
                             {
                                 bool is_subtype = is_class_subtype_of(class_list.class_nodes[target_class], class_list.class_nodes[call_data[l].class_idx]);
-                                if ((call_data[l].class_idx == target_class || is_subtype) && call_data[l].method_idx == target_method)
+                                bool is_subtype2 = is_class_subtype_of(class_list.class_nodes[call_data[l].class_idx], class_list.class_nodes[target_class]);
+                                if ((call_data[l].class_idx == target_class || is_subtype || is_subtype2) && call_data[l].method_idx == target_method)
                                 {
                                     call_data[l].called = true;
                                 }
@@ -267,19 +268,19 @@ int main(int argc, char* argv[])
             {
                 asm_from_method(&asm_list, call_data[i].tac_list);
 
-                // Make all subclasses live too
-                for (int j = 0; j < total_method_count; j++)
-                {
-                    if (i == j) continue;
-                    if (call_data[j].method_idx != call_data[i].method_idx) continue;
-                    if (is_class_subtype_of(
-                        class_list.class_nodes[call_data[j].class_idx],
-                        class_list.class_nodes[call_data[i].class_idx]
-                    ))
-                    {
-                        asm_from_method(&asm_list, call_data[j].tac_list);
-                    }
-                }
+                // // Make all subclasses live too
+                // for (int j = 0; j < total_method_count; j++)
+                // {
+                //     if (i == j) continue;
+                //     if (call_data[j].method_idx != call_data[i].method_idx) continue;
+                //     if (is_class_subtype_of(
+                //         class_list.class_nodes[call_data[j].class_idx],
+                //         class_list.class_nodes[call_data[i].class_idx]
+                //     ))
+                //     {
+                //         asm_from_method(&asm_list, call_data[j].tac_list);
+                //     }
+                // }
             }
             else
             {

@@ -1,14 +1,34 @@
-class A {
-    foo() : Object { abort() };
+class Base inherits IO
+{
+  identify() : Object
+  {
+    out_string( "base\n" )
+  };
 };
 
-class B inherits A {
-    foo() : Object { let x : Int <- 123 in abort() };
+
+class Derived inherits Base
+{
+  identify() : Object
+  {
+    out_string( "derived\n" )
+  };
 };
 
-class Main {
-  x : Int;
-  main() : Object {
-    (new A).foo()
+
+class Main
+{
+  main() : Object
+  {
+    {
+      let me : Base <- new Base in
+	me.identify();
+
+      let me : Base <- new Derived in
+	me.identify();
+
+      let me : Derived <- new Derived in
+	me.identify();
+    }
   };
 };
