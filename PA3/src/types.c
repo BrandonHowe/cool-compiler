@@ -203,7 +203,7 @@ bh_str read_file_text(const char* file_name)
     rewind(file);
 
     // Allocate memory to hold the file content
-    char* buffer = malloc(fileSize);
+    char* buffer = bh_alloc(GPA, fileSize);
     if (buffer == NULL) {
         perror("Failed to allocate memory");
         fclose(file);
@@ -219,6 +219,6 @@ bh_str read_file_text(const char* file_name)
         return (bh_str){ 0 };
     }
 
-    fclose(file);
+    //fclose(file);
     return (bh_str){ .buf = buffer, .len = bytesRead };
 }

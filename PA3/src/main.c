@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/mman.h>
 
+#include "allocator.h"
 #include "assembly.h"
 #include "ast.h"
 #include "optimizer_tac.h"
@@ -243,20 +244,6 @@ int main(int argc, char* argv[])
                 (call_data[i].class_idx == main_data.main_class_idx && call_data[i].method_idx == main_data.main_method_idx))
             {
                 asm_from_method(&asm_list, call_data[i].tac_list);
-
-                // // Make all subclasses live too
-                // for (int j = 0; j < total_method_count; j++)
-                // {
-                //     if (i == j) continue;
-                //     if (call_data[j].method_idx != call_data[i].method_idx) continue;
-                //     if (is_class_subtype_of(
-                //         class_list.class_nodes[call_data[j].class_idx],
-                //         class_list.class_nodes[call_data[i].class_idx]
-                //     ))
-                //     {
-                //         asm_from_method(&asm_list, call_data[j].tac_list);
-                //     }
-                // }
             }
             else
             {

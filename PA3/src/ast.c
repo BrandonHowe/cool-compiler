@@ -403,15 +403,15 @@ bool is_class_subtype_of(ClassNode subclass, ClassNode parent_class)
 
 ClassNode class_node_from_id(ClassNodeList list, int64_t id)
 {
-    if (id == -1 || id == -2 || id == -3)
-    {
-        for (int i = 0; i < list.class_count; i++)
-        {
-            if (id == -1 && bh_str_equal_lit(list.class_nodes[i].name, "Bool")) return list.class_nodes[i];
-            if (id == -2 && bh_str_equal_lit(list.class_nodes[i].name, "Int")) return list.class_nodes[i];
-            if (id == -3 && bh_str_equal_lit(list.class_nodes[i].name, "String")) return list.class_nodes[i];
-        }
-    }
+    // if (id == -1 || id == -2 || id == -3)
+    // {
+    //     for (int i = 0; i < list.class_count; i++)
+    //     {
+    //         if (id == -1 && bh_str_equal_lit(list.class_nodes[i].name, "Bool")) return list.class_nodes[i];
+    //         if (id == -2 && bh_str_equal_lit(list.class_nodes[i].name, "Int")) return list.class_nodes[i];
+    //         if (id == -3 && bh_str_equal_lit(list.class_nodes[i].name, "String")) return list.class_nodes[i];
+    //     }
+    // }
     if (id < 0)
     {
         id = -id - 1;
