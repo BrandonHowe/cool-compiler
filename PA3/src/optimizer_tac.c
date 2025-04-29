@@ -362,6 +362,14 @@ void perform_substitutions(TACList* list)
 
 void perform_constant_folding(TACList* list)
 {
+    int64_t string_class_idx = -1;
+    for (int i = 0; i < list->class_list.class_count; i++)
+    {
+        const ClassNode class_node = list->class_list.class_nodes[i];
+        if (bh_str_equal_lit(class_node.name, "String")) string_class_idx = i;
+        if (string_class_idx > -1) break;
+    }
+
     int64_t max_symbol = list->_curr_symbol + 1;
     TACSymbol* constants = bh_alloc(GPA, max_symbol * sizeof(TACSymbol));
     for (int i = 0; i < max_symbol; i++)
@@ -465,6 +473,40 @@ void perform_constant_folding(TACList* list)
                         list->items[i].operation = TAC_OP_ASSIGN;
                         list->items[i].lhs = list->items[i].rhs1;
                         list->items[i].rhs2 = (TACSymbol){ 0 };
+                    }
+                }
+            }
+            if (e.operation == TAC_OP_CALL)
+            {
+                if (e.rhs1.method.class_idx == string_class_idx && e.rhs1.method.method_idx == 4) // strlen
+                {
+                    TACSymbol c1 = constants[e.args[0].symbol];
+                    if (c1.type == TAC_SYMBOL_TYPE_STRING)
+                    {
+                        list->items[i].operation = TAC_OP_INT;
+                        list->items[i].rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = c1.string.data.len };
+                        list->items[i].arg_count = 0;
+                        rerun_needed = true;
+                    }
+                }
+                if (e.rhs1.method.class_idx == string_class_idx && e.rhs1.method.method_idx == 5) // substr
+                {
+                    TACSymbol c2 = constants[e.args[0].symbol];
+                    TACSymbol c3 = constants[e.args[1].symbol];
+                    TACSymbol c1 = constants[e.args[2].symbol];
+                    if (c1.type == TAC_SYMBOL_TYPE_STRING && c2.type == TAC_SYMBOL_TYPE_INTEGER && c3.type == TAC_SYMBOL_TYPE_INTEGER)
+                    {
+                        // Check in range
+                        if (c2.integer >= 0 && c3.integer >= 0 && c2.integer + c3.integer <= c1.string.data.len)
+                        {
+                            list->items[i].operation = TAC_OP_STRING;
+                            bh_str new_str = c1.string.data;
+                            new_str.buf += c2.integer;
+                            new_str.len = c3.integer;
+                            list->items[i].rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = new_str };
+                            list->items[i].arg_count = 0;
+                            rerun_needed = true;
+                        }
                     }
                 }
             }
