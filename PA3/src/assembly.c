@@ -308,6 +308,9 @@ void asm_list_append_st_tac_symbol(ASMList* asm_list, const ClassNode class_node
     case TAC_SYMBOL_TYPE_SYMBOL:
         asm_list_append_st(asm_list, RBP, -symbol.symbol, R13);
         break;
+    case TAC_SYMBOL_TYPE_REGISTER:
+        asm_list_append_mov(asm_list, symbol.reg, R13);
+        break;
     case TAC_SYMBOL_TYPE_VARIABLE:
         {
             // Look up the variable name from parameters
@@ -354,6 +357,9 @@ void asm_list_append_ld_tac_symbol(ASMList* asm_list, const ClassNode class_node
     {
     case TAC_SYMBOL_TYPE_SYMBOL:
         asm_list_append_ld(asm_list, dest, RBP, -symbol.symbol);
+        break;
+    case TAC_SYMBOL_TYPE_REGISTER:
+        asm_list_append_mov(asm_list, dest, symbol.symbol);
         break;
     case TAC_SYMBOL_TYPE_VARIABLE:
         {

@@ -5,6 +5,7 @@
 #include <string.h>
 #include "optimizer_tac.h"
 
+#include "assembly.h"
 #include "profiler.h"
 
 void remove_duplicate_phi_expressions(TACList* list)
@@ -65,7 +66,7 @@ void remove_phi_expressions(TACList* list)
             TACExpr e = list->items[i];
             // if (e.operation != TAC_OP_PHI)
             {
-                if ((e.rhs1.type == TAC_SYMBOL_TYPE_VARIABLE || e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL) &&
+                if ((e.rhs1.type == TAC_SYMBOL_TYPE_VARIABLE || e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL || e.rhs1.type == TAC_SYMBOL_TYPE_REGISTER) &&
                     e.rhs1.symbol < max_phi &&
                     phi_bindings[e.rhs1.symbol].type > 0 &&
                     !tac_symbol_equal(list->items[i].rhs1, phi_bindings[e.rhs1.symbol]))
@@ -73,7 +74,7 @@ void remove_phi_expressions(TACList* list)
                     list->items[i].rhs1 = phi_bindings[e.rhs1.symbol];
                     rerun_needed = true;
                 }
-                if ((e.rhs2.type == TAC_SYMBOL_TYPE_VARIABLE || e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL) &&
+                if ((e.rhs2.type == TAC_SYMBOL_TYPE_VARIABLE || e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL || e.rhs2.type == TAC_SYMBOL_TYPE_REGISTER) &&
                     e.rhs2.symbol < max_phi &&
                     phi_bindings[e.rhs2.symbol].type > 0 &&
                     !tac_symbol_equal(list->items[i].rhs2, phi_bindings[e.rhs2.symbol]))
@@ -84,7 +85,7 @@ void remove_phi_expressions(TACList* list)
                 for (int j = 0; j < e.arg_count; j++)
                 {
                     TACSymbol arg = e.args[j];
-                    if ((arg.type == TAC_SYMBOL_TYPE_VARIABLE || arg.type == TAC_SYMBOL_TYPE_SYMBOL) &&
+                    if ((arg.type == TAC_SYMBOL_TYPE_VARIABLE || arg.type == TAC_SYMBOL_TYPE_SYMBOL || arg.type == TAC_SYMBOL_TYPE_REGISTER) &&
                         arg.symbol < max_phi &&
                         phi_bindings[arg.symbol].type > 0 &&
                         !tac_symbol_equal(list->items[i].args[j], phi_bindings[arg.symbol]))
@@ -94,7 +95,7 @@ void remove_phi_expressions(TACList* list)
                     }
                 }
             }
-            if ((e.lhs.type == TAC_SYMBOL_TYPE_VARIABLE || e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL) && e.lhs.symbol < max_phi && phi_bindings[e.lhs.symbol].type > 0)
+            if ((e.lhs.type == TAC_SYMBOL_TYPE_VARIABLE || e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL || e.lhs.type == TAC_SYMBOL_TYPE_REGISTER) && e.lhs.symbol < max_phi && phi_bindings[e.lhs.symbol].type > 0)
             {
                 list->items[i].lhs = phi_bindings[e.lhs.symbol];
                 rerun_needed = true;
@@ -548,9 +549,17 @@ void remove_empty_exprs(TACList* list)
 typedef struct SymbolUsage
 {
     int64_t symbol;
-    int64_t used_count;
+    int64_t live_start;
+    int64_t live_end;
     bool register_viable;
 } SymbolUsage;
+
+typedef struct RegisterUsage
+{
+    ASMRegister reg;
+    int64_t live_end;
+    int64_t used_by_symbol;
+} RegisterUsage;
 
 void convert_symbols_to_registers(TACList* list)
 {
@@ -558,15 +567,149 @@ void convert_symbols_to_registers(TACList* list)
 
     for (int i = 0; i < list->cfg.block_count; i++)
     {
-        CFGBlock block = list->cfg.blocks[i];
+        int64_t used_symbols = 0;
 
+        CFGBlock block = list->cfg.blocks[i];
+        int64_t block_start_idx = block.tac_contents.items - list->items;
+        int64_t block_last_idx = block_start_idx + block.tac_contents.count - 1;
+
+        // First figure out all the used symbols to look for
+        for (int j = 0; j < block.tac_contents.count; j++)
+        {
+            TACExpr e = block.tac_contents.items[j];
+            if (e.lhs.type != TAC_SYMBOL_TYPE_SYMBOL) continue;
+
+            // Check that we haven't already added this symbol, probably useless but whatever
+            bool symbol_used = false;
+            for (int k = 0; k < used_symbols; k++)
+            {
+                if (symbols[k].symbol == e.lhs.symbol)
+                {
+                    symbol_used = true;
+                    break;
+                }
+            }
+            if (!symbol_used)
+            {
+                symbols[used_symbols] = (SymbolUsage){
+                    .symbol = e.lhs.symbol,
+                    .register_viable = true,
+                    .live_start = j,
+                    .live_end = 0
+                };
+                used_symbols++;
+            }
+        }
+
+        // Now see if the symbols are used in any other blocks
+        for (int j = 0; j < list->count; j++)
+        {
+            if (j >= block_start_idx && j <= block_last_idx) continue;
+
+            TACExpr e = list->items[j];
+
+            for (int k = 0; k < used_symbols; k++)
+            {
+                if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && symbols[k].symbol == e.rhs1.symbol) symbols[k].register_viable = false;
+                if (e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && symbols[k].symbol == e.rhs2.symbol) symbols[k].register_viable = false;
+                for (int l = 0; l < e.arg_count; l++)
+                {
+                    if (e.args[l].type == TAC_SYMBOL_TYPE_SYMBOL && symbols[k].symbol == e.args[l].symbol) symbols[k].register_viable = false;
+                }
+            }
+        }
+
+        // Next figure out the live ranges
+        for (int j = 0; j < block.tac_contents.count; j++)
+        {
+            TACExpr e = block.tac_contents.items[j];
+            if (e.lhs.type != TAC_SYMBOL_TYPE_SYMBOL) continue;
+
+            for (int k = 0; k < used_symbols; k++)
+            {
+                if (!symbols[k].register_viable) continue;
+                if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && symbols[k].symbol == e.rhs1.symbol)
+                {
+                    symbols[k].live_end = j;
+                }
+                if (e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && symbols[k].symbol == e.rhs2.symbol)
+                {
+                    symbols[k].live_end = j;
+                }
+                for (int l = 0; l < e.arg_count; l++)
+                {
+                    if (e.args[l].type == TAC_SYMBOL_TYPE_SYMBOL && symbols[k].symbol == e.args[l].symbol)
+                    {
+                        symbols[k].live_end = j;
+                    }
+                }
+            }
+        }
+
+        // Finally assign registers greedily
+        RegisterUsage registers[6] = {
+            { .reg = RBX, .used_by_symbol = -1 },
+            { .reg = RCX, .used_by_symbol = -1 },
+            { .reg = R8, .used_by_symbol = -1 },
+            { .reg = R9, .used_by_symbol = -1 },
+            { .reg = R10, .used_by_symbol = -1 },
+            { .reg = R11, .used_by_symbol = -1 },
+        };
         for (int j = 0; j < block.tac_contents.count; j++)
         {
             TACExpr e = block.tac_contents.items[j];
 
-            for (int k = 0; k < 0; k++)
+            // Apply registers and remove any registers that are no longer in use
+            for (int k = 0; k < 6; k++)
             {
+                if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && e.rhs1.symbol == registers[k].used_by_symbol)
+                {
+                    block.tac_contents.items[j].rhs1.type = TAC_SYMBOL_TYPE_REGISTER;
+                    block.tac_contents.items[j].rhs1.reg = registers[k].reg;
+                }
+                if (e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && e.rhs2.symbol == registers[k].used_by_symbol)
+                {
+                    block.tac_contents.items[j].rhs2.type = TAC_SYMBOL_TYPE_REGISTER;
+                    block.tac_contents.items[j].rhs2.reg = registers[k].reg;
+                }
+                // TODO: add function call args
+                for (int l = 0; l < e.arg_count; l++)
+                {
+                    if (e.args[l].type == TAC_SYMBOL_TYPE_SYMBOL && e.args[l].symbol == registers[k].used_by_symbol)
+                    {
+                        block.tac_contents.items[j].args[l].type = TAC_SYMBOL_TYPE_REGISTER;
+                        block.tac_contents.items[j].args[l].reg = registers[k].reg;
+                    }
+                }
+                if (registers[k].live_end <= j)
+                {
+                    registers[k].live_end = 0;
+                    registers[k].used_by_symbol = -1;
+                }
+            }
 
+            SymbolUsage symbol_usage = { 0 };
+            // Figure out symbol data
+            for (int k = 0; k < used_symbols; k++)
+            {
+                if (e.lhs.type == TAC_SYMBOL_TYPE_SYMBOL && symbols[k].symbol == e.lhs.symbol)
+                {
+                    symbol_usage = symbols[k];
+                }
+            }
+            if (!symbol_usage.register_viable) continue;
+
+            // Place the result in the first available register if possible
+            for (int k = 0; k < 6; k++)
+            {
+                if (registers[k].used_by_symbol == -1)
+                {
+                    registers[k].live_end = symbol_usage.live_end;
+                    registers[k].used_by_symbol = e.lhs.symbol;
+                    block.tac_contents.items[j].lhs.type = TAC_SYMBOL_TYPE_REGISTER;
+                    block.tac_contents.items[j].lhs.symbol = registers[k].reg;
+                    break;
+                }
             }
         }
     }
@@ -579,13 +722,13 @@ void optimize_tac_list(TACList* list)
         remove_duplicate_phi_expressions(list);
         eliminate_dead_tac(list);
         remove_double_nots(list);
-        generate_cfg_for_tac_list(list);
         perform_substitutions(list);
         perform_constant_folding(list);
         eliminate_dead_tac(list);
         remove_empty_exprs(list);
+        generate_cfg_for_tac_list(list);
         remove_phi_expressions(list);
-        // convert_symbols_to_registers(list);
+        convert_symbols_to_registers(list);
         // compress_tac_symbols(list, NULL, 0, 1);
     }
 }

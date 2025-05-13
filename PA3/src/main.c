@@ -34,6 +34,18 @@ void append_tac_symbol(bh_str_buf* str_buf, ClassNodeList class_list, TACSymbol 
     {
     case TAC_SYMBOL_TYPE_NULL: break;
     case TAC_SYMBOL_TYPE_SYMBOL: bh_str_buf_append_format(str_buf, "t$%i", symbol.symbol); break;
+    case TAC_SYMBOL_TYPE_REGISTER:
+        switch (symbol.reg)
+        {
+            case RBX: bh_str_buf_append_lit(str_buf, "rbx"); break;
+            case RCX: bh_str_buf_append_lit(str_buf, "rcx"); break;
+            case R8: bh_str_buf_append_lit(str_buf, "r8"); break;
+            case R9: bh_str_buf_append_lit(str_buf, "r9"); break;
+            case R10: bh_str_buf_append_lit(str_buf, "r10"); break;
+            case R11: bh_str_buf_append_lit(str_buf, "r11"); break;
+            default: assert(0 && "Unhandled register in TAC");
+        }
+        break;
     case TAC_SYMBOL_TYPE_VARIABLE:
         bh_str_buf_append(str_buf, symbol.variable.data);
         // bh_str_buf_append_format(str_buf, "$%i", symbol.variable.version);
@@ -75,7 +87,23 @@ void display_tac_expr(bh_str_buf* str_buf, TACList tac_list, TACExpr expr)
         }
         else
         {
-            bh_str_buf_append_format(str_buf, "t$%i <- ", expr.lhs.symbol);
+            if (expr.lhs.type == TAC_SYMBOL_TYPE_SYMBOL)
+            {
+                bh_str_buf_append_format(str_buf, "t$%i <- ", expr.lhs.symbol);
+            }
+            else
+            {
+                switch (expr.lhs.reg)
+                {
+                case RBX: bh_str_buf_append_lit(str_buf, "rbx <- "); break;
+                case RCX: bh_str_buf_append_lit(str_buf, "rcx <- "); break;
+                case R8: bh_str_buf_append_lit(str_buf, "r8 <- "); break;
+                case R9: bh_str_buf_append_lit(str_buf, "r9 <- "); break;
+                case R10: bh_str_buf_append_lit(str_buf, "r10 <- "); break;
+                case R11: bh_str_buf_append_lit(str_buf, "r11 <- "); break;
+                default: assert(0 && "Unhandled register in TAC");
+                }
+            }
         }
     }
     if (MODE == MODE_TAC_ONLY && expr.operation == TAC_OP_IGNORE) return;
