@@ -585,7 +585,7 @@ void optimize_tac_list(TACList* list)
         eliminate_dead_tac(list);
         remove_empty_exprs(list);
         remove_phi_expressions(list);
-        convert_symbols_to_registers(list);
+        // convert_symbols_to_registers(list);
         // compress_tac_symbols(list, NULL, 0, 1);
     }
 }
