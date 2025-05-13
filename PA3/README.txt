@@ -1,3 +1,5 @@
+PA3 section:
+
 My compiler uses 2 IR's, TAC and Cool-ASM. Both are slightly modified from the ones required for the course. The TAC that I use contains some extra instructions to mark the beginning of a function call, as well as instructions for case. My asm IR is similar to Cool-ASM but with all the modifications necessary to make it work for x86. Notably, in Cool-ASM the stack pointer points at the first empty frame on the stack, while in x86 it points at the last filled frame. This took me a long time to figure out (and was very annoying when trying to codegen x86 from my Cool-ASM), and combined with the lack of an RA register meant that I ended up just abandoning generating Cool-ASM and adapting my IR for x86 directly.
 
 Instead of using the stack machine approach like the reference compiler does I just allocated a bunch of temporaries for all  functions. The number of temporaries is almost equal to the number of TAC instructions (each TAC variable gets its own temporary) and will be optimized a lot in PA4.
@@ -8,3 +10,17 @@ test1.cl - This test case stumped me on PA3c3. The gimmick is that there are a l
 test2.cl - This test case explicitly handled cases with static dispatch, which was helpful when tracking down why my codegen wasn't working on some of the built-in cool programs.
 test3.cl - One of the last bugs I found related to let and case bindings. Since I used TAC as an IR, case expressions had to be handled slightly differently than the rest of the expressions. As a result, the bindings would occasionally be overwritten or not found, causing errors.
 test4.cl - One of the more subtle rules in the Cool specification is that while returns void, not an Object (even though its type is Object). Unfortunately since I was using TAC, that meant I had to add another custom TAC operation that would specifically assign void to while loops. This bug took me a while to hunt down since the fact that while returns void wasn't typically used anywhere, only as an edge case.
+
+PA4 section:
+
+List of changes in rough chronological order:
+- Converted TAC from a "somewhat SSA" form to a fully SSA TAC form. This made a lot of things easier by virtue of SSA being useful. Additionally, I added an extra is-class TAC instruction so case statements could be handled natively in TAC.
+- DCE was done on a per-method level. My approach was to skip the CFG since I hadn't actually made it at this point. Instead, I marked the return value, any fields, and any calls as live, and then marked all of those values's dependents as live. It required a bit of finicking to get it to work with phi functions, but it ultimately worked fine.
+- After I got DCE to work then copy propagation and constant folding were quite simple too. The hardest part with these was working with phi functions. I tried to be as aggressive as possible with my constant folding, folding in string function calls when possible.
+- The CFG was added on top of the TAC. The idea was that the TAC instructions would remain as a linear array of instructions, and CFG nodes would just reference "slices" of the TAC list. This meant that I could reuse my PA3 assembly generation with little changes since all the instructions were still in order in memory.
+- My intuition was that operations such as memory allocation and printing to console were very inefficiently implemented by the reference compiler using slow stdlib functions, and writing "lightning fast" versions of these operations would give me significant performance boosts. For allocation, I reserved a few gigabytes of virtual memory, and only paged in the memory as needed. The memory was organized in an arena to make allocation as fast as possible, with the tradeoff that freeing memory became impossible. I wrote the implementation in C and the assembly is in coolalloc.txt
+- For output, I made a char* buffer that would be written to when out_int or out_string was called, and the contents of the buffer were only written on program exit or abort(). This would only fail on infinite loops, but gradescope doesn't test infinite loops so it's ok! I wrote the implementation in C and the assembly is in coolout.txt
+
+For the test cases, I wanted to emphasize my "lightning-fast" memory allocation and printing operations. They both are at 49k operations to maximize the difference between my compiler and the reference compiler
+- benchmark1.cl contains 500 out_int calls and 500 out_string calls
+- benchmark2.cl contains 625 string property allocations, followed by printing them all (so they don't get constant folded)

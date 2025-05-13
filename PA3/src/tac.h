@@ -12,6 +12,7 @@ typedef enum TACSymbolType
 {
     TAC_SYMBOL_TYPE_NULL,
     TAC_SYMBOL_TYPE_SYMBOL,
+    TAC_SYMBOL_TYPE_REGISTER,
     TAC_SYMBOL_TYPE_VARIABLE,
     TAC_SYMBOL_TYPE_INTEGER,
     TAC_SYMBOL_TYPE_CLASSIDX,
@@ -27,6 +28,7 @@ typedef struct TACSymbol
     union
     {
         int64_t symbol;
+        int64_t reg;
         int64_t integer;
         struct { bh_str data; int64_t version; } string;
         struct { int64_t version; bh_str data; } variable;

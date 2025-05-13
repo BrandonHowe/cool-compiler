@@ -165,11 +165,12 @@ int main(int argc, char* argv[])
     parse_parent_map(&file, parser_arena, class_list);
 
     bh_allocator tac_allocator = GPA;
+    bh_allocator string_allocator = arena_init(1000000);
     ASMList asm_list = asm_list_init(&class_list);
     if (MODE == MODE_X86_ONLY || MODE == MODE_BOTH)
     {
         asm_list.tac_allocator = tac_allocator;
-        asm_list.string_allocator = arena_init(1000000);
+        asm_list.string_allocator = string_allocator;
         asm_from_vtable(&asm_list);
 
         // Count how many total methods there are to allocate space

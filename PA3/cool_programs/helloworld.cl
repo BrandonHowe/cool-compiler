@@ -1,6 +1,25 @@
 class Main inherits IO {
 	main():Object {{
-		out_int("asdfasdf".substr(1, 7).substr(2, 3).length());
+	    1;
+		out_string("asdf1");
+		1;
+		out_string("asdf1");
+		1;
+		out_string("asdf1");
+		1;
+		out_string("asdf1");
+		1;
+		out_string("asdf1");
+		1;
+		out_string("asdf1");
+		1;
+		out_string("asdf1");
+		1;
+		out_string("asdf1");
+		1;
+		out_string("asdf1");
+		1;
+		out_string("asdf1");
 	}};
 
 };

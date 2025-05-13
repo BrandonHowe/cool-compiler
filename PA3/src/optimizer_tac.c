@@ -478,6 +478,22 @@ void perform_constant_folding(TACList* list)
             }
             if (e.operation == TAC_OP_CALL)
             {
+                if (e.rhs1.method.class_idx == string_class_idx && e.rhs1.method.method_idx == 3) // substr
+                {
+                    TACSymbol c2 = constants[e.args[0].symbol];
+                    TACSymbol c1 = constants[e.args[1].symbol];
+                    if (c1.type == TAC_SYMBOL_TYPE_STRING && c2.type == TAC_SYMBOL_TYPE_STRING)
+                    {
+                        list->items[i].operation = TAC_OP_STRING;
+                        bh_str_buf new_str_buf = bh_str_buf_init(list->allocator, c2.string.data.len + c1.string.data.len); // NOTE: maybe make it use a string allocator?
+                        bh_str_buf_append(&new_str_buf, c1.string.data);
+                        bh_str_buf_append(&new_str_buf, c2.string.data);
+                        bh_str new_str = (bh_str){ .buf = new_str_buf.buf, .len = new_str_buf.len };
+                        list->items[i].rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_STRING, .string = new_str };
+                        list->items[i].arg_count = 0;
+                        rerun_needed = true;
+                    }
+                }
                 if (e.rhs1.method.class_idx == string_class_idx && e.rhs1.method.method_idx == 4) // strlen
                 {
                     TACSymbol c1 = constants[e.args[0].symbol];
@@ -529,6 +545,33 @@ void remove_empty_exprs(TACList* list)
     list->count = new_count;
 }
 
+typedef struct SymbolUsage
+{
+    int64_t symbol;
+    int64_t used_count;
+    bool register_viable;
+} SymbolUsage;
+
+void convert_symbols_to_registers(TACList* list)
+{
+    SymbolUsage* symbols = bh_alloc(GPA, sizeof(SymbolUsage) * 1000);
+
+    for (int i = 0; i < list->cfg.block_count; i++)
+    {
+        CFGBlock block = list->cfg.blocks[i];
+
+        for (int j = 0; j < block.tac_contents.count; j++)
+        {
+            TACExpr e = block.tac_contents.items[j];
+
+            for (int k = 0; k < 0; k++)
+            {
+
+            }
+        }
+    }
+}
+
 void optimize_tac_list(TACList* list)
 {
     PROFILE_BLOCK
@@ -542,6 +585,7 @@ void optimize_tac_list(TACList* list)
         eliminate_dead_tac(list);
         remove_empty_exprs(list);
         remove_phi_expressions(list);
+        convert_symbols_to_registers(list);
         // compress_tac_symbols(list, NULL, 0, 1);
     }
 }
