@@ -1021,6 +1021,8 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                 asm_list_append_label(asm_list, success_label);
             }
 
+                // TODO: maybe we can just get rid of the ignore TAC, and push R12/RBP onto the stack here? then we can save other registers too
+                // TODO: implement callee save
             // Push all the params onto the stack
             for (int j = 0; j < expr.arg_count; j++)
             {
@@ -1156,8 +1158,35 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     asm_list_append_label(asm_list, (bh_str){ .buf = label_buf, .len = label_len });
     asm_list_append_comment(asm_list, "method definition");
 
+    // Figure out which callee save registers we actually use
+    bool rbx_used = false;
+    bool rcx_used = false;
+    bool r8_used = false;
+    bool r9_used = false;
+    bool r10_used = false;
+    bool r11_used = false;
+    for (int i = 0; i < tac_list.count; i++)
+    {
+        TACExpr e = tac_list.items[i];
+        if (e.lhs.type == TAC_SYMBOL_TYPE_REGISTER)
+        {
+            if (e.lhs.reg == RBX) rbx_used = true;
+            if (e.lhs.reg == RCX) rcx_used = true;
+            if (e.lhs.reg == R8) r8_used = true;
+            if (e.lhs.reg == R9) r9_used = true;
+            if (e.lhs.reg == R10) r10_used = true;
+            if (e.lhs.reg == R11) r11_used = true;
+        }
+    }
+
     // Setup stack and stuff
     // asm_list_append_push(asm_list, RA);
+    if (rbx_used) asm_list_append_push(asm_list, RBX);
+    if (rcx_used) asm_list_append_push(asm_list, RCX);
+    if (r8_used) asm_list_append_push(asm_list, R8);
+    if (r9_used) asm_list_append_push(asm_list, R9);
+    if (r10_used) asm_list_append_push(asm_list, R10);
+    if (r11_used) asm_list_append_push(asm_list, R11);
     asm_list_append_push(asm_list, RBP);
     asm_list_append_mov(asm_list, RBP, RSP);
     asm_list_append_ld(asm_list, R12, RBP, 2);
@@ -1325,6 +1354,12 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     asm_list_append_label(asm_list, (bh_str){ .buf = label_buf, .len = label_len + 4 });
     asm_list_append_mov(asm_list, RSP, RBP);
     asm_list_append_pop(asm_list, RBP);
+    if (r11_used) asm_list_append_pop(asm_list, R11);
+    if (r10_used) asm_list_append_pop(asm_list, R10);
+    if (r9_used) asm_list_append_pop(asm_list, R9);
+    if (r8_used) asm_list_append_pop(asm_list, R8);
+    if (rcx_used) asm_list_append_pop(asm_list, RCX);
+    if (rbx_used) asm_list_append_pop(asm_list, RBX);
     asm_list_append_return(asm_list);
 
     asm_list_append_comment(asm_list, ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;"); // Spacer
