@@ -635,12 +635,22 @@ void convert_symbols_to_registers(TACList* list)
             }
         }
 
+        if (symbols[0].symbol == 0)
+        {
+
+        }
+
         // Now see if the symbols are used in any other blocks
         for (int j = 0; j < list->count; j++)
         {
             if (j >= block_start_idx && j <= block_last_idx) continue;
 
             TACExpr e = list->items[j];
+
+            if (e.operation == TAC_OP_RETURN)
+            {
+
+            }
 
             for (int k = 0; k < used_symbols; k++)
             {
@@ -764,6 +774,6 @@ void optimize_tac_list(TACList* list)
         remove_phi_expressions(list);
         generate_cfg_for_tac_list(list);
         convert_symbols_to_registers(list);
-        compress_tac_symbols(list, NULL, 0, 1);
+        // compress_tac_symbols(list, NULL, 0, 1);
     }
 }

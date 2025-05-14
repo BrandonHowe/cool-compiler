@@ -866,6 +866,24 @@ void generate_cfg_for_tac_list(TACList* tac_list)
         block_len += 1;
 
         TACExpr expr = tac_list->items[k];
+        if (expr.operation == TAC_OP_LABEL)
+        {
+            CFGBlock block = (CFGBlock){
+                .id = cfg.block_count + 1,
+                .tac_contents = (TACSlice){ .count = block_len - 1, .items = &tac_list->items[block_start] }
+            };
+            block.next[0] = &cfg.blocks[cfg.block_count + 1];
+
+            if (cfg.block_count + 1 > cfg.block_capacity)
+            {
+                cfg.blocks = bh_realloc(tac_list->allocator, cfg.blocks, sizeof(CFGBlock) * cfg.block_capacity * 2);
+                cfg.block_capacity *= 2;
+            }
+
+            cfg.blocks[cfg.block_count++] = block;
+            block_len = 1;
+            block_start = k;
+        }
         if (expr.operation == TAC_OP_JMP ||
             expr.operation == TAC_OP_BT)
         {
