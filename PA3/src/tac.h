@@ -172,4 +172,6 @@ TACList tac_list_from_method(const ClassMethod* method, bh_allocator allocator);
 bool tac_symbol_equal(TACSymbol s1, TACSymbol s2);
 void generate_cfg_for_tac_list(TACList* tac_list);
 
+void optimize_tac_list(TACList* list);
+
 #endif //TAC_H

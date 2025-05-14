@@ -8,6 +8,5 @@
 #include "tac.h"
 
 void remove_phi_expressions(TACList* list);
-void optimize_tac_list(TACList* list);
 
 #endif //OPTIMIZER_TAC_H

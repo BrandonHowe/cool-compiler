@@ -8,8 +8,6 @@
 #include <string.h>
 #include <sys/mman.h>
 
-#include "optimizer_tac.h"
-
 TACList TAC_list_init(const int64_t capacity, bh_allocator allocator)
 {
 #ifdef WIN32
