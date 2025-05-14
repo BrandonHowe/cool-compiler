@@ -657,7 +657,7 @@ void convert_symbols_to_registers(TACList* list)
         for (int j = 0; j < block.tac_contents.count; j++)
         {
             TACExpr e = block.tac_contents.items[j];
-            if (e.lhs.type != TAC_SYMBOL_TYPE_SYMBOL) continue;
+            if (e.lhs.type != TAC_SYMBOL_TYPE_SYMBOL && e.operation != TAC_OP_RETURN) continue;
 
             for (int k = 0; k < used_symbols; k++)
             {
