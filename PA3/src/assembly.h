@@ -131,6 +131,8 @@ typedef struct ASMList
     int64_t _global_label;
     int64_t _error_label;
     int64_t _string_counter;
+
+    int64_t _registers_used;
 } ASMList;
 
 typedef struct MainData

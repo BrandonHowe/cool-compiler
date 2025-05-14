@@ -400,7 +400,7 @@ void asm_list_append_ld_tac_symbol(ASMList* asm_list, const ClassNode class_node
             }
             if (attribute_idx > -1)
             {
-                int64_t offset = method.parameter_count - attribute_idx + 2;
+                int64_t offset = method.parameter_count - attribute_idx + 2 + asm_list->_registers_used;
                 asm_list_append_ld(asm_list, dest, RBP, offset);
                 break;
             }
@@ -1266,7 +1266,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         }
         if (bh_str_equal_lit(tac_list.method_name, "out_int"))
         {
-            asm_list_append_ld(asm_list, R14, RBP, 3);
+            asm_list_append_ld(asm_list, R14, RBP, 3 + registers_used);
             asm_list_append_ld(asm_list, R13, R14, 3);
             asm_list_append_align_sp(asm_list);
             asm_list_append_syscall(asm_list, asm_list->io_class_idx, 5);
@@ -1274,7 +1274,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         }
         if (bh_str_equal_lit(tac_list.method_name, "out_string"))
         {
-            asm_list_append_ld(asm_list, R14, RBP, 3);
+            asm_list_append_ld(asm_list, R14, RBP, 3 + registers_used);
             asm_list_append_ld(asm_list, R13, R14, 3);
             asm_list_append_align_sp(asm_list);
             asm_list_append_syscall(asm_list, asm_list->io_class_idx, 6);
@@ -1287,7 +1287,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
         {
             asm_list_append_call_method(asm_list, asm_list->string_class_idx, CONSTRUCTOR_METHOD);
             asm_list_append_mov(asm_list, R15, R13);
-            asm_list_append_ld(asm_list, R14, RBP, 3);
+            asm_list_append_ld(asm_list, R14, RBP, 3 + registers_used);
             asm_list_append_ld(asm_list, R14, R14, 3);
             asm_list_append_ld(asm_list, R13, R12, 3);
             asm_list_append_mov(asm_list, RDI, R13);
@@ -1317,9 +1317,9 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
 
             asm_list_append_call_method(asm_list, asm_list->string_class_idx, CONSTRUCTOR_METHOD);
             asm_list_append_mov(asm_list, R15, R13);
-            asm_list_append_ld(asm_list, R14, RBP, 3);
+            asm_list_append_ld(asm_list, R14, RBP, 3 + registers_used);
             asm_list_append_ld(asm_list, R14, R14, 3);
-            asm_list_append_ld(asm_list, R13, RBP, 4);
+            asm_list_append_ld(asm_list, R13, RBP, 4 + registers_used);
             asm_list_append_ld(asm_list, R13, R13, 3);
             asm_list_append_ld(asm_list, R12, R12, 3);
             asm_list_append_mov(asm_list, RDI, R12);
@@ -1343,6 +1343,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     }
     else
     {
+        asm_list->_registers_used = registers_used;
         int64_t extra_symbols = asm_from_tac_list(asm_list, tac_list);
         if (extra_symbols > 0)
         {
