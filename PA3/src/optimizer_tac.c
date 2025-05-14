@@ -635,11 +635,6 @@ void convert_symbols_to_registers(TACList* list)
             }
         }
 
-        if (symbols[0].symbol == 0)
-        {
-
-        }
-
         // Now see if the symbols are used in any other blocks
         for (int j = 0; j < list->count; j++)
         {
@@ -667,13 +662,17 @@ void convert_symbols_to_registers(TACList* list)
         for (int j = 0; j < block.tac_contents.count; j++)
         {
             TACExpr e = block.tac_contents.items[j];
-            if (e.lhs.type != TAC_SYMBOL_TYPE_SYMBOL && e.operation != TAC_OP_RETURN) continue;
+            // if (e.operation != TAC_OP_RETURN) continue;
 
             for (int k = 0; k < used_symbols; k++)
             {
                 if (!symbols[k].register_viable) continue;
                 if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && symbols[k].symbol == e.rhs1.symbol)
                 {
+                    if (k == 6)
+                    {
+
+                    }
                     symbols[k].live_end = j;
                 }
                 if (e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && symbols[k].symbol == e.rhs2.symbol)
