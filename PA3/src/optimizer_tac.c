@@ -597,7 +597,8 @@ typedef struct RegisterUsage
 
 void convert_symbols_to_registers(TACList* list)
 {
-    SymbolUsage* symbols = bh_alloc(GPA, sizeof(SymbolUsage) * 1000);
+    int64_t symbol_cap = 1000;
+    SymbolUsage* symbols = bh_alloc(GPA, sizeof(SymbolUsage) * symbol_cap);
 
     for (int i = 0; i < list->cfg.block_count; i++)
     {
@@ -632,6 +633,11 @@ void convert_symbols_to_registers(TACList* list)
                     .live_end = 0
                 };
                 used_symbols++;
+                if (used_symbols >= symbol_cap)
+                {
+                    symbols = bh_realloc(GPA, symbols, symbol_cap * 2);
+                    symbol_cap *= 2;
+                }
             }
         }
 
