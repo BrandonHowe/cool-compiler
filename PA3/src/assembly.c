@@ -330,7 +330,7 @@ void asm_list_append_st_tac_symbol(ASMList* asm_list, const ClassNode class_node
             }
             if (attribute_idx > -1)
             {
-                int64_t offset = method.parameter_count - attribute_idx + 2;
+                int64_t offset = method.parameter_count - attribute_idx + 2 + asm_list->_registers_used;
                 // asm_list_append_ld(asm_list, R13, RBP, offset);
                 asm_list_append_st(asm_list, RBP, offset, R13);
             }

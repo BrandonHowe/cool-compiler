@@ -438,29 +438,29 @@ void perform_constant_folding(TACList* list)
                     rerun_needed = true;
                 }
                 // Strength reduction ops
-                else if ((e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && c1.type == TAC_SYMBOL_TYPE_INTEGER && c1.integer == 0) ||
-                         (e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && c2.type == TAC_SYMBOL_TYPE_INTEGER && c2.integer == 0))
-                {
-                    if (e.operation == TAC_OP_PLUS)
-                    {
-                        list->items[i].operation = TAC_OP_ASSIGN;
-                        list->items[i].rhs2 = (TACSymbol){ 0 };
-                        rerun_needed = true;
-                    }
-                    if (e.operation == TAC_OP_TIMES)
-                    {
-                        list->items[i].operation = TAC_OP_ASSIGN;
-                        list->items[i].rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = 0 };
-                        list->items[i].rhs2 = (TACSymbol){ 0 };
-                        rerun_needed = true;
-                    }
-                    if (e.operation == TAC_OP_MINUS && c2.type == TAC_SYMBOL_TYPE_INTEGER && c2.integer == 0)
-                    {
-                        list->items[i].operation = TAC_OP_ASSIGN;
-                        list->items[i].rhs2 = (TACSymbol){ 0 };
-                        rerun_needed = true;
-                    }
-                }
+                // else if ((e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && c1.type == TAC_SYMBOL_TYPE_INTEGER && c1.integer == 0) ||
+                //          (e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && c2.type == TAC_SYMBOL_TYPE_INTEGER && c2.integer == 0))
+                // {
+                //     if (e.operation == TAC_OP_PLUS)
+                //     {
+                //         list->items[i].operation = TAC_OP_ASSIGN;
+                //         list->items[i].rhs2 = (TACSymbol){ 0 };
+                //         rerun_needed = true;
+                //     }
+                //     if (e.operation == TAC_OP_TIMES)
+                //     {
+                //         list->items[i].operation = TAC_OP_ASSIGN;
+                //         list->items[i].rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = 0 };
+                //         list->items[i].rhs2 = (TACSymbol){ 0 };
+                //         rerun_needed = true;
+                //     }
+                //     if (e.operation == TAC_OP_MINUS && c2.type == TAC_SYMBOL_TYPE_INTEGER && c2.integer == 0)
+                //     {
+                //         list->items[i].operation = TAC_OP_ASSIGN;
+                //         list->items[i].rhs2 = (TACSymbol){ 0 };
+                //         rerun_needed = true;
+                //     }
+                // }
             }
             if (e.operation == TAC_OP_NEG)
             {
@@ -597,7 +597,7 @@ typedef struct RegisterUsage
 
 void convert_symbols_to_registers(TACList* list)
 {
-    int64_t symbol_cap = 1000;
+    int64_t symbol_cap = 500000;
     SymbolUsage* symbols = bh_alloc(GPA, sizeof(SymbolUsage) * symbol_cap);
 
     for (int i = 0; i < list->cfg.block_count; i++)
@@ -635,7 +635,7 @@ void convert_symbols_to_registers(TACList* list)
                 used_symbols++;
                 if (used_symbols >= symbol_cap)
                 {
-                    symbols = bh_realloc(GPA, symbols, symbol_cap * 2);
+                    symbols = bh_realloc(GPA, symbols, symbol_cap * 2 * sizeof(SymbolUsage));
                     symbol_cap *= 2;
                 }
             }
@@ -762,6 +762,8 @@ void convert_symbols_to_registers(TACList* list)
             }
         }
     }
+
+    bh_free(GPA, symbols);
 }
 
 void optimize_tac_list(TACList* list)
@@ -779,6 +781,6 @@ void optimize_tac_list(TACList* list)
         remove_phi_expressions(list);
         generate_cfg_for_tac_list(list);
         convert_symbols_to_registers(list);
-        // compress_tac_symbols(list, NULL, 0, 1);
+        compress_tac_symbols(list, NULL, 0, 1);
     }
 }
