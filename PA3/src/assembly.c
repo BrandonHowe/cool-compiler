@@ -883,7 +883,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
             bh_str label_str_2 = asm_list_create_label(asm_list);
             bh_str label_str_3 = asm_list_create_label(asm_list);
 
-            asm_list_append_ld(asm_list, R13, RBP, -0 - expr.rhs1.symbol);
+            asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R13, expr.rhs1);
             asm_list_append_ld(asm_list, R13, R13, 3);
             asm_list_append_bnz(asm_list, R13, label_str_1);
 
@@ -1102,7 +1102,7 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
         }
         case TAC_OP_IS_CLASS:
             // NOTE: This relies on the fact that an isclass op will always be succeeded by a bt op
-            asm_list_append_ld(asm_list, R13, RBP, -0 - expr.rhs1.symbol);
+            asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R13, expr.rhs1);
             asm_list_append_ld(asm_list, R15, R13, 0);
             asm_list_append_li(asm_list, R14, expr.rhs2.integer, ASMImmediateUnitsBase);
 
