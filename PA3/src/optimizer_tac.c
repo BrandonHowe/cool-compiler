@@ -405,6 +405,17 @@ void perform_constant_folding(TACList* list)
             {
                 TACSymbol c1 = constants[e.rhs1.symbol];
                 TACSymbol c2 = constants[e.rhs2.symbol];
+                if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && c1.type == TAC_SYMBOL_TYPE_BOOL &&
+                    e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && c2.type == TAC_SYMBOL_TYPE_BOOL)
+                {
+                    if (e.operation == TAC_OP_EQ)
+                    {
+                        list->items[i].operation = TAC_OP_BOOL;
+                        list->items[i].rhs2 = (TACSymbol){ 0 };
+                        list->items[i].rhs1.type = TAC_SYMBOL_TYPE_BOOL;
+                        list->items[i].rhs1.integer = c1.integer == c2.integer;
+                    }
+                }
                 if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && c1.type == TAC_SYMBOL_TYPE_INTEGER &&
                     e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && c2.type == TAC_SYMBOL_TYPE_INTEGER)
                 {
