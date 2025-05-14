@@ -22,6 +22,28 @@ typedef enum TACSymbolType
     TAC_SYMBOL_TYPE_EXPRESSION
 } TACSymbolType;
 
+typedef enum ASMRegister
+{
+    INVALID_REGISTER,
+    RAX,
+    RBX,
+    RCX,
+    RDX,
+    RSI,
+    RDI,
+    RBP,
+    RSP,
+    R8,
+    R9,
+    R10,
+    R11,
+    R12,
+    R13,
+    R14,
+    R15,
+    RA, // Not a real register
+} ASMRegister;
+
 typedef struct TACSymbol
 {
     TACSymbolType type;

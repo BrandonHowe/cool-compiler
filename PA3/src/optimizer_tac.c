@@ -5,7 +5,6 @@
 #include <string.h>
 #include "optimizer_tac.h"
 
-#include "assembly.h"
 #include "profiler.h"
 
 void remove_duplicate_phi_expressions(TACList* list)
