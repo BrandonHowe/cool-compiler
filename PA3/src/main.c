@@ -25,7 +25,7 @@ typedef enum Mode
     MODE_BOTH,
 } Mode;
 
-#define MODE MODE_TAC_ONLY
+#define MODE MODE_X86_ONLY
 
 void append_tac_symbol(bh_str_buf* str_buf, ClassNodeList class_list, TACSymbol symbol)
 {

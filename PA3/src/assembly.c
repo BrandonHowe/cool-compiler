@@ -853,8 +853,8 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
         case TAC_OP_LT:
         case TAC_OP_LTE:
         case TAC_OP_EQ:
-            asm_list_append_ld(asm_list, R13, RBP, -0 - expr.rhs1.symbol);
-            asm_list_append_ld(asm_list, R14, RBP, -0 - expr.rhs2.symbol);
+            asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R13, expr.rhs1);
+            asm_list_append_ld_tac_symbol(asm_list, curr_class_node, curr_method, R14, expr.rhs1);
             asm_list_append_push(asm_list, R13);
             asm_list_append_push(asm_list, R14);
             if (expr.operation == TAC_OP_LTE) asm_list_append_call_method(asm_list, INTERNAL_CLASS, INTERNAL_LE_HANDLER);
