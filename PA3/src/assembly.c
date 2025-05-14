@@ -14,6 +14,11 @@
 
 #pragma region Assembly operations
 
+bool asm_param_equal(const ASMParam a, const ASMParam b)
+{
+    return a.type == b.type && a.reg.name == b.reg.name && a.reg.offset == b.reg.offset;
+}
+
 ASMInstr* asm_list_append(ASMList* asm_list, const ASMInstr instr)
 {
     if (asm_list->instruction_count + 1 >= asm_list->instruction_capacity)
@@ -1325,6 +1330,36 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     asm_list_append_comment(asm_list, ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;"); // Spacer
 }
 
+void peephole_optimize_asm_list(ASMList* asm_list)
+{
+    bool rerun_needed = true;
+    while (rerun_needed)
+    {
+        rerun_needed = false;
+        for (int i = 0; i < asm_list->instruction_count - 1; i++)
+        {
+            ASMInstr instr = asm_list->instructions[i];
+            ASMInstr next_instr = asm_list->instructions[i + 1];
+            bool is_chained_mov = (instr.op == ASM_OP_MOV && next_instr.op == ASM_OP_MOV)
+                                || (instr.op == ASM_OP_LD && next_instr.op == ASM_OP_MOV)
+                                || (instr.op == ASM_OP_MOV && next_instr.op == ASM_OP_ST);
+            if (is_chained_mov && instr.params[0].reg.name == next_instr.params[1].reg.name)
+            {
+                asm_list->instructions[i].params[0].reg = next_instr.params[0].reg;
+                asm_list->instructions[i + 1] = (ASMInstr){ 0 };
+                i++;
+                rerun_needed = true;
+            }
+
+            // Single-instruction based
+            if (instr.op == ASM_OP_MOV && asm_param_equal(instr.params[0], instr.params[1]))
+            {
+                asm_list->instructions[i] = (ASMInstr){ 0 };
+            }
+        }
+    }
+}
+
 #pragma endregion
 
 #pragma region Built in helpers
@@ -1908,8 +1943,8 @@ void x86_asm_list(bh_str_buf* str_buf, const ASMList asm_list)
         switch (instr.op)
         {
         case ASM_OP_NULL:
-            bh_str_buf_append_lit(str_buf, "NULL");
-            break;
+            // bh_str_buf_append_lit(str_buf, "NULL");
+            continue; // skips newline
         case ASM_OP_JMP:
             bh_str_buf_append_lit(str_buf, "jmp ");
             x86_asm_param(str_buf, class_list, instr.params[0]);

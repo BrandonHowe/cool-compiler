@@ -427,6 +427,30 @@ void perform_constant_folding(TACList* list)
                     list->items[i].rhs2 = (TACSymbol){ 0 };
                     rerun_needed = true;
                 }
+                // Strength reduction ops
+                else if ((e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && c1.type == TAC_SYMBOL_TYPE_INTEGER && c1.integer == 0) ||
+                         (e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && c2.type == TAC_SYMBOL_TYPE_INTEGER && c2.integer == 0))
+                {
+                    if (e.operation == TAC_OP_PLUS)
+                    {
+                        list->items[i].operation = TAC_OP_ASSIGN;
+                        list->items[i].rhs2 = (TACSymbol){ 0 };
+                        rerun_needed = true;
+                    }
+                    if (e.operation == TAC_OP_TIMES)
+                    {
+                        list->items[i].operation = TAC_OP_ASSIGN;
+                        list->items[i].rhs1 = (TACSymbol){ .type = TAC_SYMBOL_TYPE_INTEGER, .integer = 0 };
+                        list->items[i].rhs2 = (TACSymbol){ 0 };
+                        rerun_needed = true;
+                    }
+                    if (e.operation == TAC_OP_MINUS && c2.type == TAC_SYMBOL_TYPE_INTEGER && c2.integer == 0)
+                    {
+                        list->items[i].operation = TAC_OP_ASSIGN;
+                        list->items[i].rhs2 = (TACSymbol){ 0 };
+                        rerun_needed = true;
+                    }
+                }
             }
             if (e.operation == TAC_OP_NEG)
             {
@@ -647,6 +671,7 @@ void convert_symbols_to_registers(TACList* list)
         }
 
         // Finally assign registers greedily
+        int64_t register_count = 6;
         RegisterUsage registers[6] = {
             { .reg = RBX, .used_by_symbol = -1 },
             { .reg = RCX, .used_by_symbol = -1 },
@@ -660,7 +685,7 @@ void convert_symbols_to_registers(TACList* list)
             TACExpr e = block.tac_contents.items[j];
 
             // Apply registers and remove any registers that are no longer in use
-            for (int k = 0; k < 6; k++)
+            for (int k = 0; k < register_count; k++)
             {
                 if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && e.rhs1.symbol == registers[k].used_by_symbol)
                 {
@@ -672,7 +697,6 @@ void convert_symbols_to_registers(TACList* list)
                     block.tac_contents.items[j].rhs2.type = TAC_SYMBOL_TYPE_REGISTER;
                     block.tac_contents.items[j].rhs2.reg = registers[k].reg;
                 }
-                // TODO: add function call args
                 for (int l = 0; l < e.arg_count; l++)
                 {
                     if (e.args[l].type == TAC_SYMBOL_TYPE_SYMBOL && e.args[l].symbol == registers[k].used_by_symbol)
@@ -700,7 +724,7 @@ void convert_symbols_to_registers(TACList* list)
             if (!symbol_usage.register_viable) continue;
 
             // Place the result in the first available register if possible
-            for (int k = 0; k < 6; k++)
+            for (int k = 0; k < register_count; k++)
             {
                 if (registers[k].used_by_symbol == -1)
                 {
@@ -724,11 +748,12 @@ void optimize_tac_list(TACList* list)
         remove_double_nots(list);
         perform_substitutions(list);
         perform_constant_folding(list);
+        perform_substitutions(list);
         eliminate_dead_tac(list);
         remove_empty_exprs(list);
-        generate_cfg_for_tac_list(list);
         remove_phi_expressions(list);
+        generate_cfg_for_tac_list(list);
         convert_symbols_to_registers(list);
-        // compress_tac_symbols(list, NULL, 0, 1);
+        compress_tac_symbols(list, NULL, 0, 1);
     }
 }

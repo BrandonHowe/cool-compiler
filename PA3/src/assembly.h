@@ -177,6 +177,7 @@ void asm_from_constructor(ASMList* asm_list, ClassNode class_node, int64_t class
 int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list);
 void asm_from_method_stub(ASMList* asm_list, TACList tac_list);
 void asm_from_method(ASMList* asm_list, TACList tac_list);
+void peephole_optimize_asm_list(ASMList* asm_list);
 ASMList asm_list_init(ClassNodeList* class_list);
 
 void display_asm_list(bh_str_buf* str_buf, ASMList asm_list);

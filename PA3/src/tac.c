@@ -907,7 +907,7 @@ void generate_cfg_for_tac_list(TACList* tac_list)
 
         if (cfg.block_count + 1 > cfg.block_capacity)
         {
-            bh_realloc(tac_list->allocator, cfg.blocks, sizeof(CFGBlock) * cfg.block_capacity * 2);
+            cfg.blocks = bh_realloc(tac_list->allocator, cfg.blocks, sizeof(CFGBlock) * cfg.block_capacity * 2);
             cfg.block_capacity *= 2;
         }
 

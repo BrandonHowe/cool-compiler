@@ -273,6 +273,7 @@ int main(int argc, char* argv[])
                 (call_data[i].class_idx == main_data.main_class_idx && call_data[i].method_idx == main_data.main_method_idx))
             {
                 asm_from_method(&asm_list, call_data[i].tac_list);
+                peephole_optimize_asm_list(&asm_list);
             }
             else
             {
