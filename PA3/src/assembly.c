@@ -660,9 +660,46 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
 
                 tac_list_from_expression(&attribute.expr, &list, (TACSymbol){ 0 }, false);
                 optimize_tac_list(&list);
+
+                bool rbx_used = false;
+                bool rcx_used = false;
+                bool r8_used = false;
+                bool r9_used = false;
+                bool r10_used = false;
+                bool r11_used = false;
+                for (int i = 0; i < list.count; i++)
+                {
+                    TACExpr e = list.items[i];
+                    if (e.lhs.type == TAC_SYMBOL_TYPE_REGISTER)
+                    {
+                        if (e.lhs.reg == RBX) rbx_used = true;
+                        if (e.lhs.reg == RCX) rcx_used = true;
+                        if (e.lhs.reg == R8) r8_used = true;
+                        if (e.lhs.reg == R9) r9_used = true;
+                        if (e.lhs.reg == R10) r10_used = true;
+                        if (e.lhs.reg == R11) r11_used = true;
+                    }
+                }
+
+                // Setup stack and stuff
+                // asm_list_append_push(asm_list, RA);
+                if (rbx_used) asm_list_append_push(asm_list, RBX);
+                if (rcx_used) asm_list_append_push(asm_list, RCX);
+                if (r8_used) asm_list_append_push(asm_list, R8);
+                if (r9_used) asm_list_append_push(asm_list, R9);
+                if (r10_used) asm_list_append_push(asm_list, R10);
+                if (r11_used) asm_list_append_push(asm_list, R11);
+
                 asm_from_tac_list(asm_list, list);
                 asm_list_append_st(asm_list, R12, i + 3, R13);
                 // arena_free_all(asm_list->tac_allocator);
+
+                if (r11_used) asm_list_append_pop(asm_list, R11);
+                if (r10_used) asm_list_append_pop(asm_list, R10);
+                if (r9_used) asm_list_append_pop(asm_list, R9);
+                if (r8_used) asm_list_append_pop(asm_list, R8);
+                if (rcx_used) asm_list_append_pop(asm_list, RCX);
+                if (rbx_used) asm_list_append_pop(asm_list, RBX);
 
                 label = list._curr_label;
                 if (list._curr_symbol > extra_temps)

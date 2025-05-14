@@ -68,7 +68,9 @@ void append_tac_symbol(bh_str_buf* str_buf, ClassNodeList class_list, TACSymbol 
         break;
     case TAC_SYMBOL_TYPE_STRING: bh_str_buf_append(str_buf, symbol.string.data); break;
     case TAC_SYMBOL_TYPE_BOOL: bh_str_buf_append_format(str_buf, "%s", symbol.integer ? "true" : "false"); break;
-    case TAC_SYMBOL_TYPE_METHOD: bh_str_buf_append(str_buf, class_list.class_nodes[symbol.method.class_idx].methods[symbol.method.method_idx].name); break;
+    case TAC_SYMBOL_TYPE_METHOD:
+        bh_str_buf_append(str_buf, class_list.class_nodes[symbol.method.class_idx].methods[symbol.method.method_idx].name);
+        break;
     }
 }
 
