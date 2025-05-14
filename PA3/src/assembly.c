@@ -1178,6 +1178,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
             if (e.lhs.reg == R11) r11_used = true;
         }
     }
+    int64_t registers_used = rbx_used + rcx_used + r8_used + r9_used + r10_used + r11_used;
 
     // Setup stack and stuff
     // asm_list_append_push(asm_list, RA);
@@ -1189,7 +1190,7 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     if (r11_used) asm_list_append_push(asm_list, R11);
     asm_list_append_push(asm_list, RBP);
     asm_list_append_mov(asm_list, RBP, RSP);
-    asm_list_append_ld(asm_list, R12, RBP, 2);
+    asm_list_append_ld(asm_list, R12, RBP, 2 + registers_used);
     asm_list_append_comment(asm_list, "stack room for temporaries");
     int64_t temp_count = tac_list._curr_symbol + (tac_list._curr_symbol & 1);
     ASMInstr* temp_space_instr = asm_list_append_li(asm_list, R14, temp_count, ASMImmediateUnitsWord);

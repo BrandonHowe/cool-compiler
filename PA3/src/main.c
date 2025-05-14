@@ -11,7 +11,6 @@
 #include "allocator.h"
 #include "assembly.h"
 #include "ast.h"
-#include "optimizer_tac.h"
 #include "profiler.h"
 #include "tac.h"
 #include "types.h"
