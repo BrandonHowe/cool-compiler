@@ -6,6 +6,8 @@ coolalloc_init:
 .LFB0:
 	.cfi_startproc
 	endbr64
+	pushq %r8
+	pushq %r9
 	subq	$8, %rsp
 	.cfi_def_cfa_offset 16
 	xorl	%edx, %edx
@@ -22,6 +24,11 @@ coolalloc_init:
 	movq	%rax, %rdi
 	addq	$8, %rsp
 	.cfi_def_cfa_offset 8
+	# --- restore r9, r8 ---
+    popq    %r9
+    .cfi_adjust_cfa_offset -8
+    popq    %r8
+    .cfi_adjust_cfa_offset -8
 	jmp	mprotect@PLT
 	.cfi_endproc
 .LFE0:

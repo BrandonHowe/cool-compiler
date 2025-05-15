@@ -6,8 +6,16 @@ coolout_init:
 .LFB24:
 	.cfi_startproc
 	endbr64
+
+	pushq   %r8
+    .cfi_adjust_cfa_offset 8
+    .cfi_offset 8, -8
+    pushq   %r9
+    .cfi_adjust_cfa_offset 8
+    .cfi_offset 9, -16
+
 	subq	$8, %rsp
-	.cfi_def_cfa_offset 16
+	.cfi_def_cfa_offset 24
 	xorl	%edx, %edx
 	movl	$100000000, %esi
 	xorl	%edi, %edi
@@ -21,7 +29,14 @@ coolout_init:
 	movq	%rax, coolout_buffer(%rip)
 	movq	%rax, %rdi
 	addq	$8, %rsp
-	.cfi_def_cfa_offset 8
+	.cfi_def_cfa_offset 16
+
+	# --- restore r9, r8 ---
+    popq    %r9
+    .cfi_adjust_cfa_offset -8
+    popq    %r8
+    .cfi_adjust_cfa_offset -8
+
 	jmp	mprotect@PLT
 	.cfi_endproc
 .LFE24:
@@ -53,6 +68,14 @@ coolout:
 .LFB26:
 	.cfi_startproc
 	endbr64
+
+	pushq   %r8
+    .cfi_adjust_cfa_offset 8
+    .cfi_offset 8, -8
+    pushq   %r9
+    .cfi_adjust_cfa_offset 8
+    .cfi_offset 9, -16
+
 	pushq	%r13
 	.cfi_def_cfa_offset 16
 	.cfi_offset 13, -16
@@ -138,6 +161,11 @@ coolout:
 	.cfi_def_cfa_offset 16
 	popq	%r13
 	.cfi_def_cfa_offset 8
+	# --- restore r9, r8 ---
+    popq    %r9
+    .cfi_adjust_cfa_offset -8
+    popq    %r8
+    .cfi_adjust_cfa_offset -8
 	ret
 	.p2align 4,,10
 	.p2align 3
