@@ -103,7 +103,11 @@ coolout:
 	addq	%rsi, %rsi
 	movl	$3, %edx
 	movq	%rsi, coolout_capacity(%rip)
+	pushq %r10
+	pushq %r11
 	call	mprotect@PLT
+	popq %r11
+	popq %r10
 .LPOOP17:
 	movq	coolout_used(%rip), %rax
 	movq	coolout_capacity(%rip), %rsi
@@ -387,7 +391,11 @@ coolout_int:
 	addq	%rsi, %rsi
 	movl	$3, %edx
 	movq	%rsi, coolout_capacity(%rip)
-	call	mprotect@PLT
+	pushq %r10
+    pushq %r11
+    call	mprotect@PLT
+    popq %r11
+    popq %r10
 	movq	coolout_used(%rip), %rax
 	jmp	.LPOOP23
 	.p2align 4,,10

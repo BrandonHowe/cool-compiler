@@ -696,7 +696,7 @@ void convert_symbols_to_registers(TACList* list)
         }
 
         // Finally assign registers greedily
-        int64_t register_count = 2;
+        int64_t register_count = 3;
         RegisterUsage registers[3] = {
             { .reg = RBX, .used_by_symbol = -1 },
             // { .reg = RCX, .used_by_symbol = -1 },

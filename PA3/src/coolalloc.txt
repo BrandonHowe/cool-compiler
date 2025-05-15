@@ -63,7 +63,11 @@ coolalloc:
 	addq	%rsi, %rsi
 	movl	$3, %edx
 	movq	%rsi, coolalloc_capacity(%rip)
-	call	mprotect@PLT
+	pushq %r10
+    pushq %r11
+    call	mprotect@PLT
+    popq %r11
+    popq %r10
 	movq	coolalloc_used(%rip), %rax
 	leaq	(%rbx,%rax), %rdx
 	addq	coolalloc_buffer(%rip), %rax
