@@ -1473,12 +1473,10 @@ void peephole_optimize_asm_list(ASMList* asm_list)
         {
             ASMInstr instr = asm_list->instructions[i];
             ASMInstr next_instr = asm_list->instructions[i + 1];
-            bool is_chained_mov = (instr.op == ASM_OP_MOV && next_instr.op == ASM_OP_MOV)
-                                || (instr.op == ASM_OP_LD && next_instr.op == ASM_OP_MOV)
-                                || (instr.op == ASM_OP_MOV && next_instr.op == ASM_OP_ST);
-            if (is_chained_mov && instr.params[0].reg.name == next_instr.params[1].reg.name)
+            if (instr.op == ASM_OP_MOV && next_instr.op == ASM_OP_MOV &&
+                asm_param_equal(instr.params[1], next_instr.params[0]) &&
+                asm_param_equal(instr.params[0], next_instr.params[1]))
             {
-                asm_list->instructions[i].params[0].reg = next_instr.params[0].reg;
                 asm_list->instructions[i + 1] = (ASMInstr){ 0 };
                 i++;
                 rerun_needed = true;
