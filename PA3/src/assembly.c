@@ -683,23 +683,23 @@ void asm_from_constructor(ASMList* asm_list, const ClassNode class_node, const i
 
                 // Setup stack and stuff
                 // asm_list_append_push(asm_list, RA);
-                if (rbx_used) asm_list_append_push(asm_list, RBX);
-                if (rcx_used) asm_list_append_push(asm_list, RCX);
-                if (r8_used) asm_list_append_push(asm_list, R8);
-                if (r9_used) asm_list_append_push(asm_list, R9);
-                if (r10_used) asm_list_append_push(asm_list, R10);
-                if (r11_used) asm_list_append_push(asm_list, R11);
+                // if (rbx_used) asm_list_append_push(asm_list, RBX);
+                // if (rcx_used) asm_list_append_push(asm_list, RCX);
+                // if (r8_used) asm_list_append_push(asm_list, R8);
+                // if (r9_used) asm_list_append_push(asm_list, R9);
+                // if (r10_used) asm_list_append_push(asm_list, R10);
+                // if (r11_used) asm_list_append_push(asm_list, R11);
 
                 asm_from_tac_list(asm_list, list);
                 asm_list_append_st(asm_list, R12, i + 3, R13);
                 // arena_free_all(asm_list->tac_allocator);
 
-                if (r11_used) asm_list_append_pop(asm_list, R11);
-                if (r10_used) asm_list_append_pop(asm_list, R10);
-                if (r9_used) asm_list_append_pop(asm_list, R9);
-                if (r8_used) asm_list_append_pop(asm_list, R8);
-                if (rcx_used) asm_list_append_pop(asm_list, RCX);
-                if (rbx_used) asm_list_append_pop(asm_list, RBX);
+                // if (r11_used) asm_list_append_pop(asm_list, R11);
+                // if (r10_used) asm_list_append_pop(asm_list, R10);
+                // if (r9_used) asm_list_append_pop(asm_list, R9);
+                // if (r8_used) asm_list_append_pop(asm_list, R8);
+                // if (rcx_used) asm_list_append_pop(asm_list, RCX);
+                // if (rbx_used) asm_list_append_pop(asm_list, RBX);
 
                 label = list._curr_label;
                 if (list._curr_symbol > extra_temps)
@@ -1060,6 +1060,61 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
 
                 // TODO: maybe we can just get rid of the ignore TAC, and push R12/RBP onto the stack here? then we can save other registers too
                 // TODO: implement callee save
+                bool rcx_used = false;
+                bool r8_used = false;
+                bool r9_used = false;
+                bool r10_used = false;
+                bool r11_used = false;
+                bool checking_rcx = true;
+                bool checking_r8 = true;
+                bool checking_r9 = true;
+                bool checking_r10 = true;
+                bool checking_r11 = true;
+                for (int j = i + 1; j < tac_list.count; j++)
+                {
+                    TACExpr e = tac_list.items[j];
+                    if (e.rhs1.type == TAC_SYMBOL_TYPE_REGISTER)
+                    {
+                        if (checking_rcx && e.rhs1.reg == RCX) rcx_used = true;
+                        if (checking_r8 && e.rhs1.reg == R8) r8_used = true;
+                        if (checking_r9 && e.rhs1.reg == R9) r9_used = true;
+                        if (checking_r10 && e.rhs1.reg == R10) r10_used = true;
+                        if (checking_r11 && e.rhs1.reg == R11) r11_used = true;
+                    }
+                    if (e.rhs2.type == TAC_SYMBOL_TYPE_REGISTER)
+                    {
+                        if (checking_rcx && e.rhs2.reg == RCX) rcx_used = true;
+                        if (checking_r8 && e.rhs2.reg == R8) r8_used = true;
+                        if (checking_r9 && e.rhs2.reg == R9) r9_used = true;
+                        if (checking_r10 && e.rhs2.reg == R10) r10_used = true;
+                        if (checking_r11 && e.rhs2.reg == R11) r11_used = true;
+                    }
+                    for (int l = 0; l < e.arg_count; l++)
+                    {
+                        TACSymbol arg = e.args[l];
+                        if (arg.type == TAC_SYMBOL_TYPE_REGISTER)
+                        {
+                            if (checking_rcx && arg.reg == RCX) rcx_used = true;
+                            if (checking_r8 && arg.reg == R8) r8_used = true;
+                            if (checking_r9 && arg.reg == R9) r9_used = true;
+                            if (checking_r10 && arg.reg == R10) r10_used = true;
+                            if (checking_r11 && arg.reg == R11) r11_used = true;
+                        }
+                    }
+
+                    if (e.lhs.type == TAC_SYMBOL_TYPE_REGISTER && e.lhs.reg == RCX) checking_rcx = false;
+                    if (e.lhs.type == TAC_SYMBOL_TYPE_REGISTER && e.lhs.reg == R8) checking_r8 = false;
+                    if (e.lhs.type == TAC_SYMBOL_TYPE_REGISTER && e.lhs.reg == R9) checking_r9 = false;
+                    if (e.lhs.type == TAC_SYMBOL_TYPE_REGISTER && e.lhs.reg == R10) checking_r10 = false;
+                    if (e.lhs.type == TAC_SYMBOL_TYPE_REGISTER && e.lhs.reg == R11) checking_r11 = false;
+
+                    if (!checking_rcx && !checking_r8 && !checking_r9 && !checking_r10 && !checking_r11) break;
+                }
+            if (rcx_used) asm_list_append_push(asm_list, RCX);
+            if (r8_used) asm_list_append_push(asm_list, R8);
+            if (r9_used) asm_list_append_push(asm_list, R9);
+            if (r10_used) asm_list_append_push(asm_list, R10);
+            if (r11_used) asm_list_append_push(asm_list, R11);
             // Push all the params onto the stack
             for (int j = 0; j < expr.arg_count; j++)
             {
@@ -1096,6 +1151,11 @@ int64_t asm_from_tac_list(ASMList* asm_list, TACList tac_list)
                     (ASMParam){ .type = ASM_PARAM_IMMEDIATE, .immediate = { .val = expr.arg_count, .units = ASMImmediateUnitsWord }}
                 }
             });
+            if (r11_used) asm_list_append_pop(asm_list, R11);
+            if (r10_used) asm_list_append_pop(asm_list, R10);
+            if (r9_used) asm_list_append_pop(asm_list, R9);
+            if (r8_used) asm_list_append_pop(asm_list, R8);
+            if (rcx_used) asm_list_append_pop(asm_list, RCX);
             asm_list_append_pop(asm_list, RBP);
             asm_list_append_pop(asm_list, R12);
             asm_list_append_st_tac_symbol(asm_list, curr_class_node, curr_method, expr.lhs);
@@ -1219,12 +1279,12 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
 
     // Setup stack and stuff
     // asm_list_append_push(asm_list, RA);
-    if (rbx_used) asm_list_append_push(asm_list, RBX);
-    if (rcx_used) asm_list_append_push(asm_list, RCX);
-    if (r8_used) asm_list_append_push(asm_list, R8);
-    if (r9_used) asm_list_append_push(asm_list, R9);
-    if (r10_used) asm_list_append_push(asm_list, R10);
-    if (r11_used) asm_list_append_push(asm_list, R11);
+    // if (rbx_used) asm_list_append_push(asm_list, RBX);
+    // if (rcx_used) asm_list_append_push(asm_list, RCX);
+    // if (r8_used) asm_list_append_push(asm_list, R8);
+    // if (r9_used) asm_list_append_push(asm_list, R9);
+    // if (r10_used) asm_list_append_push(asm_list, R10);
+    // if (r11_used) asm_list_append_push(asm_list, R11);
     asm_list_append_push(asm_list, RBP);
     asm_list_append_mov(asm_list, RBP, RSP);
     asm_list_append_ld(asm_list, R12, RBP, 2 + registers_used);
@@ -1393,12 +1453,12 @@ void asm_from_method(ASMList* asm_list, const TACList tac_list)
     asm_list_append_label(asm_list, (bh_str){ .buf = label_buf, .len = label_len + 4 });
     asm_list_append_mov(asm_list, RSP, RBP);
     asm_list_append_pop(asm_list, RBP);
-    if (r11_used) asm_list_append_pop(asm_list, R11);
-    if (r10_used) asm_list_append_pop(asm_list, R10);
-    if (r9_used) asm_list_append_pop(asm_list, R9);
-    if (r8_used) asm_list_append_pop(asm_list, R8);
-    if (rcx_used) asm_list_append_pop(asm_list, RCX);
-    if (rbx_used) asm_list_append_pop(asm_list, RBX);
+    // if (r11_used) asm_list_append_pop(asm_list, R11);
+    // if (r10_used) asm_list_append_pop(asm_list, R10);
+    // if (r9_used) asm_list_append_pop(asm_list, R9);
+    // if (r8_used) asm_list_append_pop(asm_list, R8);
+    // if (rcx_used) asm_list_append_pop(asm_list, RCX);
+    // if (rbx_used) asm_list_append_pop(asm_list, RBX);
     asm_list_append_return(asm_list);
 
     asm_list_append_comment(asm_list, ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;"); // Spacer

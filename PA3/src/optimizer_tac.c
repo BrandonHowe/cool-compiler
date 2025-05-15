@@ -675,10 +675,6 @@ void convert_symbols_to_registers(TACList* list)
                 if (!symbols[k].register_viable) continue;
                 if (e.rhs1.type == TAC_SYMBOL_TYPE_SYMBOL && symbols[k].symbol == e.rhs1.symbol)
                 {
-                    if (k == 6)
-                    {
-
-                    }
                     symbols[k].live_end = j;
                 }
                 if (e.rhs2.type == TAC_SYMBOL_TYPE_SYMBOL && symbols[k].symbol == e.rhs2.symbol)
@@ -696,12 +692,12 @@ void convert_symbols_to_registers(TACList* list)
         }
 
         // Finally assign registers greedily
-        int64_t register_count = 3;
-        RegisterUsage registers[3] = {
+        int64_t register_count = 6;
+        RegisterUsage registers[6] = {
             { .reg = RBX, .used_by_symbol = -1 },
-            // { .reg = RCX, .used_by_symbol = -1 },
-            // { .reg = R8, .used_by_symbol = -1 },
-            // { .reg = R9, .used_by_symbol = -1 },
+            { .reg = RCX, .used_by_symbol = -1 },
+            { .reg = R8, .used_by_symbol = -1 },
+            { .reg = R9, .used_by_symbol = -1 },
             { .reg = R10, .used_by_symbol = -1 },
             { .reg = R11, .used_by_symbol = -1 },
         };
