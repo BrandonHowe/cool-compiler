@@ -1473,7 +1473,12 @@ void peephole_optimize_asm_list(ASMList* asm_list)
         {
             ASMInstr instr = asm_list->instructions[i];
             ASMInstr next_instr = asm_list->instructions[i + 1];
-            if (instr.op == ASM_OP_MOV && next_instr.op == ASM_OP_MOV &&
+
+            bool is_symmetric = (instr.op == ASM_OP_MOV && next_instr.op == ASM_OP_MOV) ||
+                                (instr.op == ASM_OP_ST && next_instr.op == ASM_OP_LD) ||
+                                (instr.op == ASM_OP_LD && next_instr.op == ASM_OP_ST);
+
+            if (is_symmetric &&
                 asm_param_equal(instr.params[1], next_instr.params[0]) &&
                 asm_param_equal(instr.params[0], next_instr.params[1]))
             {
